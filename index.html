@@ -221,7 +221,7 @@ function guide(){
  $('#guide').innerHTML='<div class="guide"><div class="stp">'+lab.map((l,i)=>'<span class="'+(done[i]?'d':i===cur?'c':'')+'">'+(done[i]?'✓ ':'')+l+'</span>').join('')+'</div><span class="nx">'+esc(nx)+'</span>'+(b?'<button class="btn p sm" id="gbtn">'+b+'</button>':'')+(b2?'<button class="btn sm" id="gdemo">시연용 1명 넣고 바로 해보기</button>':'')+'</div>';
  if(go)$('#gbtn').onclick=go;
  if(b2)$('#gdemo').onclick=()=>{const j=new Date();j.setFullYear(j.getFullYear()-3);const no='H'+String(st.pseq++).padStart(4,'0');
-  if(!st.depts.includes('상품전략1팀'))st.depts.push('상품전략1팀');st.people.push({no,name:'시연 직원',dept:'상품전략1팀',pos:'팀원',grade:'대리',join:ymd(j),emp:'정규',status:'재직',base:3500000,allow:200000});addMove(no,'입사',ymd(j),'시연용');st.me=no;save();
+  if(!st.depts.includes('상품전략1팀'))st.depts.push('상품전략1팀');st.people.push({no,name:'시연 직원',dept:'상품전략1팀',pos:'팀원',grade:'대리',join:ymd(j),emp:'정규',status:'재직',base:3500000,allow:200000});addMove(no,'입사',ymd(j),'시연용');{const p=person(no);onbItems({...p,join:today()}).forEach(([n,d,k])=>st.tasks.push({id:nid(),no,set:'입사',j:p.join,name:n,due:d,k:k||'',done:k==='auto'?now():''}))}st.me=no;save();
   toast('시연 직원 1명을 넣었습니다 (입사 3년차 · 연차 16일)');switchRole('emp','#leave/new')}}
 
 /* ---------- 상단 역할 ---------- */
@@ -920,13 +920,23 @@ function juiceGive(no){const p=person(no);if(!p)return;
  if(!s){st.juice.push({id:nid(),no,status:'구매 요청',at:now()});save();render();toast('재고가 없어 구매 요청으로 넘겼습니다','재고 화면',()=>location.hash='#juice');return}
  s.qty--;st.juice.push({id:nid(),no,sid:s.id,item:s.item,color:s.color,rank:s.rank,status:'결재 대기',at:now()});save();render();
  toast(p.name+' 주스기 '+s.item+'('+s.color+') 재고에서 빼고 결재 올렸습니다','팀장으로 결재하기',()=>switchRole('lead','#juice'))}
+function juiceSplit(){const due=[],out=[],lim=addD(today(),-60);
+ st.people.filter(p=>p.status==='재직').forEach(p=>{const t=st.tasks.filter(t=>t.no===p.no&&t.k==='juice'&&t.set==='입사'),open=t.find(x=>!x.done);
+  if((p.career||[]).length&&p.juiceBefore){out.push([p,'이전 재직 때 수령 (재입사자)','#card/'+p.no]);return}
+  if(open){due.push(open);return}
+  if(t.length||st.juice.some(j=>j.no===p.no&&j.status==='출고')){out.push([p,'이미 지급 (출고)',''])}
+  else if(p.join&&p.join<lim)out.push([p,'입사 60일 지남 — 입사 체크리스트 없음','#card/'+p.no]);
+  else out.push([p,'입사 처리 전','#onoff/in'])});
+ return {due,out}}
 V.juice=()=>{const r=st.role;let b='';
- const row=(j,btn)=>{const p=person(j.no)||{};return '<tr><td><b>'+esc(p.name)+'</b> <span class="tag">'+esc(p.dept)+' · 입사 '+p.join+'</span></td><td>'+(j.item?esc(j.item)+' · '+esc(j.color)+' <span class="tag">'+(j.rank===1?'1순위 미개봉 반품':'2순위 최신제품')+'</span>':'—')+'</td><td>'+stB(j.status)+'</td><td class="tag">'+j.at+(j.outAt?' · 출고 '+j.outAt:'')+'</td><td class="right">'+(btn||'')+'</td></tr>'};
+ const row=(j,btn)=>{const p=person(j.no)||{};return '<tr><td><b>'+esc(p.name)+'</b> <span class="tag">'+esc(p.dept)+' · 입사 '+p.join+'</span></td><td>'+(j.item?esc(j.item)+' · '+esc(j.color)+' <span class="tag">'+(j.rank===1?'1순위 미개봉 반품':'2순위 최신제품')+'</span>':'—')+'</td><td>'+(j.status==='반려'&&j.memo?stB('구매 요청')+' <span class="tag">'+esc(j.memo)+'</span>':stB(j.status))+'</td><td class="tag">'+j.at+(j.outAt?' · 출고 '+j.outAt:'')+'</td><td class="right">'+(btn||'')+'</td></tr>'};
  if(r==='lead'){const q=st.juice.filter(j=>j.status==='결재 대기');b+=sec('주스기 지급 결재',q.length+'건',tbl(['대상','제품','상태','시각',''],q.map(j=>row(j,'<button class="btn p sm" data-jok="'+j.id+'">승인</button> <button class="btn no sm" data-jno="'+j.id+'">반려</button>')),'결재할 건이 없습니다'))}
  if(r==='hr'){b+=sec('재고','1순위 = 최신제품 중 미개봉 반품, 없으면 2순위 = 최신제품 (품목 선택 불가 · 색상만 선택)',
   tbl(['제품','순위','색상','수량',''],st.stock.map(s=>'<tr><td>'+esc(s.item)+'</td><td>'+s.rank+'순위</td><td>'+esc(s.color)+'</td><td class="right"><b>'+s.qty+'</b></td><td class="right"><button class="btn sm" data-sq="'+s.id+'">+1</button></td></tr>'),'재고가 없습니다 — 아래에서 넣으세요')+
   '<div class="form" style="margin-top:10px"><label>제품<input id="sk_i" placeholder="예: H-AI 원액기"></label><label>순위<select id="sk_r"><option value="1">1순위 미개봉 반품</option><option value="2">2순위 최신제품</option></select></label><label>색상<input id="sk_c" placeholder="예: 화이트"></label><label>수량<input id="sk_q" type="number" min="1" value="1"></label></div><button class="btn" id="sk_go">재고 넣기</button>');
-  const due=st.tasks.filter(t=>t.k==='juice'&&!t.done);b+=sec('지급 대상',due.length+'명 · 입사 체크리스트에서 자동',tbl(['대상','고용','기한',''],due.map(t=>{const p=person(t.no)||{};return '<tr><td><b>'+esc(p.name)+'</b></td><td>'+esc(p.emp)+'</td><td>'+dueTag(t.due)+'</td><td class="right">'+(st.juice.some(j=>j.no===t.no&&j.status!=='반려'&&j.status!=='구매 요청')?'':'<button class="btn p sm" data-juice="'+t.no+'">지급</button>')+'</td></tr>'}),'지급할 사람이 없습니다'))}
+  const jd=juiceSplit(),due=jd.due;b+=sec('지급 대상',due.length+'명',
+  '<div class="tag" style="margin-bottom:8px">대상 조건: 입사 체크리스트가 생긴 재직자 · 재입사자 중 이전 재직 때 받은 사람 제외 · 기한은 생활백서 기준 (정규 입사 다음 달 첫째 주, 계약 3~4개월차 첫째 주)</div>'+tbl(['대상','고용','기한',''],due.map(t=>{const p=person(t.no)||{};return '<tr><td><b>'+esc(p.name)+'</b></td><td>'+esc(p.emp)+'</td><td>'+dueTag(t.due)+'</td><td class="right">'+(st.juice.some(j=>j.no===t.no&&j.status!=='반려'&&j.status!=='구매 요청')?'':'<button class="btn p sm" data-juice="'+t.no+'">지급</button>')+'</td></tr>'}),'지급할 사람이 없습니다')+
+  (jd.out.length?'<details style="margin-top:10px"><summary>대상 아님 '+jd.out.length+'명</summary>'+tbl(['이름','부서','입사','사유',''],jd.out.map(([p,why,go])=>'<tr><td><b>'+esc(p.name)+'</b></td><td>'+esc(p.dept)+'</td><td>'+p.join+'</td><td>'+esc(why)+'</td><td class="right">'+(go?'<a class="btn sm" href="'+go+'">'+(go[1]==='o'?'입사 처리':'인사카드')+'</a>':'')+'</td></tr>'))+'</details>':''))}
  if(r==='emp')b+=hrOnly();
  return head('신입 주스기','[지급] → 재고 차감 → 결재 → 출고 · 재고 없으면 구매 요청')+b+sec('지급 기록',st.juice.length+'건',tbl(['대상','제품','상태','시각',''],st.juice.slice().reverse().map(j=>row(j,r==='hr'&&j.status==='구매 요청'?'<button class="btn sm" data-juice2="'+j.id+'">재고 들어옴 → 다시 지급</button>':''))))+ruleBox(['신입사원 주스기 지급'])};
 
