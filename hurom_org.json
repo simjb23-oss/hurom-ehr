@@ -1,0 +1,405 @@
+{
+ "source": "M365 디렉터리 부서·관리자 관계(2026-11-06 수집) — 이름 없이 부서·인원수만, 인사팀 확인 필요",
+ "nodes": [
+  {
+   "name": "AS팀",
+   "parent": "고객경영본부",
+   "headcount": 12
+  },
+  {
+   "name": "AX팀",
+   "parent": "CEO",
+   "headcount": 11
+  },
+  {
+   "name": "CEO",
+   "parent": null,
+   "headcount": 1
+  },
+  {
+   "name": "CN_AS",
+   "parent": "중국법인",
+   "headcount": 5
+  },
+  {
+   "name": "CN_商品策划Part/상품기획",
+   "parent": "중국법인",
+   "headcount": 1
+  },
+  {
+   "name": "CN_线上运营管理Part/자사몰관리",
+   "parent": "중국법인",
+   "headcount": 12
+  },
+  {
+   "name": "CN_线上销售管理",
+   "parent": "중국법인",
+   "headcount": 2
+  },
+  {
+   "name": "CN_线下销售管理영업관리",
+   "parent": "중국법인",
+   "headcount": 5
+  },
+  {
+   "name": "CN_经营管理Part/경영관리",
+   "parent": "중국법인",
+   "headcount": 3
+  },
+  {
+   "name": "CN_运营Part/운영",
+   "parent": "중국법인",
+   "headcount": 6
+  },
+  {
+   "name": "CN_마켓팅관리营销管理",
+   "parent": "중국법인",
+   "headcount": 6
+  },
+  {
+   "name": "CN_방송운영/直播团",
+   "parent": "중국법인",
+   "headcount": 1
+  },
+  {
+   "name": "F&B사업1팀",
+   "parent": "F&B사업본부",
+   "headcount": 5
+  },
+  {
+   "name": "F&B사업2팀",
+   "parent": "F&B사업본부",
+   "headcount": 4
+  },
+  {
+   "name": "F&B사업본부",
+   "parent": "CEO",
+   "headcount": 1
+  },
+  {
+   "name": "F&B센터",
+   "parent": "F&B사업본부",
+   "headcount": 11
+  },
+  {
+   "name": "HR본부",
+   "parent": "CEO",
+   "headcount": 1
+  },
+  {
+   "name": "JP_HR/Finance",
+   "parent": "일본법인",
+   "headcount": 1
+  },
+  {
+   "name": "JP_Marketing/Sales",
+   "parent": "일본법인",
+   "headcount": 1
+  },
+  {
+   "name": "JP_OffLine/Sales",
+   "parent": "일본법인",
+   "headcount": 1
+  },
+  {
+   "name": "JP_Online/Sales",
+   "parent": "일본법인",
+   "headcount": 1
+  },
+  {
+   "name": "JP_Sales Support",
+   "parent": "일본법인",
+   "headcount": 1
+  },
+  {
+   "name": "R&D본부",
+   "parent": "상품전략본부",
+   "headcount": 2
+  },
+  {
+   "name": "US_HR/Finance",
+   "parent": "미국법인",
+   "headcount": 1
+  },
+  {
+   "name": "US_Marketing",
+   "parent": "미국법인",
+   "headcount": 2
+  },
+  {
+   "name": "US_Marketing/Sales",
+   "parent": "미국법인",
+   "headcount": 1
+  },
+  {
+   "name": "US_Operations",
+   "parent": "미국법인",
+   "headcount": 4
+  },
+  {
+   "name": "US_Sales",
+   "parent": "미국법인",
+   "headcount": 1
+  },
+  {
+   "name": "개발1팀",
+   "parent": "R&D본부",
+   "headcount": 9
+  },
+  {
+   "name": "개발2팀",
+   "parent": "R&D본부",
+   "headcount": 8
+  },
+  {
+   "name": "개발기획팀",
+   "parent": "R&D본부",
+   "headcount": 3
+  },
+  {
+   "name": "경영지원본부",
+   "parent": "CEO",
+   "headcount": 1
+  },
+  {
+   "name": "고객경영본부",
+   "parent": "CEO",
+   "headcount": 1
+  },
+  {
+   "name": "고객만족팀",
+   "parent": "고객경영본부",
+   "headcount": 17
+  },
+  {
+   "name": "구매1팀",
+   "parent": "구매본부",
+   "headcount": 9
+  },
+  {
+   "name": "구매2팀",
+   "parent": "구매본부",
+   "headcount": 6
+  },
+  {
+   "name": "구매본부",
+   "parent": "상품전략본부",
+   "headcount": 1
+  },
+  {
+   "name": "국내영업팀",
+   "parent": "마케팅본부",
+   "headcount": 7
+  },
+  {
+   "name": "글로벌전략1팀",
+   "parent": "CEO",
+   "headcount": 4
+  },
+  {
+   "name": "글로벌전략2팀",
+   "parent": "CEO",
+   "headcount": 5
+  },
+  {
+   "name": "글로벌전략3팀",
+   "parent": "CEO",
+   "headcount": 3
+  },
+  {
+   "name": "마케팅본부",
+   "parent": "CEO",
+   "headcount": 1
+  },
+  {
+   "name": "마케팅팀",
+   "parent": "마케팅본부",
+   "headcount": 6
+  },
+  {
+   "name": "말레이시아지사",
+   "parent": "CEO",
+   "headcount": 1
+  },
+  {
+   "name": "물류팀",
+   "parent": "경영지원본부",
+   "headcount": 7
+  },
+  {
+   "name": "미국법인",
+   "parent": "CEO",
+   "headcount": 0
+  },
+  {
+   "name": "미디어커머스",
+   "parent": "마케팅본부",
+   "headcount": 1
+  },
+  {
+   "name": "미디어커머스팀",
+   "parent": "마케팅본부",
+   "headcount": 8
+  },
+  {
+   "name": "법무감사팀",
+   "parent": "법무본부",
+   "headcount": 3
+  },
+  {
+   "name": "법무본부",
+   "parent": "CEO",
+   "headcount": 1
+  },
+  {
+   "name": "상품디자인팀",
+   "parent": "상품전략본부",
+   "headcount": 6
+  },
+  {
+   "name": "상품전략1팀",
+   "parent": "상품전략본부",
+   "headcount": 4
+  },
+  {
+   "name": "상품전략2팀",
+   "parent": "상품전략본부",
+   "headcount": 5
+  },
+  {
+   "name": "상품전략본부",
+   "parent": "CEO",
+   "headcount": 1
+  },
+  {
+   "name": "생산본부",
+   "parent": "상품전략본부",
+   "headcount": 1
+  },
+  {
+   "name": "생산팀",
+   "parent": "생산본부",
+   "headcount": 17
+  },
+  {
+   "name": "식품영양연구팀",
+   "parent": "마케팅본부",
+   "headcount": 4
+  },
+  {
+   "name": "운영기획팀",
+   "parent": "고객경영본부",
+   "headcount": 5
+  },
+  {
+   "name": "유럽법인",
+   "parent": "CEO",
+   "headcount": 1
+  },
+  {
+   "name": "일본법인",
+   "parent": "CEO",
+   "headcount": 0
+  },
+  {
+   "name": "자산관리팀",
+   "parent": "HR본부",
+   "headcount": 1
+  },
+  {
+   "name": "재무팀",
+   "parent": "경영지원본부",
+   "headcount": 4
+  },
+  {
+   "name": "전략과제운영팀",
+   "parent": "상품전략본부",
+   "headcount": 2
+  },
+  {
+   "name": "전산팀",
+   "parent": "경영지원본부",
+   "headcount": 1
+  },
+  {
+   "name": "전장제어팀",
+   "parent": "개발2팀",
+   "headcount": 3
+  },
+  {
+   "name": "중국법인",
+   "parent": "CEO",
+   "headcount": 0
+  },
+  {
+   "name": "지식재산본부",
+   "parent": "CEO",
+   "headcount": 1
+  },
+  {
+   "name": "지식재산팀",
+   "parent": "지식재산본부",
+   "headcount": 4
+  },
+  {
+   "name": "커뮤니케이션디자인팀",
+   "parent": "마케팅본부",
+   "headcount": 7
+  },
+  {
+   "name": "퍼포먼스마케팅팀",
+   "parent": "마케팅본부",
+   "headcount": 5
+  },
+  {
+   "name": "품질관리팀",
+   "parent": "품질본부",
+   "headcount": 11
+  },
+  {
+   "name": "품질보증팀",
+   "parent": "품질본부",
+   "headcount": 7
+  },
+  {
+   "name": "품질본부",
+   "parent": "상품전략본부",
+   "headcount": 1
+  },
+  {
+   "name": "피플&컬처팀(H)",
+   "parent": "생산본부",
+   "headcount": 9
+  },
+  {
+   "name": "피플&컬처팀(LS)",
+   "parent": "HR본부",
+   "headcount": 7
+  },
+  {
+   "name": "해외영업1팀",
+   "parent": "해외영업본부",
+   "headcount": 5
+  },
+  {
+   "name": "해외영업2팀",
+   "parent": "해외영업본부",
+   "headcount": 5
+  },
+  {
+   "name": "해외영업3팀",
+   "parent": "해외영업본부",
+   "headcount": 4
+  },
+  {
+   "name": "해외영업4팀",
+   "parent": "해외영업본부",
+   "headcount": 3
+  },
+  {
+   "name": "해외영업본부",
+   "parent": "CEO",
+   "headcount": 1
+  }
+ ]
+}
