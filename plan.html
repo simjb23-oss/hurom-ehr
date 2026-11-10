@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>휴롬 인사정보시스템(EHR) 기획 보고</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--bg:#fff;--band:#f5f6f7;--ink:#191f28;--sub:#4e5968;--faint:#8b95a1;--fill:#f2f4f6;--accent:#f06418;--ok:#1f9d55;--warn:#e08a00;color-scheme:light;
+ --font:"Pretendard",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:17px;line-height:1.65;word-break:keep-all;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+h1,h2,h3,h4,p{margin:0}
+h1,h2{text-wrap:balance;font-weight:700;letter-spacing:-.03em}
+h2{font-size:clamp(30px,3.8vw,42px);line-height:1.3}
+h3{font-size:22px;font-weight:700;line-height:1.4;letter-spacing:-.02em}
+.num{font-variant-numeric:tabular-nums}
+.label{font-size:18px;font-weight:700;color:var(--accent)}
+.lead{font-size:18px;color:var(--sub);max-width:40em}
+.hl{color:var(--accent)}
+section{padding-block:96px}section.band{background:var(--band)}
+.head{display:grid;gap:12px;margin-bottom:44px}
+.tile{background:var(--fill);border-radius:20px}section.band .tile{background:var(--bg)}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:56px;padding-inline:22px;border-radius:16px;font-weight:700;font-size:17px;text-decoration:none;border:0;font-family:inherit}
+.btn.dark{background:var(--ink);color:#fff}
+/* 상단 */
+.top{display:flex;align-items:center;justify-content:space-between;padding-block:20px}
+.brand{font-size:21px;font-weight:800;letter-spacing:-.02em}.brand span{font-size:14px;font-weight:500;color:var(--faint);margin-left:8px}
+.chip{font-size:14px;font-weight:700;background:var(--fill);border-radius:12px;padding:10px 16px;color:var(--ink);text-decoration:none}
+/* 히어로 */
+.hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr);gap:56px;align-items:center;padding-block:40px 96px}
+.hero h1{font-size:clamp(42px,5.8vw,68px);line-height:1.16;margin-top:16px}
+.hero .lead{margin-top:22px}
+.hero-box{margin-top:32px;display:grid;gap:12px;max-width:560px}
+.summary{padding:8px 22px;margin:0}
+.summary div{display:grid;grid-template-columns:84px minmax(0,1fr);gap:12px;padding-block:12px}
+.summary dt{font-weight:700;color:var(--faint);font-size:15px}.summary dd{margin:0;font-size:16.5px;font-weight:600}
+.hero-box .btn{width:100%}
+/* 휴대폰 틀 (Teams 대화) */
+.iphone{position:relative;width:min(300px,100%);margin-inline:auto;background:#0c0d0f;border-radius:48px;padding:10px;box-shadow:0 30px 70px -40px rgba(0,0,0,.55)}
+.iphone .scr{position:relative;border-radius:39px;overflow:hidden;background:#fff;aspect-ratio:390/844;display:flex;flex-direction:column}
+.iphone .notch{position:absolute;top:0;left:50%;width:41%;height:26px;transform:translateX(-50%);background:#0c0d0f;border-radius:0 0 16px 16px;z-index:2}
+.iphone .home{position:absolute;bottom:8px;left:50%;width:36%;height:4px;transform:translateX(-50%);border-radius:3px;background:#111}
+.ph-top{padding:38px 16px 10px;border-bottom:1px solid #eef0f2;display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700}
+.ph-top i{width:26px;height:26px;border-radius:8px;background:var(--ink);color:#fff;font-style:normal;font-size:11px;display:grid;place-items:center}
+.ph-body{flex:1;padding:14px 12px;display:flex;flex-direction:column;gap:8px;font-size:12.5px;line-height:1.5;background:#fafbfc}
+.m{align-self:flex-end;background:var(--ink);color:#fff;border-radius:14px 14px 4px 14px;padding:8px 11px;max-width:80%}
+.b{align-self:flex-start;background:#fff;border:1px solid #e9ecef;border-radius:14px 14px 14px 4px;padding:9px 11px;max-width:90%}
+.card-in{background:var(--fill);border-radius:10px;padding:8px 10px;margin-top:6px}
+.card-in div{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--sub)}.card-in b{color:var(--ink)}
+.pb{display:flex;gap:6px;margin-top:8px}.pb span{flex:1;text-align:center;border-radius:8px;padding:6px 0;font-weight:700;font-size:11.5px;background:var(--fill)}.pb span.go{background:var(--accent);color:#fff}
+/* 목소리 */
+.voices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:start}
+.voice{display:grid;gap:16px}
+.bubble{position:relative;background:var(--bg);border-radius:20px 20px 20px 6px;padding:18px 18px 20px;font-size:16px;line-height:1.55;min-height:132px}
+.who{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--faint);padding-left:4px}
+.who i{width:22px;height:22px;border-radius:50%;background:#e5e8eb;flex:none}
+.answer{font-size:18px;font-weight:700;line-height:1.45;letter-spacing:-.01em;padding-left:4px}
+.answer span{display:block;font-size:14px;font-weight:700;color:var(--accent);margin-bottom:4px}
+.keyline{margin-top:64px;text-align:center;display:grid;gap:12px;justify-items:center}
+.keyline p{font-size:clamp(32px,4.6vw,52px);font-weight:800;line-height:1.38;letter-spacing:-.03em;text-wrap:balance}
+.keyline small{font-size:17px;color:var(--sub)}
+/* 탭 + 패널 */
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.tab{height:46px;padding-inline:18px;border-radius:999px;border:0;background:var(--fill);color:var(--sub);font:inherit;font-size:16px;font-weight:700;cursor:pointer}
+section.band .tab{background:var(--bg)}
+.tab .n{color:var(--faint);margin-right:6px}
+.tab[aria-selected=true]{background:var(--ink)!important;color:#fff}.tab[aria-selected=true] .n{color:inherit;opacity:.6}
+.panel{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:48px;align-items:start;border-radius:24px;padding:clamp(22px,3.4vw,44px);background:var(--fill)}
+section.band .panel{background:var(--bg)}
+.panel .txt{display:grid;gap:18px;align-content:start}
+.panel .txt>p{color:var(--sub)}
+.kicker{font-size:15px;font-weight:700;color:var(--accent)}
+.does{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:d}
+.does li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;font-size:15.5px;color:var(--sub)}
+.does li::before{counter-increment:d;content:counter(d);width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center;margin-top:1px}
+.does b{color:var(--ink)}
+.ref{font-size:14px;color:var(--faint)}.ref a{color:var(--sub)}
+/* 화면 시안 (웹) */
+.scr-web{background:#fff;border-radius:18px;box-shadow:0 30px 60px -40px rgba(0,0,0,.35);overflow:hidden;font-size:13.5px}
+section:not(.band) .scr-web{border:1px solid #e9ecef}
+.sw-bar{display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid #f0f2f4}.sw-bar i{width:9px;height:9px;border-radius:50%;background:#e5e8eb}
+.sw-in{padding:18px}
+.pf{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.av{width:42px;height:42px;border-radius:50%;background:var(--fill);display:grid;place-items:center;font-weight:800;color:var(--sub)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;background:var(--fill);color:var(--sub);white-space:nowrap}
+.pill.ok{background:#e8f6ee;color:var(--ok)}.pill.warn{background:#fff3e0;color:#b86e00}.pill.ac{background:#fff0e7;color:var(--accent)}
+.st{display:flex;gap:4px;border-bottom:1px solid #f0f2f4;margin-bottom:12px;overflow-x:auto}
+.st span{padding:7px 10px;color:var(--faint);font-weight:600;white-space:nowrap}.st span.on{color:var(--ink);box-shadow:inset 0 -2px 0 var(--ink)}
+.fg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.fd{background:var(--fill);border-radius:10px;padding:8px 10px}.fd small{display:block;color:var(--faint);font-size:11.5px}.fd b{font-size:13px}
+.mask{letter-spacing:.2em;color:var(--faint)}
+.flow{display:grid;gap:8px}
+.fs{display:flex;align-items:center;gap:10px;background:var(--fill);border-radius:12px;padding:10px 12px}
+.fs .av{width:30px;height:30px;font-size:12px;background:#fff}
+.fs small{display:block;color:var(--faint);font-size:11.5px}.fs .pill{margin-left:auto}
+.acts{display:flex;gap:8px;margin-top:12px}.acts span{flex:1;text-align:center;border-radius:10px;padding:9px 0;font-weight:700;background:var(--fill)}.acts span.go{background:var(--ink);color:#fff}
+.bal{display:flex;align-items:baseline;gap:6px}.bal b{font-size:34px;font-weight:800;letter-spacing:-.02em}
+.meter{height:8px;background:#e5e8eb;border-radius:4px;overflow:hidden;margin:10px 0 6px}.meter i{display:block;height:100%;background:var(--accent);width:0;transition:width 1s}
+.todo{display:grid;gap:6px;margin-top:6px}.todo div{display:flex;justify-content:space-between;background:var(--fill);border-radius:10px;padding:8px 10px;font-weight:600}
+/* 데이터 */
+.data-flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.data-flow .tile{padding:26px;display:grid;gap:10px;align-content:start}
+.data-flow .step{font-size:15px;font-weight:700;color:var(--accent)}
+.data-flow p{color:var(--sub);font-size:16px}
+.lists{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}
+.lists .tile{padding:20px 22px}
+.lists h4{font-size:17px;margin:0 0 2px}.lists small{color:var(--faint);font-size:13.5px}
+.lists ul{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:4px;font-size:14.5px;color:var(--sub)}
+.lists li{display:flex;justify-content:space-between;gap:8px}.lists li em{font-style:normal;color:var(--faint);font-size:13px}
+.guard{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:14.5px;color:var(--sub);margin-top:22px}.guard b{color:var(--ink);margin-right:6px}
+/* 권한 */
+.grades{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.grade{padding:24px;display:grid;gap:8px;align-content:start}
+.grade .g{font-size:40px;font-weight:800;line-height:1}
+.grade .g.a{color:var(--accent)}
+.grade p{color:var(--sub);font-size:15.5px}
+.grade .w{font-size:14px;font-weight:700;color:var(--ink);margin-top:4px}
+/* 지금까지 */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.stat{padding:22px}.stat b{display:block;font-size:34px;font-weight:800;letter-spacing:-.02em}.stat span{font-size:14px;color:var(--faint)}
+/* 제안 */
+.propose{background:var(--ink);color:#fff;border-radius:28px;padding:clamp(28px,5vw,56px)}
+.propose .label{color:var(--accent)}
+.propose h2{color:#fff;margin:12px 0 32px}
+.pcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.pc{background:rgba(255,255,255,.07);border-radius:20px;padding:24px;display:grid;gap:8px;align-content:start}
+.pc .s{font-size:14px;font-weight:700;color:var(--accent)}.pc h3{color:#fff;font-size:20px}.pc p{color:rgba(255,255,255,.7);font-size:15px}
+.ask{margin-top:28px;display:grid;gap:10px}
+.ask div{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:12px;align-items:baseline;border-top:1px solid rgba(255,255,255,.12);padding-top:12px}
+.ask .i{font-weight:800;color:var(--accent)}.ask b{color:#fff}.ask span{color:rgba(255,255,255,.65);font-size:15px}.ask em{font-style:normal;font-size:14px;font-weight:700;color:#ffb48a;white-space:nowrap}
+footer{padding:28px 0 56px;color:var(--faint);font-size:13.5px}
+@media(max-width:900px){.hero,.panel{grid-template-columns:1fr}.voices,.grades,.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.data-flow,.lists,.pcols{grid-template-columns:1fr}.hero{gap:40px}}
+@media(max-width:640px){.brand span{display:none}section{padding-block:64px}.voices,.grades{grid-template-columns:1fr}.fg{grid-template-columns:1fr 1fr}.tab{height:40px;font-size:14.5px;padding-inline:14px}.ask div{grid-template-columns:22px minmax(0,1fr)}.ask em{grid-column:2}.bubble{min-height:0}}
+</style></head><body>
+
+<header class="wrap top"><div class="brand">휴롬 EHR<span>휴롬 AX · 2026년 11월 기획 보고</span></div><a class="chip" href="#plan">제안 보기</a></header>
+
+<div class="wrap hero">
+ <div>
+  <div class="label">인사정보시스템 1차 기획</div>
+  <h1>사람 정보는 한 곳에,<br>신청은 <span class="hl">말 한 줄</span>로</h1>
+  <p class="lead">같은 사람을 ERP · M365 · 인사 엑셀에 따로 등록하고, 인사 업무의 절반을 응대에 씁니다. EHR은 사람 정보를 ERP 사번 하나로 모으고, 직원은 Teams에서 말로 신청하고, 인사는 확정만 하게 만듭니다.</p>
+  <div class="hero-box">
+   <dl class="summary tile">
+    <div><dt>무엇</dt><dd>인원 명부 · 인사카드 · 근태 신청과 승인 · 대화형 신청 · 인사 대시보드</dd></div>
+    <div><dt>왜</dt><dd>사람 정보가 흩어져 있고, 신청·승인 이력이 남지 않는다</dd></div>
+    <div><dt>1차 완료</dt><dd>반차 신청 → 팀장 승인 → 인사 확정 → 연차 차감 → 오늘 부재자 표시, 한 바퀴</dd></div>
+   </dl>
+   <a class="btn dark" href="#how">화면으로 보기</a>
+  </div>
+ </div>
+ <div class="iphone"><div class="notch"></div><div class="scr">
+  <div class="ph-top"><i>HR</i>휴롬 인사봇 · Teams</div>
+  <div class="ph-body">
+   <div class="m">다음 주 목요일 오후 반차 쓸게요</div>
+   <div class="b">신청서 초안을 만들었어요. 맞으면 제출을 눌러 주세요.
+    <div class="card-in"><div><span>종류</span><b>오후 반차</b></div><div><span>날짜</span><b class="num">11/12(목)</b></div><div><span>차감</span><b class="num">0.5일</b></div><div><span>승인</span><b>팀장 → 인사</b></div></div>
+    <div class="pb"><span>고치기</span><span class="go">제출</span></div></div>
+   <div class="m">남은 연차 며칠이에요?</div>
+   <div class="b">올해 <b class="num">15일</b> 중 <b class="num">6일</b>을 써서 <b class="num">9일</b> 남았어요. 승인 대기 0.5일은 확정되면 빠져요.</div>
+  </div><div class="home"></div></div></div>
+</div>
+
+<section class="band" id="why"><div class="wrap">
+ <div class="head"><div class="label">왜 필요한가</div><h2>인사 업무가 느린 이유</h2><p class="lead">현장에서 멈추는 지점마다, EHR이 한 가지씩 답합니다.</p></div>
+ <div class="voices">
+  <div class="voice"><div class="bubble">퇴사자 나가면 ERP 지우고, M365 막고, 엑셀 고치고… 세 군데를 손으로 맞춰요.</div><div class="who"><i></i>인사 담당자</div><div class="answer"><span>사람 원장 1곳</span>ERP 사번 하나로 모읍니다</div></div>
+  <div class="voice"><div class="bubble">「연차 며칠 남았어요?」 「반차 어떻게 내요?」 하루에도 몇 번씩 같은 질문이 와요.</div><div class="who"><i></i>인사 담당자</div><div class="answer"><span>대화형 신청</span>묻고 바로 신청까지 됩니다</div></div>
+  <div class="voice"><div class="bubble">승인했는지 안 했는지, 누가 대신 승인했는지 나중에 찾기가 어려워요.</div><div class="who"><i></i>팀장</div><div class="answer"><span>결재 이력</span>모든 단계를 지우지 못하게 남깁니다</div></div>
+  <div class="voice"><div class="bubble">인사 시스템이 생기면 내 연봉이나 개인정보를 남이 보게 되는 건 아닌가요?</div><div class="who"><i></i>직원</div><div class="answer"><span>등급별 권한</span>민감 정보는 아예 두지 않습니다</div></div>
+ </div>
+ <div class="keyline"><p>시스템을 하나 더 만드는 게 아니라,<br>흩어진 걸 <span class="hl">하나로 묶는 일</span></p><small>ERP는 고치지 않습니다. 필요한 열만 읽어 와서 잇습니다.</small></div>
+</div></section>
+
+<section id="how"><div class="wrap">
+ <div class="head"><div class="label">어떻게 동작하나</div><h2>신청부터 확정까지, 네 화면이면 끝납니다</h2><p class="lead">단계를 눌러 화면을 보세요. 이름은 자리표시(직원 A · 팀장 B)입니다.</p></div>
+ <div class="tabs" role="tablist">
+  <button class="tab" role="tab" aria-selected="true" data-p="p1"><span class="n">1</span>대화로 신청</button>
+  <button class="tab" role="tab" aria-selected="false" data-p="p2"><span class="n">2</span>팀장 승인</button>
+  <button class="tab" role="tab" aria-selected="false" data-p="p3"><span class="n">3</span>인사 확정</button>
+  <button class="tab" role="tab" aria-selected="false" data-p="p4"><span class="n">4</span>인사카드</button>
+ </div>
+
+ <div class="panel" id="p1">
+  <div class="scr-web"><div class="sw-bar"><i></i><i></i><i></i></div><div class="sw-in" style="background:#fafbfc">
+   <div class="ph-body" style="padding:0;background:transparent;font-size:13.5px">
+    <div class="m">다음 주 목요일 오후 반차 쓸게요</div>
+    <div class="b">신청서 초안을 만들었어요.<div class="card-in"><div><span>종류</span><b>오후 반차</b></div><div><span>날짜</span><b class="num">2026-11-12(목)</b></div><div><span>차감</span><b class="num">0.5일 (남은 9일에서)</b></div><div><span>승인</span><b>팀장 B → 인사</b></div></div><div class="pb"><span>고치기</span><span class="go">제출</span></div></div>
+    <div class="m">○○ 과장 연봉 얼마야?</div>
+    <div class="b">다른 사람의 급여·평가·개인정보는 답하지 않아요. 본인 급여 문의는 인사팀 창구로 안내할게요.</div>
+   </div></div></div>
+  <div class="txt"><div class="kicker">1 · 직원</div><h3>말하면 초안, 확인하면 제출</h3><p>Teams에서 평소 말투로 적으면 봇이 신청서 초안을 만듭니다. 직원이 제출을 눌러야만 올라갑니다.</p>
+   <ul class="does"><li><span><b>날짜·종류·차감 일수</b>를 문장에서 읽어 채웁니다</span></li><li><span><b>남은 연차</b>를 먼저 보여 주고 모자라면 막습니다</span></li><li><span>규정 질문은 <b>규정 문서로만</b> 답하고, 남의 정보는 거절합니다</span></li></ul></div>
+ </div>
+
+ <div class="panel" id="p2" hidden>
+  <div class="scr-web"><div class="sw-bar"><i></i><i></i><i></i></div><div class="sw-in">
+   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><b>오후 반차</b> <span class="num" style="color:var(--faint)">11/12(목) · 0.5일</span></div><span class="pill warn">팀장 승인 대기</span></div>
+   <div class="flow">
+    <div class="fs"><div class="av">A</div><div><b>신청 · 직원 A</b><small>대화로 신청 · 사유: 병원</small></div><span class="pill ok">완료</span></div>
+    <div class="fs"><div class="av">B</div><div><b>1단계 · 팀장 B</b><small>부재 시 대결자 승인(「대결」 표시)</small></div><span class="pill warn">대기</span></div>
+    <div class="fs"><div class="av">인</div><div><b>2단계 · 인사 확정</b><small>확정 시 연차 0.5일 차감</small></div><span class="pill">예정</span></div>
+   </div>
+   <div class="acts"><span>반려 (사유 필수)</span><span class="go">승인</span></div></div></div>
+  <div class="txt"><div class="kicker">2 · 팀장</div><h3>누가 어디까지 했는지 한눈에</h3><p>단계별 승인자와 상태를 세로로 보여 줍니다. 신청자 본인에게는 승인 버튼이 보이지 않습니다.</p>
+   <ul class="does"><li><span><b>자기 승인 금지</b> — 팀장 본인 신청은 본부장이 승인합니다</span></li><li><span>팀장이 없으면 <b>대결자</b>가 승인하고 표시가 남습니다</span></li><li><span>반려는 <b>사유를 꼭</b> 적어야 합니다</span></li></ul>
+   <p class="ref">참고: <a href="https://mobbin.com/screens/85ce51ec-f838-4c9f-ac24-98cc4c3db552" target="_blank">Aboard 승인 흐름</a></p></div>
+ </div>
+
+ <div class="panel" id="p3" hidden>
+  <div class="scr-web"><div class="sw-bar"><i></i><i></i><i></i></div><div class="sw-in">
+   <div class="fg" style="grid-template-columns:1fr 1fr">
+    <div class="fd" style="padding:14px"><small>직원 A · 남은 연차</small><div class="bal"><b class="num" id="balV">0</b><span class="num" style="color:var(--faint)">/ 15일</span></div><div class="meter"><i data-w="40"></i></div><small class="num">사용 6일 · 승인 대기 0.5일</small></div>
+    <div class="fd" style="padding:14px"><small>오늘 인사가 처리할 것</small><div class="todo"><div>확정 대기 근태<span class="pill ac">처리</span></div><div>소급 3일 초과<span class="pill warn">확인</span></div><div>이번 달 입사자 카드<span class="pill">보기</span></div></div></div>
+   </div>
+   <div class="fd" style="margin-top:8px;padding:12px 14px"><small>오늘 부재자</small><b>확정된 연차 · 반차 · 외근만, 부서별로 묶어서</b></div>
+  </div></div>
+  <div class="txt"><div class="kicker">3 · 인사</div><h3>인사는 확정만 누릅니다</h3><p>팀장 승인까지 끝난 건만 인사 화면에 올라옵니다. 확정을 누르는 순간 연차가 빠지고, 오늘 부재자에 뜹니다.</p>
+   <ul class="does"><li><span>승인 시에는 <b>예약</b>, 확정 시에 <b>사용</b>으로 차감합니다</span></li><li><span>확정된 건은 지우지 않고 <b>취소 요청 → 인사 확정</b>으로만 바꿉니다</span></li><li><span>소급 신청은 <b>3일 이내</b>만 받고 인사가 증빙을 봅니다</span></li></ul>
+   <p class="ref">참고: <a href="https://mobbin.com/screens/f1826e6d-78cc-4473-8b32-5ea7f658d108" target="_blank">Deel 휴가</a> · <a href="https://mobbin.com/screens/73b7662c-371c-4784-949b-c7cb66840d3e" target="_blank">Oyster 승인 요약</a></p></div>
+ </div>
+
+ <div class="panel" id="p4" hidden>
+  <div class="scr-web"><div class="sw-bar"><i></i><i></i><i></i></div><div class="sw-in">
+   <div class="pf"><div class="av">A</div><div><b>직원 A</b><div style="color:var(--faint);font-size:12.5px">품질보증팀 · 대리 · 김해</div></div><span class="pill ok" style="margin-left:auto">재직</span></div>
+   <div class="st"><span class="on">기본정보</span><span>발령 이력</span><span>연차</span><span>근태</span><span>신상(권한자)</span></div>
+   <div class="fg">
+    <div class="fd"><small>사번</small><b>ERP 연동</b></div><div class="fd"><small>입사일 · 근속</small><b>ERP 연동</b></div><div class="fd"><small>직급 · 직책</small><b>ERP 연동</b></div>
+    <div class="fd"><small>리더</small><b>M365</b></div><div class="fd"><small>휴대전화</small><b class="mask">••••</b></div><div class="fd"><small>주소</small><b class="mask">••••</b></div>
+   </div></div></div>
+  <div class="txt"><div class="kicker">4 · 인사카드</div><h3>한 사람, 한 화면</h3><p>기본정보 · 발령 이력 · 연차를 탭으로 봅니다. 연락처·주소는 가려 두고 권한자만 펼치며, 펼칠 때마다 기록이 남습니다.</p>
+   <ul class="does"><li><span>사번 · 입사일 · 직급은 <b>ERP에서</b> 읽어 옵니다</span></li><li><span>이름 · 메일 · 리더는 <b>M365에서</b> 읽어 옵니다</span></li><li><span>주민번호 · 평가 · 급여는 <b>카드에 없습니다</b></span></li></ul>
+   <p class="ref">참고: <a href="https://mobbin.com/screens/ba5d0a97-594a-43b2-99f0-c43be470e278" target="_blank">Workable 직원 프로필</a></p></div>
+ </div>
+</div></section>
+
+<section class="band" id="data"><div class="wrap">
+ <div class="head"><div class="label">데이터</div><h2>ERP 사번, M365 계정, 신청 기록.<br>이 셋을 <span class="hl">사번 하나로</span> 잇습니다</h2><p class="lead">K-System 「개인인사정보종합조회」를 분석했습니다. 사원 1명에 이력 표 18개가 붙는 구조라, 필요한 열만 골라 읽습니다.</p></div>
+ <div class="data-flow">
+  <div class="tile"><div class="step">읽어 오고</div><h3>ERP에서 필요한 열만</h3><p>사번 · 부서 · 직위/직급/직책 · 입사일 · 고용형태 · 근무상태 · 발령 이력. 원본은 고치지 않습니다.</p></div>
+  <div class="tile"><div class="step">잇고</div><h3>M365 계정과 짝짓기</h3><p>메일 → 사번 → 이름+부서 순으로 잇습니다. 이름만 같으면 자동으로 정하지 않고 인사가 확인합니다.</p></div>
+  <div class="tile"><div class="step">쌓는다</div><h3>신청·승인은 우리 목록에</h3><p>근태 신청 · 연차 잔여 · 결재 이력은 SharePoint 목록에 쌓고, 결재 이력은 지우지 못하게 둡니다.</p></div>
+ </div>
+ <div class="lists">
+  <div class="tile"><h4>Employees</h4><small>사람 원장 · 키 = 사번</small><ul><li>사번 · 부서 · 직급<em>ERP</em></li><li>이름 · 메일 · 리더<em>M365</em></li><li>입사일 · 근무상태<em>ERP</em></li></ul></div>
+  <div class="tile"><h4>Departments · Assignments</h4><small>결재선 · 발령 이력</small><ul><li>팀장 · 대결자 · 상위 본부</li><li>발령일 · 구분 · 부서 · 직책<em>ERP</em></li></ul></div>
+  <div class="tile"><h4>LeaveRequests · Balance · ApprovalLog</h4><small>근태 신청 · 연차 · 결재 이력</small><ul><li>초안 → 대기 → 승인 → 확정</li><li>발생 · 예약 · 사용 · 잔여</li><li>처리자 · 시각 · 사유 · 대결<em>수정 불가</em></li></ul></div>
+ </div>
+ <div class="guard"><span><b>받지 않는 것</b>주민번호 · 가족 · 건강검진 · 장애·보훈 · 상벌 · 평가 점수 · 급여 · 계좌</span><span><b>ERP 원본 폴더</b>상속 끊고 인사·AX만</span></div>
+</div></section>
+
+<section id="sec"><div class="wrap">
+ <div class="head"><div class="label">권한 · 보안</div><h2>권한은 화면이 아니라<br><span class="hl">저장소에서</span> 막습니다</h2><p class="lead">보안·구조 기준서 v1.0을 따릅니다. M365 로그인이 곧 「나」이고, 이름을 손으로 적는 칸은 없습니다.</p></div>
+ <div class="grades">
+  <div class="grade tile"><div class="g a">A</div><h3>급여 · 평가 · 건강</h3><p>징계 · 주민번호 포함</p><div class="w">EHR에 두지 않음</div></div>
+  <div class="grade tile"><div class="g">B</div><h3>사번 · 입사일 · 연락처</h3><p>직급 · 고용형태 · 주소</p><div class="w">인사 + 본인</div></div>
+  <div class="grade tile"><div class="g">C</div><h3>근태 · 연차 · 결재</h3><p>신청 · 승인 이력</p><div class="w">본인 + 인사 + 자기 팀 팀장</div></div>
+  <div class="grade tile"><div class="g">D</div><h3>이름 · 부서 · 직책</h3><p>사내 메일</p><div class="w">전 직원</div></div>
+ </div>
+</div></section>
+
+<section class="band" id="now"><div class="wrap">
+ <div class="head"><div class="label">지금까지</div><h2>화면 시안으로 먼저 돌려 봤습니다</h2><p class="lead">v0.7 시안에서 근무·제도 기능까지 직접 눌러 검증했고, 운영 전에 고칠 점을 기준서로 정리했습니다.</p></div>
+ <div class="stats">
+  <div class="stat tile"><b class="num">v0.7</b><span>화면 시안 · PC·모바일 확인</span></div>
+  <div class="stat tile"><b class="num">10개</b><span>운영 전 점검표 항목</span></div>
+  <div class="stat tile"><b class="num">6개</b><span>SharePoint 목록 설계</span></div>
+  <div class="stat tile"><b class="num">18개</b><span>ERP 인사 이력 표 분석</span></div>
+ </div>
+</div></section>
+
+<section id="plan"><div class="wrap">
+ <div class="propose">
+  <div class="label">제안</div>
+  <h2>이렇게 진행하면 좋겠습니다</h2>
+  <div class="pcols">
+   <div class="pc"><div class="s">1단계 · AX팀 안</div><h3>저장소로 옮기고 한 바퀴</h3><p>SharePoint 목록 6개로 옮기고, 가짜 직원 30명으로 반차 한 바퀴를 돌립니다. 기준서 점검표 1~4번을 통과시킵니다.</p></div>
+   <div class="pc"><div class="s">2단계 · 피플앤컬처 공유</div><h3>휴롬 양식에 맞추기</h3><p>빈 양식과 결재선 기준을 받아 인사카드·신청서를 휴롬 서식 그대로 바꿉니다.</p></div>
+   <div class="pc"><div class="s">3단계 · 운영</div><h3>점검표 10개 통과 후 오픈</h3><p>인사 전용 비공개 사이트 + Teams 앱으로 엽니다. 연장근로·출퇴근·건의함은 그 뒤에 붙입니다.</p></div>
+  </div>
+  <div class="ask">
+   <div><span class="i">1</span><span><b>결재선 기준</b> — 부서장 지정(팀장·대결자) vs 직급 기준</span><em>추천: 부서장 지정</em></div>
+   <div><span class="i">2</span><span><b>연차 원본</b> — ERP에 계산이 이미 있음. ERP를 원본으로 둘지</span><em>피플앤컬처와 결정</em></div>
+   <div><span class="i">3</span><span><b>그룹웨어 근태 이관</b> — 나온소프트 기존 기록을 옮길지</span><em>피플앤컬처와 결정</em></div>
+   <div><span class="i">4</span><span><b>ERP 사원 명부 담당</b> — 정해진 열만 내려받아 지정 폴더에</span><em>인사 1명 지정</em></div>
+  </div>
+ </div>
+</div></section>
+
+<footer class="wrap">화면은 기획용 시안이며 실제 개인정보는 없습니다. 화면 참고: Mobbin(Workable · Aboard · Deel · Oyster). 휴롬 AX팀 · 2026-11-06</footer>
+
+<script>
+const tabs=[...document.querySelectorAll('.tab')];let counted=false;
+tabs.forEach(t=>t.onclick=()=>{tabs.forEach(x=>{x.setAttribute('aria-selected',x===t);document.getElementById(x.dataset.p).hidden=x!==t});
+ if(t.dataset.p==='p3'&&!counted){counted=true;const m=document.querySelector('#p3 .meter i');requestAnimationFrame(()=>m.style.width=m.dataset.w+'%');const bv=document.getElementById('balV');let k=0;const tm=setInterval(()=>{bv.textContent=++k;if(k>=9)clearInterval(tm)},55)}});
+</script>
+</body></html>
