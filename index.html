@@ -10,7 +10,7 @@ body{margin:0;font:14px/1.5 "Segoe UI","맑은 고딕","Malgun Gothic",sans-seri
 button,input,select,textarea{font:inherit}
 .app{display:grid;grid-template-columns:200px 1fr;min-height:100vh}
 nav{background:#fff;border-right:1px solid var(--line);padding:16px 12px;position:sticky;top:0;height:100vh;overflow:auto}
-.logo{font-weight:700;color:var(--brand);font-size:16px;margin:0 8px 18px}
+.logo{display:block;font-weight:700;color:var(--brand);font-size:16px;margin:0 8px 18px;text-decoration:none;cursor:pointer}nav a.logo,nav a.logo:hover{display:block;padding:0;background:none;color:var(--brand);font-weight:700}
 nav a{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:6px;color:var(--sub);margin-bottom:2px;text-decoration:none;cursor:pointer}
 nav a:hover{background:#F7F2E8}nav a.on{background:var(--brand-50);color:var(--brand);font-weight:600}
 nav a .n{font-size:11px;background:var(--wait);color:#fff;border-radius:9px;padding:0 6px;font-weight:700}
@@ -178,7 +178,7 @@ function switchRole(r,route){st.role=r;save();if(route)location.hash=route;else 
 const MENU=[['dash','인사 대시보드'],['people','인원 명부'],['card','인사카드'],null,'근태',['leave','근태 신청·승인'],['status','근태 현황'],null,'관리',['data','데이터 관리'],null,'다음 단계',['pay','급여'],['eval','평가·채용'],null,'문서',['plan','기획서'],['prd','PRD(요구사항)']];
 function nav(cur){
  const q=st.role==='lead'?leadQ().length:st.role==='hr'?hrQ().length:0;
- $('#nav').innerHTML='<div class="logo">HUROM EHR</div>'+MENU.map(m=>{if(m===null)return '';if(typeof m==='string')return '<div class="sec">'+m+'</div>';
+ $('#nav').innerHTML='<a class="logo" href="#dash" title="홈(인사 대시보드)">HUROM EHR</a>'+MENU.map(m=>{if(m===null)return '';if(typeof m==='string')return '<div class="sec">'+m+'</div>';
   const n=m[0]==='leave'&&q?'<span class="n">'+q+'</span>':'';return '<a href="#'+m[0]+'" class="'+(cur===m[0]?'on':'')+'">'+m[1]+n+'</a>'}).join('')}
 
 /* ---------- 흐름 안내 ---------- */
