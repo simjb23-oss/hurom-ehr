@@ -16,6 +16,7 @@ nav a{display:flex;justify-content:space-between;align-items:center;padding:7px 
 nav a:hover{background:#F7F2E8}nav a.on{background:var(--brand-50);color:var(--brand);font-weight:600}
 nav a .n{font-size:11px;background:var(--wait);color:#fff;border-radius:9px;padding:0 6px;font-weight:700}
 nav .sec{font-size:11px;color:var(--mute);margin:14px 10px 4px}
+nav .fold{cursor:pointer;user-select:none;font-weight:600}nav .fold:hover{color:var(--brand)}nav .fold .n{font-size:10px;background:var(--wait);color:#fff;border-radius:9px;padding:0 5px}
 main{padding:18px 24px 40px;min-width:0}
 .bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px}
 .bar .lb{font-size:12px;color:var(--sub)}
@@ -177,14 +178,34 @@ function absentOn(d){return st.reqs.filter(r=>r.from<=d&&d<=r.to&&(r.status===S.
 /* ---------- 토스트 ---------- */
 let tt;function toast(msg,btn,go){const t=$('#toast');t.innerHTML=esc(msg)+(btn?' <button class="btn sm">'+esc(btn)+'</button>':'');
  if(btn)t.querySelector('button').onclick=()=>{t.classList.remove('show');go()};t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),btn?7000:3000)}
-function switchRole(r,route){st.role=r;save();if(route&&location.hash!==route)location.hash=route;else render()}
+function switchRole(r,route){st.role=r;save();if(!route){const cur=(location.hash||'#dash').slice(1).split('/')[0];const ok=(MENUS[r]||[]).some(([g,its])=>its.some(([x])=>x.split('/')[0]===cur));if(!ok)route=r==='hr'?'#dash':'#inbox'}if(route&&location.hash!==route)location.hash=route;else render()}
 
 /* ---------- 메뉴 ---------- */
-const MENU=[['dash','인사 대시보드'],['inbox','알림함'],null,'인사',['people','인원 명부'],['org','조직도'],['card','인사카드'],['move','인사발령'],['onoff','입사·퇴사'],['bulk','일괄 처리'],['cert','증명서'],null,'근태',['leave','근태·휴가 신청'],['work','출퇴근·52시간'],['status','근태 현황'],['promote','연차 촉진'],null,'급여·복리·전표',['close','월 마감'],['pay','급여'],['welfare','복리후생'],['exp','경비 청구'],['voucher','전표'],['erp','ERP 연동'],['yearend','연말정산'],null,'성과·교육·채용',['eval','평가'],['edu','교육'],['hire','채용'],null,'관리',['data','데이터 관리'],null,'문서',['rules','휴롬 규정'],['plan','기획서'],['prd','PRD(요구사항)']];
+const MENUS={
+ hr:[['오늘 할 일',[['dash','인사 대시보드'],['inbox','알림함'],['close','월 마감']]],
+  ['사람',[['people','인원 명부'],['org','조직도'],['card','인사카드'],['move','인사발령'],['onoff','입사·퇴사'],['bulk','일괄 처리']]],
+  ['근태',[['leave','근태·휴가 신청'],['work','출퇴근·52시간'],['status','근태 현황'],['promote','연차 촉진']]],
+  ['급여·돈',[['pay','급여'],['welfare','복리후생'],['exp','경비 청구'],['voucher','전표'],['erp','ERP 연동'],['yearend','연말정산']]],
+  ['제도',[['eval','평가'],['edu','교육'],['hire','채용'],['cert','증명서'],['rules','휴롬 규정']]],
+  ['설정',[['data','데이터 관리'],['plan','기획서'],['prd','PRD(요구사항)']]]],
+ emp:[['오늘 할 일',[['inbox','알림함']]],
+  ['내 정보',[['card/{me}','내 인사카드'],['pay','내 급여명세서'],['work/me','내 출퇴근']]],
+  ['신청',[['leave/new','근태·휴가'],['work/flex','시차출퇴근'],['work/ot','연장·야간·휴일'],['exp','경비 청구'],['welfare','복리후생'],['cert','증명서'],['edu','교육'],['eval','평가'],['yearend','연말정산']]],
+  ['규정',[['rules','휴롬 규정'],['org','조직도']]]],
+ lead:[['오늘 할 일',[['inbox','알림함']]],
+  ['결재함',[['leave/approve','근태·휴가 승인'],['work/ot','연장 승인'],['work/flex','시차출퇴근 승인'],['exp','경비 승인'],['eval','팀원 평가']]],
+  ['우리 팀',[['status','근태 현황'],['work/all','52시간 현황'],['org','조직도']]],
+  ['규정',[['rules','휴롬 규정']]]]};
 function nav(cur){
  const Q={leave:st.role==='lead'?leadQ().length:st.role==='hr'?hrQ().length:0,exp:expQ().length,cert:st.role==='hr'?st.certs.filter(c=>c.status==='신청').length:0,eval:evalQ().length,welfare:st.role==='hr'?st.welfare.filter(x=>x.status==='신청'||x.status==='승인').length:0,work:st.role==='lead'?otQ().length+flexQ().length:0,onoff:st.role==='hr'?st.tasks.filter(t=>!t.done&&dayLeft(t.due)<=7).length:0,inbox:inboxItems().length,edu:st.role==='emp'?st.edus.filter(e=>e.no===st.me&&!e.done).length:0};
- $('#nav').innerHTML='<a class="logo" href="#dash" title="홈(인사 대시보드)">HUROM EHR</a>'+MENU.map(m=>{if(m===null)return '';if(typeof m==='string')return '<div class="sec">'+m+'</div>';
-  const n=Q[m[0]]?'<span class="n">'+Q[m[0]]+'</span>':'';return '<a href="#'+m[0]+'" class="'+(cur===m[0]?'on':'')+'">'+m[1]+n+'</a>'}).join('')}
+ Q.close=st.role==='hr'&&st.people.length&&!isClosed(addM(today(),-1,1).slice(0,7))?1:0;
+ const fold=st.fold||(st.fold={});const hash=(location.hash||'#dash').slice(1);
+ $('#nav').innerHTML='<a class="logo" href="#'+(st.role==='hr'?'dash':'inbox')+'" title="홈">HUROM EHR</a>'+(MENUS[st.role]||MENUS.hr).map(([g,items])=>{
+  const k=st.role+':'+g,cl=fold[k];const its=items.map(([r,l])=>{r=r.replace('{me}',st.me||'');const base=r.split('/')[0];const on=r.includes('/')?hash===r||(base==='card'&&cur==='card'):cur===base;
+   const n=Q[base]?'<span class="n">'+Q[base]+'</span>':'';return '<a href="#'+r+'" class="'+(on?'on':'')+'">'+l+n+'</a>'});
+  const sum=items.reduce((a,[r])=>a+(Q[r.split('/')[0]]||0),0);
+  return '<div class="sec fold" data-fold="'+k+'">'+(cl?'▸ ':'▾ ')+g+(cl&&sum?' <span class="n">'+sum+'</span>':'')+'</div>'+(cl?'':its.join(''))}).join('');
+ document.querySelectorAll('[data-fold]').forEach(e=>e.onclick=()=>{fold[e.dataset.fold]=!fold[e.dataset.fold];save();nav(cur)})}
 
 /* ---------- 흐름 안내 ---------- */
 function guide(){
@@ -200,7 +221,7 @@ function guide(){
  $('#guide').innerHTML='<div class="guide"><div class="stp">'+lab.map((l,i)=>'<span class="'+(done[i]?'d':i===cur?'c':'')+'">'+(done[i]?'✓ ':'')+l+'</span>').join('')+'</div><span class="nx">'+esc(nx)+'</span>'+(b?'<button class="btn p sm" id="gbtn">'+b+'</button>':'')+(b2?'<button class="btn sm" id="gdemo">시연용 1명 넣고 바로 해보기</button>':'')+'</div>';
  if(go)$('#gbtn').onclick=go;
  if(b2)$('#gdemo').onclick=()=>{const j=new Date();j.setFullYear(j.getFullYear()-3);const no='H'+String(st.pseq++).padStart(4,'0');
-  st.people.push({no,name:'시연 직원',dept:'상품기획팀',pos:'팀원',grade:'대리',join:ymd(j),emp:'정규',status:'재직',base:3500000,allow:200000});addMove(no,'입사',ymd(j),'시연용');st.me=no;save();
+  if(!st.depts.includes('상품전략1팀'))st.depts.push('상품전략1팀');st.people.push({no,name:'시연 직원',dept:'상품전략1팀',pos:'팀원',grade:'대리',join:ymd(j),emp:'정규',status:'재직',base:3500000,allow:200000});addMove(no,'입사',ymd(j),'시연용');st.me=no;save();
   toast('시연 직원 1명을 넣었습니다 (입사 3년차 · 연차 16일)');switchRole('emp','#leave/new')}}
 
 /* ---------- 상단 역할 ---------- */
