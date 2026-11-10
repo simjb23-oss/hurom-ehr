@@ -2,6 +2,7 @@
 <html lang="ko"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>HUROM EHR · 시뮬레이션</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <style>
 :root{--brand:#004123;--brand-50:#E9F1EC;--brand-line:#B9CFC2;--ivory:#FDF7EC;--ink:#1F2328;--sub:#5B6470;--mute:#98A1AC;--line:#E8E1D4;--card:#FFFFFF;
 --done:#1E8E3E;--done-50:#E6F6EA;--wait:#9A5B00;--wait-50:#FFF1D9;--no:#B42318;--no-50:#FDECEA;--cancel:#5B6470;--cancel-50:#EEF0F2;--change:#2457A6;--change-50:#E8F0FB;--retro:#6B3FA0;--retro-50:#F3EAFB}
@@ -93,6 +94,8 @@ tr:last-child td{border:0}tr.ck{cursor:pointer}tr.ck:hover td{background:#FBF8F2
 .soon{text-align:center;padding:60px 0;color:var(--sub)}
 .doc{width:100%;height:calc(100vh - 170px);border:1px solid var(--line);border-radius:10px;background:#fff}
 .muted{color:var(--mute)}
+.rules details{border-bottom:1px solid var(--line);padding:6px 0}.rules summary{cursor:pointer;font-weight:600}.rules p{white-space:pre-wrap;font-size:13px;color:var(--sub);margin:6px 0 4px;line-height:1.7}mark{background:#FFE58F}
+.org details{margin-left:14px}.org>details{margin-left:0}.org summary{cursor:pointer;padding:4px 0}.org .sub{border-left:1px dashed var(--line);margin-left:6px;padding-left:4px}.org .leaf{margin-left:14px;padding:3px 0 3px 14px}.org a{color:var(--brand);font-weight:600;text-decoration:none}.org a:hover{text-decoration:underline}
 .card .fld{border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:#fff;max-width:150px}.right{text-align:right}
 @media (max-width:900px){
  .app{grid-template-columns:1fr}
@@ -122,11 +125,11 @@ tr:last-child td{border:0}tr.ck{cursor:pointer}tr.ck:hover td{background:#FBF8F2
 <script>
 (function(){
 const KEY='hurom-ehr-sim-v1';
-const TYPES={'연차':{days:'range',deduct:true},'오전반차':{days:0.5,deduct:true},'오후반차':{days:0.5,deduct:true},'외근':{days:'range',deduct:false}};
+const TYPES={'연차':{days:'range',deduct:true},'오전반차':{days:0.5,deduct:true},'오후반차':{days:0.5,deduct:true},'외근':{days:'range',deduct:false},'경조휴가':{days:'range',deduct:false},'병가':{days:'range',deduct:false},'공가':{days:'range',deduct:false},'대체휴무':{days:'range',deduct:false}};
 const DEPTS=['경영지원팀','인사팀','상품기획팀','연구개발팀','디자인팀','영업팀','마케팅팀','품질팀','생산팀'];
 const S={LEAD:'팀장 대기',HR:'인사 대기',OK:'확정',NO:'반려',CL:'취소요청',CH:'취소 인사 대기',CX:'취소됨',WD:'회수'};
 let st=load();
-function blank(){return {people:[],reqs:[],depts:DEPTS.slice(),role:'hr',me:'',seq:1,pseq:1,moves:[],pays:[],vouchers:[],exps:[],certs:[],evals:[],jobs:[],apps:[],xseq:1,erp:[],accts:[],rates:{np:4.75,hi:3.595,ltc:13.14,ei:0.9,tax:3}}}
+function blank(){return {people:[],reqs:[],depts:DEPTS.slice(),role:'hr',me:'',seq:1,pseq:1,moves:[],pays:[],vouchers:[],exps:[],certs:[],evals:[],jobs:[],apps:[],xseq:1,erp:[],accts:[],welfare:[],edus:[],rates:{np:4.75,hi:3.595,ltc:13.14,ei:0.9,tax:3}}}
 function load(){try{const d=Object.assign(blank(),JSON.parse(localStorage.getItem(KEY))||{});if(!d.depts||!d.depts.length)d.depts=DEPTS.slice();return d}catch(e){return blank()}}
 function save(){localStorage.setItem(KEY,JSON.stringify(st))}
 const $=s=>document.querySelector(s);
@@ -175,9 +178,9 @@ let tt;function toast(msg,btn,go){const t=$('#toast');t.innerHTML=esc(msg)+(btn?
 function switchRole(r,route){st.role=r;save();if(route&&location.hash!==route)location.hash=route;else render()}
 
 /* ---------- 메뉴 ---------- */
-const MENU=[['dash','인사 대시보드'],null,'인사',['people','인원 명부'],['card','인사카드'],['move','인사발령'],['cert','증명서'],null,'근태',['leave','근태 신청·승인'],['status','근태 현황'],null,'급여·전표',['pay','급여'],['exp','경비 청구'],['voucher','전표'],['erp','ERP 연동'],null,'성과·채용',['eval','평가'],['hire','채용'],null,'관리',['data','데이터 관리'],null,'문서',['plan','기획서'],['prd','PRD(요구사항)']];
+const MENU=[['dash','인사 대시보드'],null,'인사',['people','인원 명부'],['org','조직도'],['card','인사카드'],['move','인사발령'],['cert','증명서'],null,'근태',['leave','근태·휴가 신청'],['status','근태 현황'],null,'급여·복리·전표',['pay','급여'],['welfare','복리후생'],['exp','경비 청구'],['voucher','전표'],['erp','ERP 연동'],null,'성과·교육·채용',['eval','평가'],['edu','교육'],['hire','채용'],null,'관리',['data','데이터 관리'],null,'문서',['rules','휴롬 규정'],['plan','기획서'],['prd','PRD(요구사항)']];
 function nav(cur){
- const Q={leave:st.role==='lead'?leadQ().length:st.role==='hr'?hrQ().length:0,exp:expQ().length,cert:st.role==='hr'?st.certs.filter(c=>c.status==='신청').length:0,eval:evalQ().length};
+ const Q={leave:st.role==='lead'?leadQ().length:st.role==='hr'?hrQ().length:0,exp:expQ().length,cert:st.role==='hr'?st.certs.filter(c=>c.status==='신청').length:0,eval:evalQ().length,welfare:st.role==='hr'?st.welfare.filter(x=>x.status==='신청'||x.status==='승인').length:0,edu:st.role==='emp'?st.edus.filter(e=>e.no===st.me&&!e.done).length:0};
  $('#nav').innerHTML='<a class="logo" href="#dash" title="홈(인사 대시보드)">HUROM EHR</a>'+MENU.map(m=>{if(m===null)return '';if(typeof m==='string')return '<div class="sec">'+m+'</div>';
   const n=Q[m[0]]?'<span class="n">'+Q[m[0]]+'</span>':'';return '<a href="#'+m[0]+'" class="'+(cur===m[0]?'on':'')+'">'+m[1]+n+'</a>'}).join('')}
 
@@ -229,8 +232,8 @@ V.dash=()=>{
  '</div><section class="card" style="margin-top:14px"><div class="hd"><b>최근 처리</b><span class="tag">결재 이력</span></div><div class="bd">'+(ev.length?'<div class="tl">'+ev.slice(0,8).map(e=>{const p=person(e.r.no)||{};return '<p><b>'+esc(e.h.who)+'</b> · '+esc(e.h.act)+' — '+esc(p.name)+' '+e.r.type+' '+period(e.r)+(e.h.memo?' <span class="muted">「'+esc(e.h.memo)+'」</span>':'')+' <small>'+e.h.at+'</small></p>'}).join('')+'</div>':'<div class="empty">아직 처리한 일이 없습니다</div>')+'</div></section>'};
 function kp(l,v,u,d,go,al){return '<div class="card go'+(al?' alert':'')+'" data-go="'+go+'"><small>'+l+'</small><b>'+v+'<em>'+u+'</em></b><div class="d">'+esc(d)+'</div></div>'}
 
-V.people=()=>{
- const hr=st.role==='hr';
+V.people=(fd)=>{
+ const hr=st.role==='hr';fd=fd?decodeURIComponent(fd):'';const PL=fd?st.people.filter(p=>p.dept===fd):st.people;
  return '<div class="top"><h1>인원 명부</h1><span class="tag">EHR_인원 · '+st.people.length+'명</span></div>'+
  (hr?'<section class="card"><div class="hd"><b>인원 등록</b><span class="tag">사번은 자동으로 붙습니다</span></div><div class="bd"><div class="form">'+
  '<label>이름<input id="p_name" placeholder="이름"></label>'+
@@ -243,9 +246,9 @@ V.people=()=>{
  '<label>월 고정수당 (원)<input id="p_allow" type="number" step="10000" placeholder="없으면 비움"></label>'+
  '</div><div class="err" id="p_err"></div><button class="btn p" id="p_add">등록</button></div></section>':
  '<div class="guide"><span class="nx">인원 등록·상태 변경은 인사 역할에서 합니다.</span><button class="btn sm" id="tohr">인사로 보기</button></div>')+
- '<section class="card"><div class="hd"><b>명부</b><span class="tag">줄을 누르면 인사카드</span></div><div class="bd">'+
- (st.people.length?'<table><tr><th>사번</th><th>이름</th><th>부서</th><th class="hide-m">직급</th><th>직책</th><th class="hide-m">입사일</th><th>상태</th><th class="right">잔여 연차</th></tr>'+
- st.people.map(p=>{const b=bal(p.no);return '<tr class="ck" data-go="#card/'+p.no+'"><td>'+p.no+'</td><td><b>'+esc(p.name)+'</b></td><td>'+esc(p.dept)+'</td><td class="hide-m">'+p.grade+'</td><td>'+p.pos+'</td><td class="hide-m">'+p.join+'</td><td>'+'<span class="st '+(p.status==='재직'?'o':p.status==='휴직'?'w':'n')+'">'+p.status+'</span></td><td class="right">'+b.rem+' / '+b.grant+'</td></tr>'}).join('')+'</table>':'<div class="empty">아직 등록된 인원이 없습니다</div>')+'</div></section>'};
+ '<section class="card"><div class="hd"><b>명부'+(fd?' · '+esc(fd)+' <a class="btn sm" href="#people">전체 보기</a>':'')+'</b><span class="tag">'+PL.length+'명 · 줄을 누르면 인사카드</span></div><div class="bd">'+
+ (PL.length?'<table><tr><th>사번</th><th>이름</th><th>부서</th><th class="hide-m">직급</th><th>직책</th><th class="hide-m">입사일</th><th>상태</th><th class="right">잔여 연차</th></tr>'+
+ PL.map(p=>{const b=bal(p.no);return '<tr class="ck" data-go="#card/'+p.no+'"><td>'+p.no+'</td><td><b>'+esc(p.name)+'</b></td><td>'+esc(p.dept)+'</td><td class="hide-m">'+p.grade+'</td><td>'+p.pos+'</td><td class="hide-m">'+p.join+'</td><td>'+'<span class="st '+(p.status==='재직'?'o':p.status==='휴직'?'w':'n')+'">'+p.status+'</span></td><td class="right">'+b.rem+' / '+b.grant+'</td></tr>'}).join('')+'</table>':'<div class="empty">아직 등록된 인원이 없습니다</div>')+'</div></section>'};
 
 V.card=(no)=>{
  if(st.role==='emp')no=st.me;if(!no)no=(st.people[0]||{}).no;const p=person(no);
@@ -303,14 +306,14 @@ function newForm(){
  '<label id="l_to"'+(TYPES[draft.type].days===0.5?' style="display:none"':'')+'>종료일<input id="f_to" type="date" value="'+(draft.to||draft.from||t)+'"></label>'+
  '<label>일수<input id="f_days" disabled></label>'+
  '<label class="full">사유<input id="f_reason" placeholder="예: 개인 사유" value="'+esc(draft.reason||'')+'"></label></div>'+
- '<div class="err" id="f_err"></div><button class="btn p" id="f_send">신청</button></div></section>'}
+ '<div class="err" id="f_err"></div><button class="btn p" id="f_send">신청</button></div></section>'+ruleBox(['휴롬의 연차제도','근태종류','대체휴무','시차출퇴근','근태계 작성법','출산전후휴가'])}
 function calcDays(){const ty=TYPES[draft.type],f=$('#f_from').value,t=ty.days===0.5?f:$('#f_to').value;if(!f||!t)return 0;return ty.days===0.5?0.5:workdays(f,t)}
 function validate(){
  const p=person(st.me),ty=TYPES[draft.type],f=$('#f_from').value,t=ty.days===0.5?f:$('#f_to').value,d=calcDays(),td=today();
  if(!f||!t)return '날짜를 고르세요';if(t<f)return '종료일이 시작일보다 앞입니다';
  if(p.status!=='재직')return p.status+' 상태라 신청할 수 없습니다';
  if(d===0&&ty.days!==0.5)return '고른 기간에 근무일(월~금)이 없습니다';
- if(f<td&&draft.type!=='외근')return '지난 날짜는 신청할 수 없습니다 (외근만 소급 가능)';
+ if(f<td&&!['외근','병가'].includes(draft.type))return '지난 날짜는 신청할 수 없습니다 (외근·병가만 소급 가능)';
  const ov=st.reqs.find(r=>r.no===p.no&&[S.LEAD,S.HR,S.OK,S.CL,S.CH].includes(r.status)&&!(t<r.from||f>r.to)&&!(r.type==='오전반차'&&draft.type==='오후반차'||r.type==='오후반차'&&draft.type==='오전반차'));
  if(ov)return '겹치는 신청이 있습니다: '+ov.type+' '+period(ov);
  if(ty.deduct){const b=bal(p.no);if(b.rem-b.pend<d)return '잔여 연차가 모자랍니다 (잔여 '+b.rem+'일 − 승인 대기 '+b.pend+'일 < 이번 '+d+'일)'}
@@ -337,7 +340,7 @@ function pick(id,list,cur){return '<select id="'+id+'">'+list.map(p=>'<option va
 const actives=()=>st.people.filter(p=>p.status!=='퇴직');
 function needP(){return '<section class="card"><div class="empty">먼저 인원을 등록해 주세요<br><a class="btn sm p" href="#people">인원 명부로</a></div></section>'}
 function hrOnly(){return '<div class="guide"><span class="nx">이 화면의 처리는 인사 역할에서 합니다.</span><button class="btn sm" data-role="hr">인사로 보기</button></div>'}
-function stB(s){const m={'신청':'w','팀장 대기':'w','재무 대기':'ch','발급':'o','지급 확정':'o','반려':'n','작성':'w','확정':'o','자기평가':'w','팀장평가':'ch','서류':'w','면접':'ch','합격':'o','불합격':'n','입사':'o','모집 중':'o','마감':'c','대기':'w','보냄':'ch','반영 완료':'o','전표':'r','인원':'ch','급여':'o','경비':'w','파일':'c','인사 확정 대기':'ch','승진':'o','전보':'ch','직책 변경':'ch','휴직':'w','복직':'o','퇴직':'n'};return '<span class="st '+(m[s]||'c')+'">'+s+'</span>'}
+function stB(s){const m={'신청':'w','팀장 대기':'w','재무 대기':'ch','발급':'o','지급 확정':'o','반려':'n','작성':'w','확정':'o','자기평가':'w','팀장평가':'ch','서류':'w','면접':'ch','합격':'o','불합격':'n','입사':'o','모집 중':'o','마감':'c','승인':'ch','수당 변경':'ch','복리후생':'o','대기':'w','보냄':'ch','반영 완료':'o','전표':'r','인원':'ch','급여':'o','경비':'w','파일':'c','인사 확정 대기':'ch','승진':'o','전보':'ch','직책 변경':'ch','휴직':'w','복직':'o','퇴직':'n'};return '<span class="st '+(m[s]||'c')+'">'+s+'</span>'}
 
 /* ---------- 인사카드 추가 칸 ---------- */
 function cardMore(p){
@@ -372,7 +375,7 @@ V.cert=(id)=>{
  if(r==='emp'){const p=person(st.me);b=sec('증명서 신청',esc(p.name),'<div class="form"><label>종류<select id="c_kind"><option>재직증명서</option><option>경력증명서</option></select></label><label>용도<input id="c_use" placeholder="예: 은행 제출"></label><label>부수<input id="c_n" type="number" value="1" min="1" max="5"></label></div><div class="err" id="c_err"></div><button class="btn p" id="c_go">신청</button>')}
  else if(r==='lead')b=hrOnly();
  const list=(r==='emp'?st.certs.filter(c=>c.no===st.me):st.certs).slice().sort((a,b)=>a.at<b.at?1:-1);
- return head('증명서','재직·경력증명서 신청 → 인사 발급')+b+sec(r==='hr'?'발급 대기·목록':'내 신청',list.length+'건',tbl(['신청 시각','신청자','종류','용도','부수','상태',''],list.map(c=>{const p=person(c.no)||{};return '<tr><td class="tag">'+c.at+'</td><td>'+esc(p.name)+'</td><td>'+c.kind+'</td><td>'+esc(c.use)+'</td><td>'+c.n+'</td><td>'+stB(c.status)+'</td><td class="right">'+(c.status==='신청'&&r==='hr'?'<button class="btn p sm" data-cert="'+c.id+'">발급</button> <button class="btn no sm" data-certno="'+c.id+'">반려</button>':c.status==='발급'?'<a class="btn sm" href="#cert/'+c.id+'">보기·인쇄</a>':'')+'</td></tr>'}),'신청이 없습니다'))};
+ return head('증명서','재직·경력증명서 신청 → 인사 발급')+b+ruleBox(['증명서 발급 절차'])+sec(r==='hr'?'발급 대기·목록':'내 신청',list.length+'건',tbl(['신청 시각','신청자','종류','용도','부수','상태',''],list.map(c=>{const p=person(c.no)||{};return '<tr><td class="tag">'+c.at+'</td><td>'+esc(p.name)+'</td><td>'+c.kind+'</td><td>'+esc(c.use)+'</td><td>'+c.n+'</td><td>'+stB(c.status)+'</td><td class="right">'+(c.status==='신청'&&r==='hr'?'<button class="btn p sm" data-cert="'+c.id+'">발급</button> <button class="btn no sm" data-certno="'+c.id+'">반려</button>':c.status==='발급'?'<a class="btn sm" href="#cert/'+c.id+'">보기·인쇄</a>':'')+'</td></tr>'}),'신청이 없습니다'))};
 function certDoc(c){const p=person(c.no)||{};const mv=st.moves.filter(m=>m.no===c.no);
  return '<div class="top"><h1>'+c.kind+'</h1><a class="btn sm" href="#cert">목록</a><button class="btn sm p" onclick="window.print()">인쇄</button></div><section class="card"><div class="bd" style="max-width:640px;margin:0 auto;padding:40px 30px;font-size:15px;line-height:2"><h2 style="text-align:center;letter-spacing:12px">'+c.kind+'</h2><table style="font-size:14px">'+
  [['성명',p.name],['사번',p.no],['소속','휴롬 '+(p.dept||'')],['직급·직책',(p.grade||'')+' · '+(p.pos||'')],['입사일',p.join],[c.kind==='경력증명서'?'재직 기간':'재직 상태',c.kind==='경력증명서'?p.join+' ~ '+(p.status==='퇴직'?p.leftAt:'현재'):p.status],['용도',c.use||'—'],['발급 번호','HR-'+c.issuedAt.slice(0,4)+'-'+String(c.id).padStart(4,'0')]].map(x=>'<tr><th style="width:120px">'+x[0]+'</th><td>'+esc(x[1])+'</td></tr>').join('')+'</table>'+
@@ -419,12 +422,12 @@ V.exp=()=>{
  const q=expQ(),list=(r==='emp'?st.exps.filter(e=>e.no===st.me):st.exps).slice().sort((a,b)=>a.at<b.at?1:-1);
  const row=(e,btn)=>{const p=person(e.no)||{};return '<tr><td>'+e.date+'</td><td>'+esc(p.name)+'</td><td>'+e.cat+'</td><td>'+esc(e.desc)+'</td><td class="right">'+won(e.amt)+'</td><td>'+stB(e.status)+(e.memo?' <span class="tag">「'+esc(e.memo)+'」</span>':'')+'</td><td class="right">'+(btn||'')+'</td></tr>'};
  if(r!=='emp')b+=sec(r==='lead'?'팀장 승인함':'지급 확정 (재무)',q.length+'건',tbl(['사용일','청구자','항목','내용','금액','상태',''],q.map(e=>row(e,'<button class="btn p sm" data-exp="'+e.id+'">'+(r==='lead'?'승인':'지급 확정')+'</button> <button class="btn no sm" data-expno="'+e.id+'">반려</button>')),'처리할 건이 없습니다'));
- return head('경비 청구')+b+sec(r==='emp'?'내 청구':'전체 청구',list.length+'건 · 합계 '+won(list.reduce((a,e)=>a+e.amt,0))+'원',tbl(['사용일','청구자','항목','내용','금액','상태',''],list.map(e=>row(e)),'청구가 없습니다'))};
+ return head('경비 청구')+b+(r==='emp'?ruleBox(['법인카드 정산','접대비','출장지원 기준','부서운영비','지출 기안','위임전결규정']):'')+sec(r==='emp'?'내 청구':'전체 청구',list.length+'건 · 합계 '+won(list.reduce((a,e)=>a+e.amt,0))+'원',tbl(['사용일','청구자','항목','내용','금액','상태',''],list.map(e=>row(e)),'청구가 없습니다'))};
 
 /* ---------- 전표 ---------- */
 function addVoucher(kind,date,desc,lines,ref){st.vouchers.push({id:nid(),no:'V'+date.replace(/-/g,'').slice(0,8)+'-'+String(st.vouchers.length+1).padStart(3,'0'),kind,date,desc,ref,lines:lines.filter(l=>l[1]||l[2]).map(l=>({acct:l[0],dr:l[1],cr:l[2]})),at:now()});const v=st.vouchers[st.vouchers.length-1];erpQ('전표',v.id,v.no+' '+desc)}
 V.voucher=(k)=>{
- const kinds=['전체','급여','경비'];k=kinds.includes(decodeURIComponent(k||''))?decodeURIComponent(k):'전체';
+ const kinds=['전체','급여','경비','복리후생'];k=kinds.includes(decodeURIComponent(k||''))?decodeURIComponent(k):'전체';
  const vs=st.vouchers.filter(v=>k==='전체'||v.kind===k).slice().sort((a,b)=>a.at<b.at?1:-1);
  const DR=vs.reduce((a,v)=>a+v.lines.reduce((x,l)=>x+l.dr,0),0),CR=vs.reduce((a,v)=>a+v.lines.reduce((x,l)=>x+l.cr,0),0);
  return head('전표','급여 확정·경비 지급 확정 때 자동으로 만들어집니다 · ERP(영림원) 올리기용 CSV')+
@@ -518,11 +521,12 @@ V.erp=()=>{
  '<div class="guide"><span class="nx">시뮬레이션입니다. 실제 영림원 ERP 연결(주소·형식·인증)은 2차에서 주관사와 정한 뒤 이 자리에 붙입니다.</span></div>'+
  '<div class="kpi" style="grid-template-columns:repeat(4,1fr)"><div class="card"><small>보낼 것</small><b>'+wait.length+'<em>건</em></b></div><div class="card"><small>보내고 응답 대기</small><b>'+sent.length+'<em>건</em></b></div><div class="card"><small>ERP 반영 완료</small><b>'+out.filter(x=>x.status==='반영 완료').length+'<em>건</em></b></div><div class="card"><small>받은 것</small><b>'+inn.length+'<em>건</em></b></div></div>'+
  sec('보내기 (EHR → ERP)','전표를 만들거나 인원·발령이 바뀌면 자동으로 쌓입니다',
-  (hr?'<div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn p" id="erp_send"'+(wait.length?'':' disabled')+'>대기 '+wait.length+'건 ERP로 보내기</button><button class="btn" id="erp_ack"'+(sent.length?'':' disabled')+'>ERP 응답 받기</button><button class="btn" id="erp_json"'+(out.length?'':' disabled')+'>보낸 내용 파일로 받기 (JSON)</button></div>':hrOnly())+
+  (hr?'<div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn p" id="erp_send"'+(wait.length?'':' disabled')+'>대기 '+wait.length+'건 ERP로 보내기</button><button class="btn" id="erp_ack"'+(sent.length?'':' disabled')+'>ERP 응답 받기</button><button class="btn" id="erp_xout">K-System 전표 업로드 엑셀</button><button class="btn" id="erp_json"'+(out.length?'':' disabled')+'>보낸 내용 파일로 받기 (JSON)</button></div>':hrOnly())+
   tbl(['쌓인 시각','종류','내용','상태','ERP 번호','반영 시각'],out.slice().reverse().map(row),'보낼 것이 없습니다 — 급여 확정·경비 지급 확정·인원 등록을 하면 생깁니다'))+
  sec('받기 (ERP → EHR)','ERP에서 내려받은 CSV를 올리면 반영합니다 · 첫 줄: 구분,코드,이름 (구분 = 부서 또는 계정)',
   (hr?'<label class="btn">ERP 파일 올리기 (CSV)<input type="file" id="erp_in" accept=".csv" style="display:none"></label> <button class="btn" id="erp_tpl">양식 내려받기</button>':'')+
   '<div style="margin-top:10px">'+tbl(['받은 시각','종류','내용','상태'],inn.slice().reverse().map(x=>'<tr><td class="tag">'+x.at+'</td><td>'+stB(x.kind)+'</td><td>'+esc(x.desc)+'</td><td>'+stB(x.status)+'</td></tr>'),'받은 것이 없습니다')+'</div>'+
+  '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'+(hr?'<label class="btn p">ERP 사원 엑셀 올리기 (xlsx)<input type="file" id="erp_xlsx" accept=".xlsx,.xls,.csv" style="display:none"></label> <button class="btn" id="erp_xtpl">사원 엑셀 양식</button>':'')+'</div><div class="tag" style="margin-top:6px">K-System은 API가 없어 엑셀로 주고받습니다 · 사번·성명·부서·직급·직책·입사일·고용형태·재직구분 열 이름을 자동으로 맞춥니다</div>'+
   (st.accts&&st.accts.length?'<div class="tag" style="margin-top:8px">ERP 계정 코드 '+st.accts.length+'개 받음: '+st.accts.map(a=>esc(a.code+' '+a.name)).join(', ')+'</div>':''))};
 function wireErp(){
  const on=(s,f)=>{const e=$(s);if(e)e.onclick=f};
@@ -537,6 +541,106 @@ function wireErp(){
 function soon(t,d){return '<div class="top"><h1>'+t+'</h1><span class="demo">다음 단계</span></div><section class="card"><div class="soon">'+d+'<br><br><a class="btn" href="#dash">대시보드로</a></div></section>'}
 V.plan=()=>'<div class="top"><h1>기획서</h1><a class="btn sm" href="plan.html" target="_blank">새 창</a></div><iframe class="doc" src="plan.html"></iframe>';
 V.prd=()=>'<div class="top"><h1>PRD(요구사항)</h1><a class="btn sm" href="prd.html" target="_blank">새 창</a></div><iframe class="doc" src="prd.html"></iframe>';
+
+/* ---------- 휴롬 자료 (조직도·규정) ---------- */
+let ORG=null,RULES=null;
+fetch('hurom_org.json').then(r=>r.json()).then(d=>{ORG=d;render()}).catch(()=>{});
+fetch('hurom_rules.json').then(r=>r.json()).then(d=>{RULES=d;render()}).catch(()=>{});
+function findRule(t){if(!RULES)return null;for(const g in RULES.groups){const x=RULES.groups[g].find(r=>r.title.startsWith(t));if(x)return x}return null}
+function ruleBox(titles){
+ if(!RULES)return '';const xs=titles.map(findRule).filter(Boolean);if(!xs.length)return '';
+ return sec('관련 규정','휴롬 생활백서 원문 · 누르면 펼침','<div class="rules">'+xs.map(x=>'<details><summary>'+esc(x.title)+'</summary><p>'+esc(x.text)+'</p></details>').join('')+'</div><div style="margin-top:8px"><a class="btn sm" href="#rules">규정 전체 보기</a></div>')}
+V.rules=(g)=>{
+ if(!RULES)return head('휴롬 규정')+sec('','','<div class="empty">불러오는 중…</div>');
+ const gs=Object.keys(RULES.groups);g=gs.includes(decodeURIComponent(g||''))?decodeURIComponent(g):gs[0];
+ return head('휴롬 규정',esc(RULES.source))+'<div class="bar" style="margin-bottom:10px"><input id="rq" class="fld" style="max-width:none;flex:1" placeholder="규정 검색 (예: 연차, 경조, 접대비)"></div><div id="rres"></div>'+
+ '<div class="tabs">'+gs.map(x=>'<a href="#rules/'+encodeURIComponent(x)+'" class="'+(x===g?'on':'')+'">'+x+' '+RULES.groups[x].length+'</a>').join('')+'</div>'+
+ sec(g,RULES.groups[g].length+'개','<div class="rules">'+RULES.groups[g].map(x=>'<details><summary>'+esc(x.title)+'</summary><p>'+esc(x.text)+'</p></details>').join('')+'</div>')}
+function wireRules(){const q=$('#rq');if(!q)return;q.oninput=()=>{const k=q.value.trim();const out=$('#rres');if(!k){out.innerHTML='';return}
+ const hit=[];for(const g in RULES.groups)RULES.groups[g].forEach(x=>{if((x.title+x.text).includes(k))hit.push([g,x])});
+ out.innerHTML=sec('검색 결과 '+hit.length+'개','「'+esc(k)+'」','<div class="rules">'+hit.map(([g,x])=>'<details><summary>'+esc(x.title)+' <span class="tag">'+g+'</span></summary><p>'+esc(x.text).split(esc(k)).join('<mark>'+esc(k)+'</mark>')+'</p></details>').join('')+'</div>')}}
+
+/* ---------- 조직도 ---------- */
+V.org=()=>{
+ if(!ORG)return head('조직도')+sec('','','<div class="empty">불러오는 중…</div>');
+ const kids={};ORG.nodes.forEach(n=>{(kids[n.parent||'_']=kids[n.parent||'_']||[]).push(n)});
+ const ehr=d=>st.people.filter(p=>p.dept===d&&p.status!=='퇴직').length;
+ const total=n=>(n.headcount||0)+(kids[n.name]||[]).reduce((a,c)=>a+total(c),0);
+ const node=(n,lv)=>{const ch=(kids[n.name]||[]).sort((a,b)=>total(b)-total(a));const e=ehr(n.name);
+  const row='<span class="on"><a href="#people/'+encodeURIComponent(n.name)+'">'+esc(n.name)+'</a> <span class="tag">'+total(n)+'명'+(ch.length?' · 하위 '+ch.length:'')+'</span>'+(e?' <span class="st o">EHR '+e+'명</span>':'')+'</span>';
+  return ch.length?'<details'+(lv<1?' open':'')+'><summary>'+row+'</summary><div class="sub">'+ch.map(c=>node(c,lv+1)).join('')+'</div></details>':'<div class="leaf">'+row+'</div>'};
+ const roots=kids['_']||[];
+ return head('조직도','부서 '+ORG.nodes.length+'개 · 부서를 누르면 그 부서 인원 명부')+
+ '<div class="guide" style="background:var(--wait-50);border-color:#F2D7A6"><span class="nx" style="color:var(--wait)">인사팀 확인 필요 — M365 계정의 부서·상사 정보로 짠 조직도라 틀린 곳이 있을 수 있습니다 (예: 피플&컬처팀이 생산본부 아래로 잡힘). 숫자는 M365 계정 수입니다.</span>'+(st.role==='hr'?'<button class="btn sm" id="org_use">이 부서들을 EHR 부서 목록으로 쓰기</button>':'')+'</div>'+
+ sec('휴롬 조직','',  '<div class="org">'+roots.map(r=>node(r,0)).join('')+'</div>')}
+
+/* ---------- 복리후생 ---------- */
+const WF={'경조금':{rule:'경조사 지원'},'생일 지원':{rule:'생일 지원',amt:30000},'종합검진':{rule:'종합검진지원'},'가족수당 신청':{rule:'가족 수당',per:50000,unit:'명(배우자·자녀)'},'노부모수당 신청':{rule:'노부모 수당',per:100000,unit:'명(만 70세 이상)'},'기타 복지':{rule:'기타 복지제도 현황'}};
+V.welfare=()=>{
+ if(!st.people.length)return head('복리후생')+needP();const r=st.role;let b='';
+ if(r==='emp'){const k=draftW;const w=WF[k];b=sec('복리후생 신청','인사 승인 → 지급 확정 → 전표 · 수당은 다음 급여부터 반영',
+  '<div class="form"><div class="full"><label>종류</label><div class="types" id="wtypes">'+Object.keys(WF).map(x=>'<button data-w="'+x+'" class="'+(x===k?'on':'')+'">'+x+'</button>').join('')+'</div></div>'+
+  (w.per?'<label>인원 '+w.unit+'<input id="w_n" type="number" min="1" value="1"></label><label>월 수당<input disabled value="1인 '+won(w.per)+'원"></label>':'<label>금액 (원)<input id="w_amt" type="number" step="10000" value="'+(w.amt||'')+'"></label>')+
+  '<label class="full">내용<input id="w_desc" placeholder="'+(k==='경조금'?'예: 본인 결혼':'내용')+'"></label></div><div class="err" id="w_err"></div><button class="btn p" id="w_go">신청</button>')+ruleBox([w.rule])}
+ const q=st.welfare.filter(x=>r==='hr'&&(x.status==='신청'||x.status==='승인'));
+ if(r==='hr')b+=sec('처리할 신청',q.length+'건',tbl(['신청 시각','신청자','종류','내용','금액','상태',''],q.map(x=>wrow(x,'<button class="btn p sm" data-wf="'+x.id+'">'+(x.status==='신청'?'승인':'지급 확정')+'</button> <button class="btn no sm" data-wfno="'+x.id+'">반려</button>')),'처리할 신청이 없습니다'));
+ if(r==='lead')b+=hrOnly();
+ const list=(r==='emp'?st.welfare.filter(x=>x.no===st.me):st.welfare).slice().reverse();
+ return head('복리후생','경조금·생일·검진·가족수당·노부모수당')+b+sec(r==='emp'?'내 신청':'전체 신청',list.length+'건',tbl(['신청 시각','신청자','종류','내용','금액','상태',''],list.map(x=>wrow(x)),'신청이 없습니다'))};
+let draftW='경조금';
+function wrow(x,btn){const p=person(x.no)||{};return '<tr><td class="tag">'+x.at+'</td><td>'+esc(p.name)+'</td><td>'+x.kind+'</td><td>'+esc(x.desc)+'</td><td class="right">'+(x.monthly?'월 '+won(x.amt):won(x.amt))+'원</td><td>'+stB(x.status)+'</td><td class="right">'+(btn||'')+'</td></tr>'}
+
+/* ---------- 법정교육 ---------- */
+const COURSES=[['직장 내 성희롱 예방','남녀고용평등법 13조 · 연 1회 1시간'],['장애인 인식 개선','장애인고용법 5조의2 · 연 1회 1시간'],['개인정보보호','개인정보보호법 28조의2 · 연 1회 1시간'],['산업안전보건','산업안전보건법 · 정기교육']];
+V.edu=()=>{
+ if(!st.people.length)return head('교육')+needP();const r=st.role,y=String(new Date().getFullYear());const mine=st.edus.filter(e=>e.year===y);let b='';
+ if(r==='hr')b+=sec(y+' 법정교육 열기','재직자(휴직자 제외) 전원에게 과정이 배정됩니다',mine.length?'<span class="tag">'+y+'년 과정이 열려 있습니다</span>':'<button class="btn p" id="edu_open">'+y+' 법정교육 4과정 열기</button>');
+ if(mine.length){
+  if(r==='emp'){const my=mine.filter(e=>e.no===st.me);b+=sec('내 교육',my.filter(e=>e.done).length+' / '+my.length+' 이수',tbl(['과정','근거','상태',''],my.map(e=>'<tr><td><b>'+e.course+'</b></td><td class="tag">'+(COURSES.find(c=>c[0]===e.course)||['',''])[1]+'</td><td>'+(e.done?'<span class="st o">이수 '+e.done.slice(0,10)+'</span>':'<span class="st w">미이수</span>')+'</td><td class="right">'+(e.done?'':'<button class="btn p sm" data-edu="'+e.id+'">수강 완료</button>')+'</td></tr>'),'배정된 과정이 없습니다'))}
+  b+=sec('과정별 이수율',y+'년',tbl(['과정','대상','이수','이수율','미이수자'],COURSES.map(([c])=>{const xs=mine.filter(e=>e.course===c),d=xs.filter(e=>e.done).length;return '<tr><td><b>'+c+'</b></td><td>'+xs.length+'</td><td>'+d+'</td><td><div class="hb" style="margin:0"><div style="grid-template-columns:1fr 40px;margin:0"><div class="tr"><i style="width:'+(xs.length?d/xs.length*100:0)+'%"></i></div><b>'+(xs.length?Math.round(d/xs.length*100):0)+'%</b></div></div></td><td class="tag">'+xs.filter(e=>!e.done).map(e=>esc((person(e.no)||{}).name)).join(', ')+'</td></tr>'}))+(r==='hr'?'<button class="btn sm" id="edu_nag" style="margin-top:8px">미이수자에게 알림 보내기</button>':''))}
+ else if(r!=='hr')b+=sec('법정교육','','<div class="empty">올해 법정교육이 아직 열리지 않았습니다 (인사가 엽니다)</div>');
+ return head('교육','법정 3대 교육 + 산업안전 · 매년 10~11월')+b+ruleBox(['법정 교육','안전 교육','교육 신청'])};
+
+/* ---------- ERP 엑셀 ---------- */
+const COLS={no:['사번','사원번호','사원코드','EMP_NO'],name:['성명','이름','사원명','한글성명'],dept:['부서','부서명','소속','소속부서','근무부서'],grade:['직급','직위','직급명'],pos:['직책','직책명'],join:['입사일','입사일자','그룹입사일'],emp:['고용형태','고용구분','사원구분','채용형태'],status:['재직구분','재직상태','재직여부','상태','근무상태']};
+function xlsxReady(){return typeof XLSX!=='undefined'}
+function erpImport(file){
+ if(!xlsxReady()){toast('엑셀 읽기 도구를 불러오지 못했습니다 — 인터넷 연결 확인');return}
+ file.arrayBuffer().then(buf=>{const wb=XLSX.read(buf,{cellDates:true});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+  if(!rows.length){toast('빈 파일입니다');return}const hs=Object.keys(rows[0]);const map={};for(const k in COLS){const h=hs.find(h=>COLS[k].includes(String(h).trim()));if(h)map[k]=h}
+  if(!map.no||!map.name){toast('사번·성명 열을 찾지 못했습니다 (열 이름: '+hs.slice(0,6).join(', ')+')');return}
+  let add=0,upd=0;const d2=v=>v instanceof Date?ymd(v):String(v).slice(0,10).replace(/\./g,'-');
+  rows.forEach(r=>{const no=String(r[map.no]).trim();if(!no)return;let p=person(no);const st0=String(map.status?r[map.status]:'재직');
+   const v={name:String(r[map.name]).trim(),dept:map.dept?String(r[map.dept]).trim():'미지정',grade:map.grade?String(r[map.grade]).trim():'',pos:map.pos&&String(r[map.pos]).trim()?String(r[map.pos]).trim():'팀원',join:map.join?d2(r[map.join]):'',emp:map.emp?String(r[map.emp]).trim():'정규',status:/퇴/.test(st0)?'퇴직':/휴/.test(st0)?'휴직':'재직'};
+   if(v.dept&&!st.depts.includes(v.dept))st.depts.push(v.dept);
+   if(p){Object.assign(p,v);upd++}else{st.people.push(Object.assign({no,base:0,allow:0},v));add++}});
+  st.erp.push({id:nid(),dir:'받기',kind:'인원',desc:file.name+' — 새 '+add+' · 갱신 '+upd+' (열: '+Object.entries(map).map(([k,h])=>h).join(', ')+')',status:'반영 완료',at:now()});save();render();toast('ERP 사원 엑셀 반영: 새 '+add+'명 · 갱신 '+upd+'명','인원 명부 보기',()=>location.hash='#people')})}
+function erpExportVouchers(){
+ if(!xlsxReady()){toast('엑셀 도구를 불러오지 못했습니다');return}
+ const rows=[['전표일자','전표번호','구분','적요','계정과목','차변금액','대변금액','ERP번호']];st.vouchers.forEach(v=>v.lines.forEach(l=>rows.push([v.date,v.no,v.kind,v.desc,l.acct,l.dr,l.cr,v.erpNo||''])));
+ const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'전표');XLSX.writeFile(wb,'KSystem_전표업로드_'+today()+'.xlsx')}
+function erpTemplate(){if(!xlsxReady())return;const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['사번','성명','부서','직급','직책','입사일','고용형태','재직구분']]),'사원');XLSX.writeFile(wb,'ERP_사원_양식.xlsx')}
+
+/* ---------- 이벤트 ---------- */
+function wireMods2(page){
+ const on=(s,f)=>{const e=$(s);if(e)e.onclick=f};
+ if(page==='rules')wireRules();
+ on('#org_use',()=>{const leaf=ORG.nodes.map(n=>n.name);let n=0;leaf.forEach(d=>{if(!st.depts.includes(d)){st.depts.push(d);n++}});save();render();toast('부서 '+n+'개를 EHR 부서 목록에 더했습니다')});
+ document.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{draftW=b.dataset.w;render()});
+ on('#w_go',()=>{const w=WF[draftW];let amt,monthly=false,n=1;
+  if(w.per){n=+$('#w_n').value;if(!(n>0)){$('#w_err').textContent='인원을 넣으세요';return}amt=w.per*n;monthly=true}else{amt=+$('#w_amt').value;if(!(amt>0)){$('#w_err').textContent='금액을 넣으세요';return}}
+  st.welfare.push({id:nid(),no:st.me,kind:draftW,amt,monthly,n,desc:$('#w_desc').value.trim(),status:'신청',at:now()});save();render();toast(draftW+' 신청했습니다','인사로 승인하기',()=>switchRole('hr','#welfare'))});
+ document.querySelectorAll('[data-wf]').forEach(b=>b.onclick=()=>{const x=st.welfare.find(v=>v.id===+b.dataset.wf);const p=person(x.no)||{};
+  if(x.status==='신청'&&!x.monthly){x.status='승인';save();render();toast('승인했습니다 → 지급 확정 대기');return}
+  if(x.monthly){x.status='지급 확정';p.allow=(p.allow||0)+x.amt;addMove(x.no,'수당 변경',today(),x.kind,'고정수당 +'+won(x.amt)+'원');save();render();toast(p.name+' 고정수당 +'+won(x.amt)+'원 — 다음 급여 계산부터 반영','급여로',()=>location.hash='#pay');return}
+  x.status='지급 확정';addVoucher('복리후생',today(),p.name+' '+x.kind+(x.desc?' · '+x.desc:''),[['복리후생비',x.amt,0],['미지급금',0,x.amt]],'복리 '+x.id);save();render();toast('지급 확정 → 복리후생 전표를 만들었습니다','전표 보기',()=>location.hash='#voucher')});
+ document.querySelectorAll('[data-wfno]').forEach(b=>b.onclick=()=>{st.welfare.find(v=>v.id===+b.dataset.wfno).status='반려';save();render()});
+ on('#edu_open',()=>{const y=String(new Date().getFullYear());const ps=st.people.filter(p=>p.status==='재직');if(!ps.length){toast('재직자가 없습니다');return}ps.forEach(p=>COURSES.forEach(([c])=>st.edus.push({id:nid(),year:y,no:p.no,course:c,done:''})));save();render();toast(ps.length+'명에게 4과정을 배정했습니다','직원으로 수강하기',()=>{st.me=ps[0].no;switchRole('emp','#edu')})});
+ document.querySelectorAll('[data-edu]').forEach(b=>b.onclick=()=>{const e=st.edus.find(x=>x.id===+b.dataset.edu);e.done=now();save();render();toast(e.course+' 이수 완료')});
+ on('#edu_nag',()=>{const n=new Set(st.edus.filter(e=>!e.done).map(e=>e.no)).size;toast(n?'미이수자 '+n+'명에게 알림을 보냈습니다 (시뮬레이션)':'미이수자가 없습니다')});
+ const xi=$('#erp_xlsx');if(xi)xi.onchange=()=>{if(xi.files[0])erpImport(xi.files[0])};
+ on('#erp_xout',erpExportVouchers);on('#erp_xtpl',erpTemplate);
+}
 
 /* ---------- 데이터 관리 ---------- */
 V.data=(tab)=>dataView(tab);
@@ -604,7 +708,7 @@ function wire(page){
    const r={id:st.seq++,no:p.no,type:draft.type,from:f,to:t,days:calcDays(),reason:$('#f_reason').value.trim(),status:S.LEAD,at:now(),retro:f<today(),hist:[]};
    act(r,p.name,'신청');st.reqs.push(r);draft={type:'연차'};save();
    toast(p.name+' '+r.type+' 신청했습니다 → '+stepName(r)+' 대기','팀장으로 승인하기',()=>switchRole('lead','#leave/approve'));location.hash='#leave/mine';render()}}
- document.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>doAct(b.dataset.a,+b.dataset.id));if(page==='data')wireData();wireMods(page);if(page==='erp')wireErp()}
+ document.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>doAct(b.dataset.a,+b.dataset.id));if(page==='data')wireData();wireMods(page);wireMods2(page);if(page==='erp')wireErp()}
 function doAct(a,id){
  const r=st.reqs.find(x=>x.id===id);if(!r)return;const p=person(r.no)||{};const sn=stepName(r).replace(' 승인','');let msg='',nb='',go=null;
  const memo=(a==='no'||a==='hrno'||a==='clno')?prompt2():'';
