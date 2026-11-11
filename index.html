@@ -499,7 +499,8 @@ function chatSubmit(d){const p=person(st.me),ty=TYPES[d.type],f=d.from,t=ty.days
  if(ty.alt&&altBal(p.no).rem<days)return '대체휴무가 모자랍니다 (남은 '+altBal(p.no).rem+'일)';if(ty.deduct){const b=bal(p.no);if(b.rem-b.pend<days)return '잔여 연차가 모자랍니다 (잔여 '+b.rem+'일)'}
  const r={id:st.seq++,no:p.no,type:d.type,from:f,to:t,days,reason:'휴글 대화로 신청',status:S.LEAD,at:now(),retro:f<today(),hist:[]};act(r,p.name,'신청','휴글 대화');st.reqs.push(r);return r}
 function wireHome(){const i=$('#hq');
- const send=q=>{q=(q||'').trim();if(!q)return;let a;try{if(st.aiOff)throw 0;a=chatAnswer(q)}catch(e){a='<b>AI가 응답하지 않습니다.</b> 아래 「직접 하기」에서 처리해 주세요.'}
+ const send=async q=>{q=(q||'').trim();if(!q)return;let a=null;if(typeof HAI!=='undefined'&&HAI.on()){const b=$('#hq_go');if(b){b.disabled=true;b.textContent='생각 중…'}try{a=await aiAnswer(q)}catch(e){a=null;toast('AI 연결이 안 돼 규칙으로 답합니다')}}
+ if(a==null)try{if(st.aiOff)throw 0;a=chatAnswer(q)}catch(e){a='<b>AI가 응답하지 않습니다.</b> 아래 「직접 하기」에서 처리해 주세요.'}
   (st.chat=st.chat||[]).push({id:nid(),no:viewerNo(),role:st.role,q,a,at:now()});save();render();setTimeout(()=>{const x=$('#hq');if(x)x.focus();const m=document.querySelector('.msgs');if(m&&m.lastElementChild)m.lastElementChild.scrollIntoView({block:'center'})},0)};
  if(i){i.onkeydown=e=>{if(e.key==='Enter'&&!e.isComposing)send(i.value)};$('#hq_go').onclick=()=>send(i.value)}
  document.querySelectorAll('[data-sug]').forEach(b=>b.onclick=()=>send(b.dataset.sug));
@@ -1696,7 +1697,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-a="no"],[d
 function wireReset(){const rs=$('#reset');if(rs)rs.onclick=()=>{const b=$('#reset');if(b.dataset.c){localStorage.removeItem(KEY);st=blank();draft={type:'연차'};b.textContent='처음부터 다시';delete b.dataset.c;location.hash='#dash';render();toast('처음 상태로 돌렸습니다');return}
  b.dataset.c=1;b.textContent='정말 지울까요? 한 번 더 누르기';b.classList.add('no');setTimeout(()=>{b.textContent='처음부터 다시';delete b.dataset.c;b.classList.remove('no')},4000)}}
 window.addEventListener('hashchange',render);render();
-window.EHR={get st(){return st},save,render,switchRole,person,bal,absentOn,today,V,MENUS,esc,TYPES,workdays}; // 휴글(hugle.js)이 쓰는 문
+window.EHR={get st(){return st},save,render,switchRole,person,bal,absentOn,today,V,MENUS,esc,TYPES,workdays,chatAnswer,viewerNo,WD,get RULES(){return RULES}}; // 휴글 AI(ai.js)가 쓰는 문
 })();
 </script>
+<script src="ai.js"></script>
 </body></html>
