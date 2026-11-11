@@ -177,7 +177,7 @@ details.rulel{margin-top:14px}details.rulel>summary{cursor:pointer;color:var(--s
 <main>
 <div class="bar">
  <span class="lb">보는 사람</span>
- <div class="seg" id="roles"><button data-r="emp">직원</button><button data-r="lead">팀장</button><button data-r="hr">인사</button></div>
+ <div class="seg" id="roles"><button data-r="emp">직원</button><button data-r="lead">팀장</button><button data-r="hr">인사</button><button data-r="admin">관리자</button></div>
  <select id="me" title="어느 직원으로 볼지"></select>
  <span class="sp"></span>
  <a class="btn sm" id="bell" href="#inbox" title="알림함">알림</a>
@@ -231,7 +231,7 @@ function steps(r){
 function period(r){return r.from===r.to?r.from.slice(5)+'('+WD[new Date(r.from+'T00:00').getDay()]+')':r.from.slice(5)+' ~ '+r.to.slice(5)}
 function daysTxt(r){return TYPES[r.type].deduct?r.days+'일':'—'}
 function act(r,who,what,memo){r.hist.push({at:now(),who,act:what,memo:memo||''})}
-const roleName={emp:'직원',lead:'팀장',hr:'인사'};
+const roleName={emp:'직원',lead:'팀장',hr:'인사',admin:'관리자'};
 function whoAmI(){if(st.role==='emp'){const p=person(st.me);return p?p.name:'직원'}return st.role==='lead'?'팀장(결재자)':'인사 담당'}
 function leadQ(){return st.reqs.filter(r=>r.status===S.LEAD||r.status===S.CL)}
 function hrQ(){return st.reqs.filter(r=>r.status===S.HR||r.status===S.CH)}
@@ -240,15 +240,15 @@ function absentOn(d){return st.reqs.filter(r=>r.from<=d&&d<=r.to&&(r.status===S.
 /* ---------- 토스트 ---------- */
 let tt;function toast(msg,btn,go){const t=$('#toast');t.innerHTML=esc(msg)+(btn?' <button class="btn sm">'+esc(btn)+'</button>':'');
  if(btn)t.querySelector('button').onclick=()=>{t.classList.remove('show');go()};t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),btn?7000:3000)}
-function switchRole(r,route){st.role=r;save();if(!route){const cur=(location.hash||'#dash').slice(1).split('/')[0];const ok=(MENUS[r]||[]).some(([g,its])=>its.some(([x])=>x.split('/')[0]===cur));if(!ok)route=r==='hr'?'#dash':'#inbox'}if(route&&location.hash!==route)location.hash=route;else render()}
+function switchRole(r,route){if(r==='admin'){st.asAdmin=1;r='hr'}else st.asAdmin=0;st.role=r;save();if(!route){const cur=(location.hash||'#dash').slice(1).split('/')[0];const ok=(MENUS[r]||[]).some(([g,its])=>its.some(([x])=>x.split('/')[0]===cur));if(!ok)route=r==='hr'?'#dash':'#inbox'}if(route&&location.hash!==route)location.hash=route;else render()}
 
 /* ---------- 메뉴 ---------- */
 const MENUS={
- hr:[['홈',[['dash','오늘 할 일'],['inbox','알림함'],['close','월 마감']]],
+ hr:[['홈',[['dash','대시보드'],['inbox','알림함'],['close','월 마감']]],
   ['사람',[['people','인원 명부'],['card','인사카드'],['onoff','입사·퇴사'],['move','인사발령'],['org','조직도'],['reorg','조직 개편'],['juice','신입 주스기'],['eval','평가'],['edu','교육'],['hire','채용']]],
   ['근태',[['leave','근태·휴가'],['work','출퇴근·52시간'],['status','근태 현황'],['promote','연차 촉진']]],
   ['급여',[['pay','급여'],['welfare','복리후생'],['exp','경비'],['yearend','연말정산'],['lic','자격수당'],['cert','증명서']]],
-  ['관리',[['auto','자동 처리'],['forms','신청·접수'],['level','커리어레벨'],['ct','계약·수습'],['deputy','대신 승인'],['bulk','일괄 처리'],['voucher','전표'],['erp','ERP 연동'],['audit','열람 기록'],['rules','휴롬 규정'],['data','데이터 관리'],['plan','기획서'],['prd','PRD']]]],
+  ['관리',[['auto','자동 처리'],['perm','권한 관리'],['forms','신청·접수'],['level','커리어레벨'],['ct','계약·수습'],['deputy','대신 승인'],['bulk','일괄 처리'],['voucher','전표'],['erp','ERP 연동'],['audit','열람 기록'],['rules','휴롬 규정'],['data','데이터 관리'],['plan','기획서'],['prd','PRD']]]],
  emp:[['홈',[['inbox','할 일']]],
   ['근태 신청',[['leave/new','근태·휴가'],['work/me','출퇴근'],['work/flex','시차출퇴근'],['work/ot','연장·휴일']]],
   ['급여',[['pay','급여명세서'],['exp','경비'],['welfare','복리후생'],['yearend','연말정산'],['lic','자격증']]],
@@ -271,7 +271,7 @@ function nav(cur){
 /* ---------- 흐름 안내 ---------- */
 function guide(){
  if(st.people.length){$('#guide').innerHTML='';return}
- $('#guide').innerHTML='<div class="start"><b>아직 등록된 사람이 없습니다</b><span>샘플 3명(직원 432번 휴롬직원 · 팀장 · 인사 담당)을 넣으면 신청 → 팀장 승인 → 인사 확정을 바로 돌려 볼 수 있습니다.</span><div><button class="btn p" id="gdemo">샘플 3명 넣기</button> <a class="btn" href="#people" id="gself">직접 등록</a></div></div>';
+ $('#guide').innerHTML='<div class="start"><b>아직 등록된 사람이 없습니다</b><span>샘플 4명(직원 432번 휴롬직원 · 팀장 · 인사 담당 · 관리자)을 넣으면 신청 → 팀장 승인 → 인사 확정을 바로 돌려 볼 수 있습니다.</span><div><button class="btn p" id="gdemo">샘플 4명 넣기</button> <a class="btn" href="#people" id="gself">직접 등록</a></div></div>';
  $('#gself').onclick=e=>{e.preventDefault();switchRole('hr','#people')};
  $('#gdemo').onclick=()=>{const y=n=>{const j=new Date();j.setFullYear(j.getFullYear()-n);return ymd(j)};
   ['상품전략1팀','피플&컬처팀'].forEach(d=>{if(!st.depts.includes(d))st.depts.push(d)});
@@ -279,13 +279,14 @@ function guide(){
   const no=mk({name:'432번 휴롬직원',dept:'상품전략1팀',pos:'팀원',grade:'대리',join:y(3),base:3500000,allow:200000},'샘플');
   mk({name:'517번 휴롬직원',dept:'상품전략1팀',pos:'팀장',grade:'차장',cl:'LV3',join:y(9),base:5200000,allow:300000},'샘플');
   mk({name:'286번 휴롬직원',dept:'피플&컬처팀',pos:'팀원',grade:'과장',cl:'LV2',join:y(6),base:4300000,allow:200000,hrRole:1},'샘플');
+  mk({name:'001번 휴롬직원',dept:'경영지원팀',pos:'팀원',grade:'부장',cl:'LV3',join:y(12),base:6000000,allow:300000,perm:{admin:true}},'샘플');
   {const p=person(no);onbItems({...p,join:today()}).forEach(([n,d,k])=>st.tasks.push({id:nid(),no,set:'입사',j:p.join,name:n,due:d,k:k||'',done:k==='auto'?now():''}))}st.me=no;save();
-  toast('샘플 3명을 넣었습니다 — 432번 휴롬직원(직원) · 517번 휴롬직원(팀장) · 286번 휴롬직원(인사)');switchRole('emp','#leave/new')}}
+  toast('샘플 4명을 넣었습니다 — 432번(직원) · 517번(팀장) · 286번(인사) · 001번(관리자) 휴롬직원');switchRole('emp','#leave/new')}}
 
 /* ---------- 상단 역할 ---------- */
 function bar(){
- const act0=st.people.filter(p=>p.status!=='퇴직'),me0=person(st.me)||{};const who={emp:me0.name,lead:(act0.find(p=>p.pos==='팀장'&&p.dept===me0.dept)||act0.find(p=>p.pos==='팀장')||{}).name,hr:(act0.find(p=>p.hrRole)||{}).name};
- document.querySelectorAll('#roles button').forEach(b=>{const r=b.dataset.r;b.innerHTML=roleName[r]+(who[r]?' <small>'+esc(who[r])+'</small>':'');b.classList.toggle('on',r===st.role);b.onclick=()=>switchRole(r)});
+ const act0=st.people.filter(p=>p.status!=='퇴직'),me0=person(st.me)||{};const who={emp:me0.name,lead:(act0.find(p=>p.pos==='팀장'&&p.dept===me0.dept)||act0.find(p=>p.pos==='팀장')||{}).name,hr:(act0.find(p=>p.hrRole)||{}).name,admin:(act0.find(p=>p.perm&&p.perm.admin)||{}).name};
+ document.querySelectorAll('#roles button').forEach(b=>{const r=b.dataset.r;b.innerHTML=roleName[r]+(who[r]?' <small>'+esc(who[r])+'</small>':'');b.classList.toggle('on',r===(st.asAdmin&&st.role==='hr'?'admin':st.role));b.onclick=()=>switchRole(r)});
  const sel=$('#me');const act=st.people.filter(p=>p.status!=='퇴직');
  if(st.role==='emp'){sel.style.display=act.length>3?'':'none';sel.innerHTML=act.length?act.map(p=>'<option value="'+p.no+'"'+(p.no===st.me?' selected':'')+'>'+esc(p.name)+' · '+esc(p.dept)+(p.pos!=='팀원'?' '+esc(p.pos):'')+'</option>').join(''):'<option>등록된 직원 없음</option>';
   if(act.length&&!act.find(p=>p.no===st.me)){st.me=act[0].no;save()}sel.onchange=()=>{st.me=sel.value;save();render()}}
@@ -294,7 +295,7 @@ function bar(){
 /* ---------- 화면들 ---------- */
 const V={};
 function todoList(it,none){return it.length?'<section class="card"><div class="bd todo">'+it.map(x=>'<div class="ck" data-go="'+x.go+'"><span class="k">'+x.k+'</span><span class="tx">'+x.txt+'</span>'+(x.due?dueTag(x.due):'')+'<span class="ar">›</span></div>').join('')+'</div></section>':'<div class="empty" style="display:block;padding:40px 0">'+none+'</div>'}
-V.dash=()=>{if(!st.people.length)return '';
+V.dash=()=>{if(!st.people.length)return '';if(st.role==='hr')return dashHr();
  const t=today(),act=st.people.filter(p=>p.status!=='퇴직'),ab=absentOn(t),q=leadQ().concat(hrQ()),it=inboxItems();
  return '<div class="top"><h1>오늘 할 일</h1><span class="tag">'+t+' ('+WD[new Date().getDay()]+')</span></div>'+
  '<div class="kpi k3">'+kp('재직',act.length,'명','','#people')+kp('결재 대기',q.length,'건','','#leave/'+(st.role==='hr'?'hr':'approve'),q.length)+kp('오늘 부재',ab.length,'명','','#status')+'</div>'+
@@ -1035,13 +1036,13 @@ const aOn=k=>!(st.autoOff||{})[k];
 function alog(key,k,txt){if(st.autolog.some(x=>x.key===key))return false;st.autolog.push({key,k,txt,at:today()+' '+now().slice(11)});return true}
 function alert1(no,k,txt,go,key){if(key&&st.alerts.some(a=>a.key===key))return false;st.alerts.push({id:nid(),no,k,txt,go:go||'#inbox',key:key||'',at:today()+' '+now().slice(11),ch:'Teams 1:1',sent:''});return true}
 function viewerNo(){const a=st.people.filter(p=>p.status!=='퇴직'),me=person(st.me)||{};
- if(st.role==='emp')return st.me;if(st.role==='lead')return ((a.find(p=>p.pos==='팀장'&&p.dept===me.dept)||a.find(p=>p.pos==='팀장'))||{}).no;return (a.find(p=>p.hrRole)||{}).no}
+ if(st.role==='emp')return st.me;if(st.role==='lead')return ((a.find(p=>p.pos==='팀장'&&p.dept===me.dept)||a.find(p=>p.pos==='팀장'))||{}).no;if(st.asAdmin)return (a.find(p=>p.perm&&p.perm.admin)||{}).no;return (a.find(p=>p.hrRole)||{}).no}
 function lvCut(p,y){if(p.status==='휴직')return '휴직자';if(p.status!=='재직')return '재직 아님';if(p.join>(+y-1)+'-12-31')return '올해 입사 (1년 미만 — 따로 통지)';if(/생산|기능/.test(p.dept)||p.emp==='기능직')return '생산기능직';if(p.peak)return '임금피크';return ''}
 function lvPick(no,y,n){const W=[];let d=y+'-11-02';while(d<=y+'-12-31'){const w=new Date(d+'T00:00').getDay();if(w&&w!==6&&!st.reqs.some(r=>r.no===no&&r.from<=d&&d<=r.to))W.push(d);d=addD(d,1)}
  n=Math.min(Math.ceil(n),W.length);if(!n)return [];const s=Math.max(1,Math.floor(W.length/n));return W.filter((_,i)=>i%s===0).slice(0,n)}
 const leadOf=no=>{const p=person(no)||{};return st.people.find(q=>q.dept===p.dept&&q.pos==='팀장'&&q.status==='재직'&&q.no!==no)};
 function autoRun(){['alerts','autolog','lvplans','lvdraft','hunet','forms','pt'].forEach(k=>{if(!st[k])st[k]=[]});if(!st.autoOff)st.autoOff={};
- if(!st.people.length)return;const t=today(),y=t.slice(0,4),ym=t.slice(0,7),nm=no=>(person(no)||{}).name||no;let ch=0;
+ if(!st.people.length)return;const t=today(),y=t.slice(0,4),ym=t.slice(0,7),nm=no=>(person(no)||{}).name||no;let ch=permSync();
  /* 1 연차촉진 */
  if(aOn('lv')&&t>=y+'-07-01'&&t<=y+'-10-31'){let n=0;
   st.people.forEach(p=>{if(lvCut(p,y))return;const b=bal(p.no);if(b.rem<=0||st.notices.some(z=>z.no===p.no&&z.year===y&&z.round===1))return;
@@ -1198,6 +1199,60 @@ function wireAuto(){const on=(s,f)=>{const e=$(s);if(e)e.onclick=f};const all=(s
   const v={id:nid(),kind:'votes',name:$('#vt_n').value,date:d,list:st.people.filter(p=>(p.status==='재직'||p.status==='휴직')&&p.join<=d&&p.pos!=='대표').map(p=>p.no)};st.forms.push(v);v.list.forEach(no=>alert1(no,'노사협의회','선거인 명부에 이름이 있는지 확인해 주세요','#forms/vote','vt-'+v.id+'-'+no));alog('vt-'+v.id,'노사협의회',v.date+' 기준 선거인 명부 '+v.list.length+'명 자동 생성 · 본인 확인 요청');done('명부를 만들었습니다 ('+v.list.length+'명)')});
  on('#vt_ok',()=>{const v=F.find(f=>f.kind==='votes');F.push({id:nid(),kind:'votec',sid:v.id,no:me,at:now()});done('확인했습니다')});
  on('#oj_add',()=>{F.push({id:nid(),kind:'offjt',no:$('#oj_no').value,date:$('#oj_d').value,place:$('#oj_p').value});done('일정을 넣었습니다 — 3일 전에 자동으로 알립니다')})}
+
+/* ---------- 인사 대시보드 · 권한 관리 ---------- */
+const coOf=p=>p.co||'휴롬';
+const bar1=(l,a,b,go)=>b?'<div class="ck" data-go="'+go+'" style="display:grid;grid-template-columns:170px 1fr 110px;gap:12px;align-items:center"><span>'+l+'</span><div class="tr"><i style="width:'+Math.round(a/b*100)+'%"></i></div><b>'+Math.round(a/b*100)+'% <small class="tag">'+a+' / '+b+'</small></b></div>':'';
+function dashHr(){const t=today(),y=t.slice(0,4),ym=t.slice(0,7),hv=person(viewerNo())||{};if(st.coF==null&&hv.scope&&hv.scope!=='전체')st.coF=hv.scope;const cf=st.coF||'';
+ const P=st.people.filter(p=>!cf||coOf(p)===cf),inP=no=>P.some(p=>p.no===no),act=P.filter(p=>p.status!=='퇴직');
+ const ab=absentOn(t).filter(r=>inP(r.no)),q=leadQ().concat(hrQ()).filter(r=>inP(r.no)),it=inboxItems();
+ const jn=P.filter(p=>(p.join||'').slice(0,7)===ym).length,lf=P.filter(p=>p.status==='퇴직'&&(p.leftAt||'').slice(0,7)===ym).length,lv=P.filter(p=>p.status==='휴직').length,ct=ctItems().filter(x=>inP(x.p.no)&&dayLeft(x.due)<=30).length;
+ const ws=weekStart(t),h52=act.filter(p=>weekHours(p.no,ws)>=48).length;let pd=addD(t,-1);while([0,6].includes(new Date(pd+'T00:00').getDay()))pd=addD(pd,-1);
+ const miss=st.punches.some(x=>x.date>=addD(t,-14))?act.filter(p=>p.status==='재직'&&p.join<=pd&&!st.punches.some(x=>x.no===p.no&&x.date===pd)&&!absentOn(pd).some(r=>r.no===p.no)).length:0;
+ const K=[['재직',act.length,'명','#people',0,1],['결재 대기',q.length,'건','#leave/hr',1,1],['이번 달 입사',jn,'명','#people'],['이번 달 퇴사',lf,'명','#people'],['휴직',lv,'명','#onoff/lv'],['계약·수습 30일 안 만료',ct,'명','#ct',1],['오늘 부재',ab.length,'명','#status',0,1],['이번 주 48시간 넘음',h52,'명','#work/all',1],['어제 출퇴근 누락',miss,'명','#auto/caps',1]].filter(k=>k[1]||k[5]);
+ const n1=st.notices.filter(n=>n.year===y&&n.round===1&&inP(n.no)),n1d=n1.filter(n=>st.lvplans.some(q=>q.no===n.no&&q.year===y)||st.notices.some(z=>z.no===n.no&&z.year===y&&z.round===2)).length;
+ const ed=st.edus.filter(e=>e.year===y&&inP(e.no)),hu=st.hunet.filter(h=>h.ym.slice(0,4)===y&&inP(h.no)),hw=st.forms.filter(f=>f.kind==='hunr'&&f.status==='인사 승인 대기').length,vt=st.forms.filter(f=>f.kind==='votes').slice(-1)[0];
+ const bars=bar1('연차 사용 시기 지정',n1d,n1.length,'#promote')+bar1('법정교육 이수',ed.filter(e=>e.done).length,ed.length,'#edu')+bar1('휴넷 수료',hu.filter(h=>h.done).length,hu.length,'#auto/hunet')+(vt?bar1('선거인 명부 본인 확인',st.forms.filter(f=>f.kind==='votec'&&f.sid===vt.id).length,vt.list.length,'#forms/vote'):'')+(hw?'<div class="ck" data-go="#forms/hunet"><span class="k">휴넷</span><span class="tx">승인 대기 '+hw+'건</span><span class="ar">›</span></div>':'');
+ const U=[];const up=(d,k,txt,go)=>{if(d>=t&&d<=addD(t,60))U.push({d,k,txt,go})};
+ (st.orders||[]).forEach(o=>up(o.date,'발령','제 '+o.no+'호 발령일','#reorg/list'));
+ if(ed.some(e=>!e.done))up(y+'-11-30','교육','법정교육 이수 마감 · 미이수 '+new Set(ed.filter(e=>!e.done).map(e=>e.no)).size+'명','#edu');
+ if(st.pt.some(x=>x.year===y&&x.grant-x.used>0))up(y+'-11-30','복리','휴가샵 포인트 사용 마감','#auto/pt');
+ up(y+'-07-01','연차','연차 사용 촉진 1차 통지 (자동)','#promote');up(y+'-10-01','교육','법정교육 배정 (자동)','#edu');
+ [y,String(+y+1)].forEach(z=>{up(z+'-01-02','레벨','커리어레벨 정기 심사 신청 시작','#level');up(z+'-02-01','레벨','레벨 조정 일괄 반영','#level')});
+ st.forms.filter(f=>f.kind==='offjt'&&inP(f.no)).forEach(f=>up(f.date,'OFF-JT',esc((person(f.no)||{}).name)+' 외부 훈련','#forms/offjt'));
+ st.forms.filter(f=>f.kind==='m365s'&&!f.closed).forEach(f=>up(f.date,'M365',esc(f.name),'#forms/m365'));
+ ctItems().filter(x=>inP(x.p.no)).forEach(x=>up(x.due,x.k,esc(x.p.name)+' 갱신·전환·종료 결정','#ct'));
+ U.sort((a,b)=>a.d<b.d?-1:1);
+ const tl=st.autolog.filter(x=>x.at.slice(0,10)===t),al=tl.length?tl:st.autolog.slice(-5);
+ const cos=[...new Set(st.people.map(coOf))];
+ return '<div class="top"><h1>인사 대시보드</h1><span class="tag">'+t+' ('+WD[new Date(t+'T00:00').getDay()]+')</span>'+(cos.length>1||cf?'<select id="co_f" style="margin-left:auto"><option value="">전체 사업장</option>'+['휴롬','휴롬엘에스'].map(c=>'<option'+(c===cf?' selected':'')+'>'+c+'</option>').join('')+'</select>':'')+'</div>'+
+  sec('오늘 처리할 것',it.length+'건',it.length?'<div class="todo">'+it.slice(0,8).map(x=>'<div class="ck" data-go="'+x.go+'"><span class="k">'+x.k+'</span><span class="tx">'+x.txt+'</span>'+(x.due?dueTag(x.due):'')+'<span class="ar">›</span></div>').join('')+(it.length>8?'<div class="ck" data-go="#inbox"><span class="tx">나머지 '+(it.length-8)+'건 알림함에서 보기</span><span class="ar">›</span></div>':'')+'</div>':'<div class="empty">오늘 처리할 일이 없습니다</div>')+
+  '<div class="kpi" style="grid-template-columns:repeat('+Math.min(K.length,5)+',1fr)">'+K.map(k=>kp(k[0],k[1],k[2],'',k[3],k[4]&&k[1])).join('')+'</div>'+
+  (bars?sec('진행 중인 일','누르면 명단으로','<div class="todo">'+bars+'</div>'):'')+
+  sec('부서별 인원',act.length+'명',tbl(['부서','재직','휴직','이번 달 입사'],[...new Set(act.map(p=>p.dept))].sort().map(d=>{const xs=act.filter(p=>p.dept===d);return '<tr><td>'+esc(d)+'</td><td class="right">'+xs.filter(p=>p.status==='재직').length+'</td><td class="right">'+(xs.filter(p=>p.status==='휴직').length||'')+'</td><td class="right">'+(xs.filter(p=>(p.join||'').slice(0,7)===ym).length||'')+'</td></tr>'})))+
+  (U.length?sec('다가오는 일정','60일 안',tbl(['날짜','','내용'],U.slice(0,10).map(u=>'<tr data-go="'+u.go+'" style="cursor:pointer"><td>'+u.d+' <span class="tag">D-'+dayLeft(u.d)+'</span></td><td><span class="k">'+u.k+'</span></td><td>'+u.txt+'</td></tr>'))):'')+
+  sec(tl.length?'오늘 E-HR이 대신 한 일':'최근 자동 처리',al.length+'건',tbl(['시각','일','내용'],al.slice().reverse().map(x=>'<tr><td class="tag">'+x.at+'</td><td>'+esc(x.k)+'</td><td>'+esc(x.txt)+'</td></tr>'),'아직 없습니다')+'<p><a class="btn sm" href="#auto/log">전체 기록</a></p>')}
+
+const PERMS=[['admin','관리자'],['hr','인사'],['lead','팀장'],['pay','급여 열람'],['pii','개인정보 열람']];
+function permOf(p){if(!p.perm)p.perm={};const m=p.perm;if(m.hr==null)m.hr=!!p.hrRole;if(m.lead==null)m.lead=/팀장|본부장/.test(p.pos||'');if(m.pay==null)m.pay=!!m.hr;if(m.pii==null)m.pii=!!m.hr;return m}
+function plog(p,what,who){st.permlog=st.permlog||[];st.permlog.push({at:today()+' '+now().slice(11),who:who||((person(viewerNo())||{}).name||'관리자'),no:p.no,name:p.name,what})}
+function permSync(){let ch=0;st.people.forEach(p=>{const m=permOf(p);
+ if(p.status==='퇴직'){if(PERMS.some(([k])=>m[k])){PERMS.forEach(([k])=>m[k]=false);p.hrRole=0;plog(p,'퇴사 — 모든 권한 자동 회수','E-HR 자동');ch=1}return}
+ const d=/팀장|본부장/.test(p.pos||'');if(m.lead!==d){m.lead=d;plog(p,(d?'팀장 권한 자동 부여':'팀장 권한 자동 회수')+' (직책 '+p.pos+')','E-HR 자동');ch=1}});return ch}
+const psel=(c,no,opts,cur,en)=>'<select data-'+c+'="'+no+'"'+(en?'':' disabled')+'>'+opts.map(o=>'<option'+(o===cur?' selected':'')+'>'+o+'</option>').join('')+'</select>';
+V.perm=()=>{if(st.role!=='hr')return head('권한 관리')+hrOnly();const ad=!!st.asAdmin,xs=st.people.filter(p=>p.status!=='퇴직');st.permlog=st.permlog||[];
+ return head('권한 관리','관리자만 바꿀 수 있습니다')+(ad?'':'<div class="guide"><span class="nx">보기만 됩니다 — 위 「보는 사람」을 관리자로 바꾸면 고칠 수 있습니다</span><button class="btn sm" data-role="admin">관리자로 보기</button></div>')+
+ sec('사람별 권한',xs.length+'명 · 여러 권한을 같이 줄 수 있습니다 · 팀장 권한은 직책을 따라 자동 · 퇴사하면 모두 자동 회수',tbl(['이름','부서 · 직책','사업장','열람 범위'].concat(PERMS.map(x=>x[1])),xs.map(p=>{const m=permOf(p);
+  return '<tr><td><b>'+esc(p.name)+'</b></td><td class="tag">'+esc(p.dept)+' · '+esc(p.pos)+'</td><td>'+psel('pco',p.no,['휴롬','휴롬엘에스'],coOf(p),ad)+'</td><td>'+psel('psc',p.no,['전체','휴롬','휴롬엘에스'],p.scope||'전체',ad)+'</td>'+PERMS.map(([k])=>'<td style="text-align:center"><input type="checkbox" data-pm2="'+p.no+'|'+k+'"'+(m[k]?' checked':'')+(ad&&k!=='lead'?'':' disabled')+(k==='lead'?' title="직책을 따라 자동"':'')+'></td>').join('')+'</tr>'})))+
+ sec('바꾼 기록',st.permlog.length+'건 · 누가 언제 누구 권한을 바꿨는지',tbl(['시각','누가','대상','내용'],st.permlog.slice().reverse().slice(0,50).map(l=>'<tr><td class="tag">'+l.at+'</td><td>'+esc(l.who)+'</td><td>'+esc(l.name)+'</td><td>'+esc(l.what)+'</td></tr>'),'아직 없습니다'))};
+function wirePerm(){const all=(s,f)=>document.querySelectorAll(s).forEach(f);
+ all('[data-role=admin]',b=>b.onclick=()=>switchRole('admin'));
+ const cf=$('#co_f');if(cf)cf.onchange=()=>{st.coF=cf.value;save();render()};
+ if(!st.asAdmin)return;
+ all('[data-pm2]',b=>b.onchange=()=>{const [no,k]=b.dataset.pm2.split('|'),p=person(no),m=permOf(p);if(k==='admin'&&!b.checked&&st.people.filter(q=>q.status!=='퇴직'&&permOf(q).admin).length<=1){b.checked=true;toast('관리자가 한 명은 있어야 합니다');return}
+  m[k]=b.checked;if(k==='hr')p.hrRole=b.checked?1:0;plog(p,(PERMS.find(x=>x[0]===k)||[])[1]+' 권한 '+(b.checked?'부여':'회수'));save();render();toast(p.name+' '+(PERMS.find(x=>x[0]===k)||[])[1]+' 권한을 '+(b.checked?'줬습니다':'뺐습니다'))});
+ all('[data-pco]',b=>b.onchange=()=>{const p=person(b.dataset.pco);plog(p,'사업장 '+coOf(p)+' → '+b.value);p.co=b.value;save();render()});
+ all('[data-psc]',b=>b.onchange=()=>{const p=person(b.dataset.psc);plog(p,'열람 범위 '+(p.scope||'전체')+' → '+b.value);p.scope=b.value;save();render()})}
 
 /* 알림함 */
 function inboxItems(){const r=st.role,it=[],t=today(),ws=weekStart(t);const add=(k,txt,go,due)=>it.push({k,txt,go,due:due||''});
@@ -1481,7 +1536,7 @@ function wireData(){
 /* ---------- 그리기·이벤트 ---------- */
 function render(){
  const h=(location.hash||'#dash').slice(1).split('/');const page=V[h[0]]?h[0]:'dash';
- SIMD=st.simDate||'';autoRun();nav(page);bar();guide();ensureTasks();bell();const v=$('#view');v.classList.remove('view');void v.offsetWidth;v.classList.add('view');v.innerHTML=V[page](h[1]);wire(page);wireReset();if(page==='reorg')wireReorg();wireAuto();window.scrollTo(0,0)}
+ SIMD=st.simDate||'';autoRun();nav(page);bar();guide();ensureTasks();bell();const v=$('#view');v.classList.remove('view');void v.offsetWidth;v.classList.add('view');v.innerHTML=V[page](h[1]);wire(page);wireReset();if(page==='reorg')wireReorg();wireAuto();wirePerm();window.scrollTo(0,0)}
 function wire(page){
  document.querySelectorAll('[data-go]').forEach(e=>e.onclick=()=>location.hash=e.dataset.go);
  const th=$('#tohr')||$('#tohr2');if(th)th.onclick=()=>switchRole('hr','#people');
