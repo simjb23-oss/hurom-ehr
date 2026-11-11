@@ -255,16 +255,16 @@ function switchRole(r,route){if(r==='admin'){st.asAdmin=1;r='hr'}else st.asAdmin
 
 /* ---------- 메뉴 ---------- */
 const MENUS={
- hr:[['홈',[['home','대화'],['dash','대시보드'],['inbox','알림함'],['close','월 마감']]],
+ hr:[['홈',[['home','휴글'],['dash','대시보드'],['inbox','알림함'],['close','월 마감']]],
   ['사람',[['people','인원 명부'],['card','인사카드'],['onoff','입사·퇴사'],['move','인사발령'],['org','조직도'],['reorg','조직 개편'],['juice','신입 주스기'],['eval','평가'],['edu','교육'],['hire','채용']]],
   ['근태',[['leave','근태·휴가'],['work','출퇴근·52시간'],['status','근태 현황'],['promote','연차 촉진']]],
   ['급여',[['pay','급여'],['welfare','복리후생'],['exp','경비'],['yearend','연말정산'],['lic','자격수당'],['cert','증명서']]],
   ['관리',[['auto','자동 처리'],['perm','권한 관리'],['forms','신청·접수'],['level','커리어레벨'],['ct','계약·수습'],['deputy','대신 승인'],['bulk','일괄 처리'],['voucher','전표'],['erp','ERP 연동'],['audit','열람 기록'],['rules','휴롬 규정'],['data','데이터 관리'],['plan','기획서'],['prd','PRD'],['link','자동화·연결']]]],
- emp:[['홈',[['home','대화'],['dash','대시보드'],['inbox','할 일']]],
+ emp:[['홈',[['home','휴글'],['dash','대시보드'],['inbox','할 일']]],
   ['근태 신청',[['leave/new','근태·휴가'],['status','팀 근태 달력'],['work/me','출퇴근'],['work/flex','유연근무'],['work/ot','연장·휴일'],['cert','증명서']]],
   ['급여',[['pay','급여명세서'],['exp','경비'],['welfare','복리후생'],['yearend','연말정산'],['lic','자격증']]],
   ['내 정보',[['card/{me}','인사카드'],['level','레벨'],['eval','평가'],['edu','교육'],['cert','증명서'],['forms','신청·접수'],['rules','휴롬 규정'],['org','조직도']]]],
- lead:[['홈',[['home','대화'],['dash','대시보드'],['inbox','할 일']]],
+ lead:[['홈',[['home','휴글'],['dash','대시보드'],['inbox','할 일']]],
   ['승인함',[['leave/approve','근태·휴가'],['work/ot','연장'],['work/flex','유연근무'],['exp','경비'],['juice','주스기'],['level','레벨업 추천'],['eval','팀원 평가']]],
   ['우리 팀',[['status','근태 현황'],['work/all','52시간'],['ct','계약·수습'],['deputy','대신 승인'],['forms/offjt','OFF-JT'],['org','조직도'],['rules','휴롬 규정']]]]};
 function curGroup(cur){const hash=(location.hash||'#dash').slice(1),M=MENUS[st.role]||MENUS.hr;const rr=r=>r.replace('{me}',st.me||'');
@@ -452,8 +452,9 @@ const SUG={emp:['남은 연차','다음 주 금요일 연차','11/20 오후 반�
 const QUICK={emp:[['연차·휴가 신청','#leave/new'],['대체휴무 신청','',"대체휴무"],['내 연차 사용 내역','#status/{me}'],['팀 근태 달력','#status'],['유연근무','#work/flex'],['증명서 신청','#cert'],['연장·휴일근로','#work/ot'],['연차 사용 시기','#lvplan'],['급여명세서','#pay'],['내 대시보드','#dash'],['할 일','#inbox'],['휴롬 규정','#rules']],
  lead:[['승인함','#leave/approve'],['연장 승인','#work/ot'],['유연근무 승인','#work/flex'],['팀 근태 달력','#status'],['52시간','#work/all'],['팀장 대시보드','#dash'],['할 일','#inbox'],['휴롬 규정','#rules']],
  hr:[['인사 대시보드','#dash'],['연차 촉진','#promote'],['인사 확정','#leave/hr'],['근태 현황','#status'],['증명서 발급','#cert'],['인원 명부','#people'],['자동 처리','#auto'],['통지 기록','#auto/log'],['월 마감','#close'],['알림함','#inbox']]};
+V.hugle=a=>V.home(a);
 V.home=(arg)=>{if(!st.people.length)return V.dash();const vn=viewerNo(),all=arg==='all',mine=(st.chat||[]).filter(c=>c.no===vn&&c.role===st.role),show=all?mine:mine.slice(-8);
- return '<div class="hm"><h1><b>휴롬</b> E-HR</h1>'+
+ return '<div class="hm"><h1><b>휴</b>글 <small class="tag" style="font-size:13px;font-weight:400">휴롬 E-HR</small></h1>'+
  (st.aiOff?'<div class="aioff"><b>AI가 지금 응답하지 않습니다.</b> 아래 「직접 하기」에서 똑같이 처리할 수 있습니다. <button class="btn sm" id="ai_on">AI 다시 켜기</button></div>':'')+
  '<div class="hq"><input id="hq" placeholder="'+(st.aiOff?'AI 꺼짐 — 아래에서 직접 하세요':'무엇을 도와드릴까요? 예: 11/20 오후 반차 · 남은 연차 · 재직증명서')+'"'+(st.aiOff?' disabled':'')+' autocomplete="off"><button class="btn p" id="hq_go"'+(st.aiOff?' disabled':'')+'>보내기</button></div>'+
  (st.aiOff?'':'<div class="chips">'+(SUG[st.role]||SUG.emp).map(x=>'<button data-sug="'+esc(x)+'">'+esc(x)+'</button>').join('')+'</div>')+
@@ -463,7 +464,8 @@ V.home=(arg)=>{if(!st.people.length)return V.dash();const vn=viewerNo(),all=arg=
 function chatDates(q){const y=today().slice(0,4),o=[],t=today();
  q.replace(/(\d{4})[-.\/](\d{1,2})[-.\/](\d{1,2})|(\d{1,2})\s*(?:\/|\.|월)\s*(\d{1,2})\s*일?/g,(m,a,b,c,d,e)=>{o.push(a?a+'-'+pad(+b)+'-'+pad(+c):y+'-'+pad(+d)+'-'+pad(+e));return m});
  if(/오늘/.test(q))o.push(t);if(/내일/.test(q))o.push(addD(t,1));if(/모레/.test(q))o.push(addD(t,2));
- const wd={'월':1,'화':2,'수':3,'목':4,'금':5};const m=q.match(/(이번\s*주|다음\s*주)\s*([월화수목금])/);if(m){const base=addD(weekStart(t),/다음/.test(m[1])?7:0);o.push(addD(base,wd[m[2]]-1))}
+ const wd={'월':1,'화':2,'수':3,'목':4,'금':5};q.replace(/(이번\s*주|다음\s*주|담주)?\s*([월화수목금])요일/g,(m,w,d)=>{let x=addD(weekStart(t),wd[d]-1);if(w&&/다음|담/.test(w))x=addD(x,7);else if(!w&&x<t)x=addD(x,7);o.push(x);return m});
+ for(let i=0;i<o.length;i++)if(o[i]<addD(t,-180))o[i]=(+o[i].slice(0,4)+1)+o[i].slice(4);
  return o.sort()}
 function chatAnswer(q){const r=st.role,t=today(),y=t.slice(0,4),no=r==='emp'?st.me:viewerNo(),p=person(no)||{},A=(h,go,l)=>h+(go?'<div style="margin-top:8px"><a class="btn sm" href="'+go+'">'+(l||'열기')+' ›</a></div>':'');
  const ds=chatDates(q),ask=/얼마|몇|남은|남았|잔여|내역|썼|사용|언제/.test(q);
@@ -471,7 +473,7 @@ function chatAnswer(q){const r=st.role,t=today(),y=t.slice(0,4),no=r==='emp'?st.
  if(ty&&ds.length&&!ask){if(r!=='emp')return A('근태 신청은 직원 화면에서 합니다.');
   if(ty==='반차')return '오전 반차인가요, 오후 반차인가요? 예: 「'+ds[0].slice(5).replace('-','/')+' 오후 반차」';
   const half=TYPES[ty].days===0.5,f=ds[0],to=half?f:(ds[ds.length-1]),d=half?0.5:workdays(f,to);
-  return '<b>'+ty+'</b> '+f+'('+WD[new Date(f+'T00:00').getDay()]+')'+(to!==f?' ~ '+to:'')+' · '+d+'일로 신청서를 채웠습니다.<br><span class="tag">아직 신청 전입니다 — 열어서 「신청」을 눌러야 팀장에게 갑니다</span><div style="margin-top:8px"><button class="btn p sm" data-draft="'+esc(JSON.stringify({type:ty,from:f,to,reason:''}))+'">신청서 열기 ›</button></div>'}
+  return '<b>'+ty+'</b> '+f+'('+WD[new Date(f+'T00:00').getDay()]+')'+(to!==f?' ~ '+to:'')+' · '+d+'일로 신청서를 채웠습니다.<br><span class="tag">아직 신청 전입니다 — 「이대로 신청」을 누르면 팀장 승인으로 갑니다</span><div style="margin-top:8px"><button class="btn p sm" data-chsend="'+esc(JSON.stringify({type:ty,from:f,to}))+'">이대로 신청</button> <button class="btn sm" data-draft="'+esc(JSON.stringify({type:ty,from:f,to,reason:''}))+'">고쳐서 신청 ›</button></div>'}
  if(/대체/.test(q)&&!/규정|제도|방법/.test(q)){const a=altBal(no);return A('대체휴무 <b>'+a.rem+'일</b> 남았습니다 (생김 '+a.grant+'일 · 씀 '+a.used+'일).<br><span class="tag">휴일근로를 「대체휴무」로 신청해 팀장이 승인하면 8시간당 1일이 생깁니다</span>','#status/'+no,'내역 보기')}
  if(/연차|휴가/.test(q)&&/내역|썼|사용|언제/.test(q)&&r!=='hr'){const u=st.reqs.filter(x=>x.no===no&&TYPES[x.type].deduct&&[S.OK,S.HR,S.LEAD,S.CL,S.CH].includes(x.status)).sort((a,c)=>a.from<c.from?1:-1);
   return A(u.length?'연차 '+u.length+'건을 썼거나 신청했습니다.'+tbl(['날짜','종류','일수','상태'],u.slice(0,6).map(x=>'<tr><td>'+period(x)+'</td><td>'+x.type+'</td><td>'+x.days+'일</td><td>'+badge(x.status)+'</td></tr>')):'아직 쓴 연차가 없습니다.','#status/'+no,'전체 내역')}
@@ -490,11 +492,20 @@ function chatAnswer(q){const r=st.role,t=today(),y=t.slice(0,4),no=r==='emp'?st.
  const mi=[];(MENUS[r]||[]).forEach(([,its])=>its.forEach(([go,l])=>{if(tk.some(w=>l.includes(w)||w.includes(l)))mi.push([go,l])}));
  if(mi.length)return '이 화면을 찾으시나요?<div style="margin-top:8px">'+mi.slice(0,4).map(([go,l])=>'<a class="btn sm" href="#'+go.replace('{me}',st.me||'')+'">'+l+' ›</a>').join(' ')+'</div>';
  return '잘 알아듣지 못했습니다. 「11/20 오후 반차」 「남은 연차」 「재직증명서」처럼 말씀해 주시거나, 아래 「직접 하기」에서 골라 주세요.'}
+function chatSubmit(d){const p=person(st.me),ty=TYPES[d.type],f=d.from,t=ty.days===0.5?f:d.to,days=ty.days===0.5?0.5:workdays(f,t);
+ if(!p||p.status!=='재직')return '재직 중인 직원만 신청할 수 있습니다';if(isClosed(f.slice(0,7))||isClosed(t.slice(0,7)))return f.slice(0,7)+' 근태는 마감됐습니다';
+ if(!days)return '고른 기간에 근무일(월~금)이 없습니다';if(f<today()&&!['외근','병가'].includes(d.type))return '지난 날짜는 신청할 수 없습니다';
+ const ov=st.reqs.find(r=>r.no===p.no&&[S.LEAD,S.HR,S.OK,S.CL,S.CH].includes(r.status)&&!(t<r.from||f>r.to)&&!(r.type==='오전반차'&&d.type==='오후반차'||r.type==='오후반차'&&d.type==='오전반차'));if(ov)return '겹치는 신청이 있습니다: '+ov.type+' '+period(ov);
+ if(ty.alt&&altBal(p.no).rem<days)return '대체휴무가 모자랍니다 (남은 '+altBal(p.no).rem+'일)';if(ty.deduct){const b=bal(p.no);if(b.rem-b.pend<days)return '잔여 연차가 모자랍니다 (잔여 '+b.rem+'일)'}
+ const r={id:st.seq++,no:p.no,type:d.type,from:f,to:t,days,reason:'휴글 대화로 신청',status:S.LEAD,at:now(),retro:f<today(),hist:[]};act(r,p.name,'신청','휴글 대화');st.reqs.push(r);return r}
 function wireHome(){const i=$('#hq');
  const send=q=>{q=(q||'').trim();if(!q)return;let a;try{if(st.aiOff)throw 0;a=chatAnswer(q)}catch(e){a='<b>AI가 응답하지 않습니다.</b> 아래 「직접 하기」에서 처리해 주세요.'}
   (st.chat=st.chat||[]).push({id:nid(),no:viewerNo(),role:st.role,q,a,at:now()});save();render();setTimeout(()=>{const x=$('#hq');if(x)x.focus();const m=document.querySelector('.msgs');if(m&&m.lastElementChild)m.lastElementChild.scrollIntoView({block:'center'})},0)};
  if(i){i.onkeydown=e=>{if(e.key==='Enter'&&!e.isComposing)send(i.value)};$('#hq_go').onclick=()=>send(i.value)}
  document.querySelectorAll('[data-sug]').forEach(b=>b.onclick=()=>send(b.dataset.sug));
+ document.querySelectorAll('[data-chsend]').forEach(b=>b.onclick=()=>{const d=JSON.parse(b.dataset.chsend),r=chatSubmit(d),c=(st.chat||[]).find(x=>x.a.includes(b.dataset.chsend.replace(/"/g,'&quot;')));
+  const msg=typeof r==='string'?'<b>신청하지 못했습니다:</b> '+esc(r):'<span class="st o">신청함</span> '+r.type+' '+period(r)+' → '+stepName(r)+' 대기 · <a href="#leave/mine">내 신청</a>';
+  if(c)c.a=c.a.replace(/<div style="margin-top:8px"><button class="btn p sm" data-chsend[\s\S]*$/,'')+'<div style="margin-top:8px">'+msg+'</div>';save();render();toast(typeof r==='string'?r:r.type+' 신청했습니다 → '+stepName(r)+' 대기')});
  document.querySelectorAll('[data-draft]').forEach(b=>b.onclick=()=>{draft=JSON.parse(b.dataset.draft);if(location.hash==='#leave/new')render();else location.hash='#leave/new'});
  document.querySelectorAll('[data-qt]').forEach(b=>b.onclick=()=>{if(st.role!=='emp'){toast('근태 신청은 직원 화면에서 합니다');return}draft={type:b.dataset.qt};if(location.hash==='#leave/new')render();else location.hash='#leave/new'});
  const off=$('#ai_off'),on=$('#ai_on');if(off)off.onclick=e=>{e.preventDefault();st.aiOff=1;save();render()};if(on)on.onclick=()=>{st.aiOff=0;save();render()};
@@ -1688,5 +1699,4 @@ window.addEventListener('hashchange',render);render();
 window.EHR={get st(){return st},save,render,switchRole,person,bal,absentOn,today,V,MENUS,esc,TYPES,workdays}; // 휴글(hugle.js)이 쓰는 문
 })();
 </script>
-<script src="hugle.js" defer></script>
 </body></html>
