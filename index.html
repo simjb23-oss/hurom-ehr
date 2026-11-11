@@ -1147,13 +1147,13 @@ function wireReorg(){const on=(s,f)=>{const e=$(s);if(e)e.onclick=f};orgInit();
  document.querySelectorAll('[data-rgv]').forEach(b=>b.onclick=()=>{const o=st.orders.find(x=>x.id===+b.dataset.rgv);$('#rg_view').innerHTML='<div class="rg paper" style="margin-top:12px">'+o.html+'</div><pre class="rgpost">'+esc(o.post)+'</pre>'})}
 
 /* ---------- 복리후생 ---------- */
-const WF={'경조금':{rule:'경조사 지원'},'생일 지원':{rule:'생일 지원',amt:30000},'종합검진':{rule:'종합검진지원'},'가족수당 신청':{rule:'가족 수당',per:50000,unit:'명(배우자·자녀)'},'노부모수당 신청':{rule:'노부모 수당',per:100000,unit:'명(만 70세 이상)'},'기타 복지':{rule:'기타 복지제도 현황'}};
+const WF={'경조금':{rule:'경조사 지원'},'생일 지원':{rule:'생일 지원',amt:30000},'종합검진':{rule:'종합검진지원',url:'https://www.kmi.or.kr/CHKRST/RESERV'},'가족수당 신청':{rule:'가족 수당',per:50000,unit:'명(배우자·자녀)'},'노부모수당 신청':{rule:'노부모 수당',per:100000,unit:'명(만 70세 이상)'},'기타 복지':{rule:'기타 복지제도 현황'}};
 V.welfare=()=>{
  if(!st.people.length)return head('복리후생')+needP();const r=st.role;let b='';
  if(r==='emp'){const k=draftW;const w=WF[k];b=sec('복리후생 신청','인사 승인 → 지급 확정 → 전표 · 수당은 다음 급여부터 반영',
   '<div class="form"><div class="full"><label>종류</label><div class="types" id="wtypes">'+Object.keys(WF).map(x=>'<button data-w="'+x+'" class="'+(x===k?'on':'')+'">'+x+'</button>').join('')+'</div></div>'+
-  (w.per?'<label>인원 '+w.unit+'<input id="w_n" type="number" min="1" value="1"></label><label>월 수당<input disabled value="1인 '+won(w.per)+'원"></label>':'<label>금액 (원)<input id="w_amt" type="number" step="10000" value="'+(w.amt||'')+'"></label>')+
-  '<label class="full">내용<input id="w_desc" placeholder="'+(k==='경조금'?'예: 본인 결혼':'내용')+'"></label></div><div class="err" id="w_err"></div><button class="btn p" id="w_go">신청</button>')+ruleBox([w.rule])}
+  (w.url?'<div class="full"><p style="margin:4px 0 10px;color:var(--sub)">종합검진은 검진 기관(KMI 한국의학연구소) 사이트에서 직접 예약합니다. 회사 지원 범위는 아래 관련 규정에 있습니다.</p><a class="btn p" href="'+w.url+'" target="_blank" rel="noopener">KMI 검진 예약하러 가기</a> <a class="btn" href="https://www.kmi.or.kr/CHKRST/RESERVCHK" target="_blank" rel="noopener">예약 확인</a></div></div>':(w.per?'<label>인원 '+w.unit+'<input id="w_n" type="number" min="1" value="1"></label><label>월 수당<input disabled value="1인 '+won(w.per)+'원"></label>':'<label>금액 (원)<input id="w_amt" type="number" step="10000" value="'+(w.amt||'')+'"></label>')+
+  '<label class="full">내용<input id="w_desc" placeholder="'+(k==='경조금'?'예: 본인 결혼':'내용')+'"></label></div><div class="err" id="w_err"></div><button class="btn p" id="w_go">신청</button>'))+ruleBox([w.rule])}
  const q=st.welfare.filter(x=>r==='hr'&&(x.status==='신청'||x.status==='승인'));
  if(r==='hr')b+=sec('처리할 신청',q.length+'건',tbl(['신청 시각','신청자','종류','내용','금액','상태',''],q.map(x=>wrow(x,'<button class="btn p sm" data-wf="'+x.id+'">'+(x.status==='신청'?'승인':'지급 확정')+'</button> <button class="btn no sm" data-wfno="'+x.id+'">반려</button>')),'처리할 신청이 없습니다'));
  if(r==='lead')b+=hrOnly();
