@@ -487,7 +487,10 @@ V.otsum=()=>{if(st.role!=='hr')return head('시간외근로 현황')+hrOnly();co
 
 /* 3. 대체휴무 현황 — 남은 사람만, 다 쓰면 명단에서 빠짐 */
 V.altsum=()=>{if(st.role!=='hr')return head('대체휴무 현황')+hrOnly();const y=F('alt').y||today().slice(0,4);
- const rows=st.people.map(p=>{const os=st.ots.filter(o=>o.no===p.no&&o.cf&&o.comp==='대체휴무'&&o.date.slice(0,4)===y),A=os.reduce((a,o)=>a+o.cfH,0),P=os.reduce((a,o)=>a+o.h,0),B=st.reqs.filter(r=>r.no===p.no&&TYPES[r.type].alt&&[S.LEAD,S.HR,S.OK,S.CL,S.CH].includes(r.status)&&r.from.slice(0,4)===y).reduce((a,r)=>a+r.days*8,0);return {p,P,A,B,R:A-B}}).filter(x=>x.A>0&&x.R>0);
+ const rows=st.people.map(p=>{const all=st.ots.filter(o=>o.no===p.no&&o.cf&&o.comp==='대체휴무').sort((a,c)=>a.date<c.date?-1:1),os=all.filter(o=>o.date.slice(0,4)===y),A=os.reduce((a,o)=>a+o.cfH,0),P=os.reduce((a,o)=>a+o.h,0);
+  /* 쓴 시간은 먼저 생긴 대체휴무부터 깎아 그 생긴 해에 붙인다 (12/27 생김 → 1/5 사용도 생긴 해 현황에서 빠짐, 개인 잔여 altBal과 같음) */
+  let used=st.reqs.filter(r=>r.no===p.no&&TYPES[r.type].alt&&[S.LEAD,S.HR,S.OK,S.CL,S.CH].includes(r.status)).reduce((a,r)=>a+r.days*8,0),B=0;
+  all.forEach(o=>{const t=Math.min(o.cfH,used);used-=t;if(o.date.slice(0,4)===y)B+=t});return {p,P,A,B,R:A-B}}).filter(x=>x.A>0&&x.R>0);
  st._x=['대체휴무현황',['발생년도','부서','사번','이름','계획시간','확정시간(A)','사용시간(B)','잔여시간'],rows.map(x=>[y,x.p.dept,x.p.no,x.p.name,hm(x.P),hm(x.A),hm(x.B),hm(x.R)])];
  return head('대체휴무 현황','확정처리한 시간외근로 내역만 조회됩니다')+'<div class="bar" style="margin-bottom:12px"><span class="lb">발생년도</span><select id="alt_y">'+[+y-1,+y,+y+1].map(v=>'<option'+(String(v)===y?' selected':'')+'>'+v+'</option>').join('')+'</select><span class="tag">남은 시간이 있는 사람만 · 다 쓰면 명단에서 빠집니다</span><span class="sp"></span><button class="btn sm" id="xl_cur">엑셀</button></div>'+
  sec('남은 사람',rows.length+'명',tbl(['NO','발생년도','부서','사번','이름','>계획시간','>확정시간(A)','>사용시간(B)','>잔여시간',''],rows.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+y+'</td><td>'+esc(x.p.dept)+'</td><td class="tag">'+x.p.no+'</td><td><b>'+esc(x.p.name)+'</b></td><td class="right">'+hm(x.P)+'</td><td class="right">'+hm(x.A)+'</td><td class="right">'+(x.B?hm(x.B):'')+'</td><td class="right" style="color:var(--no)"><b>'+hm(x.R)+'</b></td><td class="right"><a class="btn sm p" href="#status/'+x.p.no+'">잔여내역</a></td></tr>'),'남은 대체휴무가 있는 사람이 없습니다'))};
