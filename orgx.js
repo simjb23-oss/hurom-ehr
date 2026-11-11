@@ -8,7 +8,7 @@ const H_BASE='대표\n  AX팀 #직속\n  전략과제운영팀 #직속\n  경영
 /* AX팀원(M365 AX팀 그룹, 2026-11-12) — 사진은 M365 프로필 사진이 있는 3명만 */
 let AX=[];const PHOTO={};
 /* AX팀원 명단·사진(ax.json, photo/)은 사내 SharePoint 판에만 둡니다 — 공개 GitHub 판에는 없음 */
-fetch('ax.json',{cache:'no-store'}).then(r=>r.ok?r.json():[]).then(j=>{AX=j||[];AX.forEach(a=>{if(a.photo)PHOTO[a.name]='photo/'+a.photo+'.jpg'});if(AX.length)render()}).catch(()=>{});
+fetch('ax.json',{cache:'no-store'}).then(r=>r.ok?r.json():[]).then(j=>{AX=j||[];AX.forEach(a=>{if(a.photo)PHOTO[a.name]='photo/'+a.photo+'.jpg'});if(AX.length){if(!st.people.length){addAX();save()}render()}})  /* 준보 2026-11-12 「AX팀원 6명 넣은 상태로 시작, 우리 팀이 기본 셋팅」 */.catch(()=>{});
 const photoOf=p=>p&&(p.photo||PHOTO[p.name]);
 const face=(p,sz)=>{sz=sz||32;const u=photoOf(p),n=(p&&p.name)||'?';return '<span class="ox-face" style="width:'+sz+'px;height:'+sz+'px;font-size:'+Math.round(sz*.42)+'px">'+(u?'<img src="'+u+'" alt="">':esc(n.replace(/^\d+번\s*/,'').charAt(0)))+'</span>'};
 window.EHRface=face;
@@ -121,10 +121,10 @@ V.staff=function(q){q=q?decodeURIComponent(q):'';const [c,txt]=(q.includes('~')?
 const mv=p=>st.moves.filter(m=>m.no===p.no).sort((a,b)=>(a.date+a.at)<(b.date+b.at)?-1:1);
 const hist=p=>{const M=mv(p);if(!M.length)return '<span class="tag">없음</span>';const l=M[M.length-1];return '<button class="btn sm" data-oxh="'+p.no+'">'+M.length+'건 · '+esc(l.date)+' '+esc(l.kind)+'</button>'};
 const histT=p=>'<div class="ox-tl">'+mv(p).map(m=>'<div><b>'+esc(m.date)+'</b><span class="st">'+esc(m.kind)+'</span>'+esc(m.chg||'')+(m.memo?' <span class="tag">'+esc(m.memo)+'</span>':'')+'</div>').join('')+'</div>';
-function addAX(){const y=ymd(new Date());let n=0;if(!st.depts.includes('AX팀'))st.depts.push('AX팀');
+function addAX(){const y=ymd(new Date());let n=0;AX.forEach(x=>{const d=x.dept||'AX팀';if(!st.depts.includes(d))st.depts.push(d)});
  AX.forEach(a=>{if(st.people.some(p=>p.name===a.name&&p.status!=='퇴직'))return;const no='H'+String(st.pseq++).padStart(4,'0');
-  st.people.push({no,name:a.name,co:a.co,dept:'AX팀',pos:a.pos,grade:a.grade,join:'2026-10-16',emp:'정규',status:'재직',cl:a.pos==='팀장'?'LV3':'LV2',base:0,allow:0,mail:a.mail+'@hurom.com',office:a.office,...(a.photo?{photo:'photo/'+a.photo+'.jpg'}:{}),...(a.hr?{hrRole:1,perm:{admin:true}}:{})});
-  addMove(no,'입사','2026-10-16','AX팀원(M365) · 입사일은 AX팀 발령일로 임시');if(a.me)st.me=no;n++});
+  st.people.push({no,name:a.name,co:a.co,dept:a.dept||'AX팀',pos:a.pos,grade:a.grade,join:'2026-10-16',emp:'정규',status:'재직',cl:a.pos==='팀장'?'LV3':'LV2',base:0,allow:0,mail:a.mail+'@hurom.com',office:a.office,...(a.photo?{photo:'photo/'+a.photo+'.jpg'}:{}),...(a.hr?{hrRole:1,perm:{admin:true}}:{})});
+  addMove(no,'입사','2026-10-16',(a.dept||'AX팀')+'(M365) · 입사일은 AX팀 발령일로 임시');if(a.me)st.me=no;n++});
  const P=nm=>(st.people.find(p=>p.name===nm)||{}).no,ad=k=>{const d=new Date();d.setDate(d.getDate()+k);return ymd(d)};
  [['정원빈','연차',0,0,1],['김태진','오후반차',1,1,.5],['송재규','외근',2,2,1],['민선경','연차',3,4,2]].forEach(([nm,ty,f,t,dd])=>{const no=P(nm);if(!no||st.reqs.some(r=>r.no===no&&r.reason==='AX 샘플'))return;const r={id:st.seq++,no,type:ty,from:ad(f),to:ad(t),days:dd,reason:'AX 샘플',status:S.OK,at:now(),retro:false,hist:[]};act(r,nm,'신청','AX 샘플');st.reqs.push(r)});
  save();return n}
