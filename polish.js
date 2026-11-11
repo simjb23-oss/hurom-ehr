@@ -26,7 +26,7 @@ html.sh .cal .h{font-size:12px;font-weight:600;color:var(--mute);padding-bottom:
 html.sh .cal .h:first-child{color:#ff4b3e}html.sh .cal .h:nth-child(7){color:#3d8bfd}
 html.sh .cal .c{min-height:64px;padding:6px 7px;font-size:12px;font-weight:600;color:var(--sub)}
 html.sh .cal .c.td{outline:0;box-shadow:inset 0 0 0 2px var(--brand);background:#fff}
-html.sh .cal .c i{font-size:11px;font-weight:600;padding:2px 7px;margin-top:4px}
+html.sh .cal .c i{font-size:11px;font-weight:600;padding:3px 7px;margin-top:4px;white-space:normal;overflow:visible;text-overflow:clip;word-break:keep-all;line-height:1.3;border-radius:8px}
 html.sh .cal .c i.o{background:#e3f6ea;color:#0b7a3e}
 html.sh .cal .c i.w{background:#fff1dd;color:#b45309}
 html.sh .card .hd a,html.sh .card .hd button:not(.btn){color:var(--ink)!important;font-weight:800}
@@ -41,6 +41,31 @@ html.sh .hsug .hlist{background:#f7f7f8!important}
 html.sh .hsug .hlist>*:empty{display:none}
 html.sh .toast{border-radius:16px;padding:12px 18px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
 html.sh .empty{color:var(--mute);font-size:14px;padding:22px 0;text-align:center}
+@media(max-width:900px){
+ html.sh nav{position:sticky;top:0;z-index:20;height:auto!important;min-height:0!important;max-height:none!important;display:flex;align-items:center;gap:2px;padding:8px 10px!important;overflow-x:auto;scrollbar-width:none;background:rgba(242,242,244,.96);border-bottom:1px solid #e6e6e8;backdrop-filter:blur(8px)}
+ html.sh nav::-webkit-scrollbar{display:none}
+ html.sh .app{grid-template-rows:auto 1fr!important;align-content:start;min-height:100vh}
+ html.sh nav{align-self:start}
+ html.sh #bell{display:none!important}
+ html.sh .bar{grid-template-columns:1fr!important}
+ html.sh .bd{overflow-x:auto;-webkit-overflow-scrolling:touch}
+ html.sh .bd table{min-width:100%}
+ html.sh .bd th,html.sh .bd td{white-space:nowrap}
+ html.sh .bd td.wrap,html.sh .bd td[colspan]{white-space:normal}
+ html.sh .logo{font-size:15px!important;margin:0 6px 0 2px!important;flex:none;white-space:nowrap}
+ html.sh nav a{flex:none;margin:0!important;padding:7px 12px!important;font-size:14px!important;border-radius:999px;gap:4px;justify-content:flex-start}
+ html.sh nav a .n{min-width:16px;height:16px;line-height:16px;font-size:10px;padding:0 4px}
+ html.sh main{padding:12px 12px 40px!important}
+ html.sh .bar{display:grid!important;grid-template-columns:1fr auto;gap:8px;padding:10px!important;border-radius:18px}
+ html.sh #roles{grid-column:1/-1}
+ html.sh #me{width:100%;min-width:0;font-size:14px;padding:8px 10px}
+ html.sh #nperm{display:none!important}
+ html.sh .bar .sp{display:none}
+ html.sh .top{margin:4px 0 12px}
+ html.sh h1{font-size:23px!important;word-break:keep-all}
+ html.sh .card{border-radius:20px}
+ html.sh .hd{padding:16px 16px 4px}html.sh .bd{padding:10px 16px 16px}
+}
 @media(max-width:800px){
  html.sh .bar{flex-wrap:wrap;gap:10px;padding:12px}
  html.sh #roles{width:100%;display:flex}
@@ -57,7 +82,8 @@ html.sh .empty{color:var(--mute);font-size:14px;padding:22px 0;text-align:center
  html.sh .kpi .card small{font-size:13px;word-break:keep-all}
  html.sh .cal{gap:3px}
  html.sh .cal .c{min-height:54px;padding:4px;font-size:11px}
- html.sh .cal .c i{font-size:9.5px;padding:1px 4px}
+ html.sh .cal .c i{font-size:9.5px;padding:2px 3px;word-break:break-all}
+ html.sh .btn{white-space:normal;max-width:100%}
  html.sh .toast{left:14px;right:14px;transform:translateY(20px);max-width:none}
  html.sh .toast.show{transform:none}
 }
