@@ -4,7 +4,7 @@
    - AI가 안 되면(열쇠 없음 · 오류 · 시간 초과) 바로 규칙 엔진으로 답하고, 그래도 안 되면 「직접 하기」로 손으로 합니다. */
 const X=new Proxy({},{get:(o,k)=>window.EHR[k]});
 const HAI={url:'https://api.anthropic.com/v1/messages',model:'claude-haiku-5-5',KEY:'hurom-ehr-ai-key',
- relay:'',key(){return localStorage.getItem(this.KEY)||''},on(){return !!this.key()&&!X.st.aiOff},
+ relay:'',DEF:'hurom-b7f25d',key(){return localStorage.getItem(this.KEY)||(this.relay?this.DEF:'')},on(){return !!this.key()&&!X.st.aiOff},
  endpoint(){return this.relay&&!/^sk-ant/.test(this.key())?this.relay.replace(/\/$/,'')+'/v1/messages':this.url}};
 fetch('relay.json?'+Date.now()).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.url)HAI.relay=j.url}).catch(()=>{});
 const aiText=h=>String(h||'').replace(/<br\s*\/?>/g,'\n').replace(/<\/(tr|div|p)>/g,'\n').replace(/<\/t[dh]>/g,' | ').replace(/<[^>]+>/g,'').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/\n{2,}/g,'\n').trim();
@@ -37,12 +37,5 @@ async function aiAnswer(q){const vn=X.viewerNo(),past=(X.st.chat||[]).filter(c=>
    return {type:'tool_result',tool_use_id:b.id,content:out.slice(0,4000)}})});
   if(early)return X.esc(early)+(card?'<div class="aicard">'+card+'</div>':'')+'<div class="tag" style="margin-top:6px">✦ AI 답 · 숫자·신청은 E-HR 기록 기준</div>'}
  throw new Error('AI 답이 길어져 멈춤')}
-/* 첫 화면에 「AI 연결」 줄 붙이기 */
-function aiBar(){const hm=document.querySelector('.hm');if(!hm||hm.querySelector('.aibar'))return;const d=document.createElement('p');d.className='tag aibar';d.style.cssText='text-align:center;margin:6px 0 0';
- d.innerHTML=HAI.key()?(HAI.relay&&!/^sk-ant/.test(HAI.key())?'✦ AI 연결됨 (준보 님 Claude) · ':'✦ AI 연결됨 (Claude) · ')+'<a href="#home" id="ai_key">열쇠 바꾸기</a> · <a href="#home" id="ai_del">AI 끊고 규칙으로만</a>':'지금은 규칙으로만 알아듣습니다 · <a href="#home" id="ai_key">AI 연결하기</a> <span>(열쇠는 이 브라우저에만 저장)</span>';
- const q=hm.querySelector('.hq');(q&&q.nextSibling?hm.insertBefore(d,q.nextSibling):hm.appendChild(d));
- const k=d.querySelector('#ai_key'),x=d.querySelector('#ai_del');
- if(k)k.onclick=e=>{e.preventDefault();const v=prompt('휴글 AI 열쇠를 넣어 주세요 (준보 님께 받은 열쇠, 또는 Anthropic sk-ant-…). 이 브라우저에만 저장됩니다.',HAI.key());if(v!=null){v.trim()?localStorage.setItem(HAI.KEY,v.trim()):localStorage.removeItem(HAI.KEY);X.render()}};
- if(x)x.onclick=e=>{e.preventDefault();localStorage.removeItem(HAI.KEY);X.render()}}
+/* 「AI 연결」 줄은 뺐습니다 (2026-11-11 준보) — 중계 주소가 있으면 휴글 열쇠로 저절로 연결, 없으면 규칙으로 답 */
 document.head.insertAdjacentHTML('beforeend','<style>.aicard{margin-top:8px;padding-top:8px;border-top:1px dashed #cfd8cf}.aibar a{color:inherit}</style>');
-new MutationObserver(aiBar).observe(document.body,{childList:true,subtree:true});aiBar();

@@ -192,6 +192,7 @@ details.rulel{margin-top:14px}details.rulel>summary{cursor:pointer;color:var(--s
  <div class="seg" id="roles"><button data-r="emp">직원</button><button data-r="lead">팀장</button><button data-r="hr">인사</button><button data-r="admin">관리자</button></div>
  <select id="me" title="어느 직원으로 볼지"></select>
  <span class="sp"></span>
+ <button class="btn sm" id="nperm" style="display:none" title="새 알림을 PC 알림으로 받기">🔔 PC 알림 켜기</button>
  <a class="btn sm" id="bell" href="#inbox" title="알림함">알림</a>
  </div>
 <div id="tabs"></div><div id="guide"></div>
@@ -599,7 +600,7 @@ function homeChat(arg){const vn=viewerNo(),all=arg==='all',mine=(st.chat||[]).fi
  return '<div class="hm'+(show.length?'':' first')+'"><div class="hlogo" title="휴글 = 휴롬 + 구글"><span class="lg"><span class="c1">휴</span><span class="c2">글</span></span><span class="en"><b class="g1">HU</b>ROM + GOO<b class="g2">GLE</b></span></div>'+
  (st.aiOff?'<div class="aioff"><b>AI가 지금 응답하지 않습니다.</b> 아래 「직접 하기」에서 똑같이 처리할 수 있습니다. <button class="btn sm" id="ai_on">AI 다시 켜기</button></div>':'')+
  '<div class="hq"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="hq" placeholder="'+(st.aiOff?'AI 꺼짐 — 아래에서 직접 하세요':'무엇을 도와드릴까요? 예: 11/20 오후 반차 · 남은 연차 · 재직증명서')+'"'+(st.aiOff?' disabled':'')+' autocomplete="off"><button class="btn p" id="hq_go"'+(st.aiOff?' disabled':'')+'>보내기</button></div>'+(show.length||st.aiOff?'':'<div class="hbtns"><button id="hq_ask">휴글에게 묻기</button><button id="hq_self">직접 하기</button></div>')+
- (st.aiOff?'':'<div class="chips">'+(SUG[st.role]||SUG.emp).map(x=>'<button data-sug="'+esc(x)+'">'+esc(x)+'</button>').join('')+'</div>')+
+ (st.aiOff||show.length?'':'<div class="chips">'+(SUG[st.role]||SUG.emp).map(x=>'<button data-sug="'+esc(x)+'">'+esc(x)+'</button>').join('')+'</div>')+
  (show.length?'<div class="msgs">'+(mine.length>show.length?'<p class="tag" style="text-align:center"><a href="#home/all">지난 대화 '+(mine.length-show.length)+'건 더 보기</a></p>':'')+show.map(c=>'<div class="msg me"><div>'+esc(c.q)+'<small>'+c.at.slice(5,16)+'</small></div></div><div class="msg"><div>'+c.a+'</div></div>').join('')+'</div>':'<div style="height:14px"></div>')+
  '<div id="hself"></div>'+sec('직접 하기','AI 없이도 같은 일을 바로 합니다','<div class="tiles">'+(QUICK[st.role]||QUICK.emp).map(([l,go,ty])=>ty?'<button data-qt="'+ty+'">'+l+'</button>':'<a href="'+go.replace('{me}',st.me||'')+'">'+l+'</a>').join('')+'</div>')+
  '<p class="tag" style="text-align:center;margin-top:10px">대화는 모두 기록됩니다 ('+mine.length+'건) · <a href="#home/all">전체 대화 내역</a>'+(st.aiOff?'':' · <a href="#home" id="ai_off">AI 멈춤 시험</a>')+'</p></div>'}
@@ -1547,6 +1548,11 @@ V.inbox=()=>{const it=inboxItems();
   todoList(it,'처리할 일이 없습니다')+'<div style="margin-top:14px"><a class="btn p" href="#leave/new">근태·휴가 신청</a></div>'}
  return head('할 일',it.length+'건')+todoList(it,'처리할 일이 없습니다')};
 function bell(){const b=$('#bell');if(!b)return;const n=inboxItems().length;b.innerHTML='알림'+(n?'<span class="n">'+n+'</span>':'');b.classList.toggle('on',n>0)}
+/* PC 알림 (곽두팔, 2026-11-11 준보 「알림기능 미리 넣어두고」): 알림함에 새 항목이 생기면 브라우저(윈도우) 알림으로 띄움. 보는 사람·역할별로 본 것을 기억. 사내판은 여기서 Teams 1:1 보내기로 바꾸면 됨 */
+function pcNotify(){const np=$('#nperm'),ok='Notification' in window;if(np){np.style.display=ok&&Notification.permission==='default'?'':'none';np.onclick=()=>Notification.requestPermission().then(()=>{pcNotify();toast(Notification.permission==='granted'?'PC 알림을 켰습니다 — 새 할 일이 생기면 화면 오른쪽 아래에 뜹니다':'PC 알림이 막혀 있습니다 (브라우저 주소창 왼쪽 자물쇠에서 허용)')})}
+ if(!ok)return;const its=inboxItems(),txt=x=>String(x.txt).replace(/<[^>]+>/g,''),ids=its.map(x=>x.k+'|'+txt(x)),k='ehr-seen-'+st.role+'-'+viewerNo(),seen=JSON.parse(localStorage.getItem(k)||'null');
+ localStorage.setItem(k,JSON.stringify(ids));if(!seen||Notification.permission!=='granted')return;
+ its.filter((x,i)=>!seen.includes(ids[i])).slice(0,3).forEach(x=>{try{const n=new Notification('휴롬 E-HR · '+x.k,{body:txt(x),tag:'ehr-'+x.k+'-'+txt(x).slice(0,40)});n.onclick=()=>{window.focus();location.hash=x.go||'#inbox';n.close()}}catch(e){}})}
 
 function wireMods3(page){
  const on=(s,f)=>{const e=$(s);if(e)e.onclick=f};
@@ -1797,7 +1803,7 @@ function wireData(){
 function render(){
  const h=(location.hash||'#home').slice(1).split('/');const page=V[h[0]]?h[0]:'home';
  if(st.role==='emp'){let rd=0;st.alerts.filter(a=>a.no===st.me&&!a.read&&a.go===(location.hash||'')).forEach(a=>{a.read=now();rd=1});if(rd)save()} // 알림을 열어 본 시각 기록
- SIMD=st.simDate||'';autoRun();nav(page);bar();guide();ensureTasks();bell();const v=$('#view');v.classList.remove('view');void v.offsetWidth;v.classList.add('view');v.innerHTML=V[page](h[1]);wire(page);wireReset();if(page==='reorg')wireReorg();wireAuto();wirePerm();wireHome();wireAdmin();window.scrollTo(0,0)}
+ SIMD=st.simDate||'';autoRun();nav(page);bar();guide();ensureTasks();bell();pcNotify();const v=$('#view');v.classList.remove('view');void v.offsetWidth;v.classList.add('view');v.innerHTML=V[page](h[1]);wire(page);wireReset();if(page==='reorg')wireReorg();wireAuto();wirePerm();wireHome();wireAdmin();window.scrollTo(0,0)}
 function wire(page){
  document.querySelectorAll('[data-go]').forEach(e=>e.onclick=()=>location.hash=e.dataset.go);
  const th=$('#tohr')||$('#tohr2');if(th)th.onclick=()=>switchRole('hr','#people');
