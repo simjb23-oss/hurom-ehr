@@ -26,7 +26,6 @@ const MID=[
  ['point','휴가샵 포인트','시간·파일','11월 미사용자에게만 알림',['clock','shop'],['tm'],'welfare'],
  ['offjt','일학습병행 OFF-JT','시간','훈련일 3일 전 본인·팀장 알림',['clock'],['tm'],'forms/offjt'],
  ['gong','사내공모 결과','사건','합격자를 고르면 나머지 지원자에게 결과 자동 안내',['hrok'],['tm'],'forms'],
- ['ticket','티켓 선착순','사건','신청 시각 순으로 당첨·대기',['req'],['tm'],'forms'],
  ['hist','지난 근태 옮기기','한 번','올해 연차·근태 기록 일괄 넣기',['gw'],[],'bulk']];
 /* 나가는 곳 */
 const OUT=[
@@ -62,7 +61,8 @@ V.link=function(){const cnt=s=>EDGES.filter(e=>e[2]===s).length,vis=n=>!only||n.
   '<div class="fl-col"><h4>들어오는 곳</h4>'+IN.map(x=>N[x[0]]).filter(vis).map(n=>box(n,'r')).join('')+'</div>'+
   '<div class="fl-col"><h4>E-HR 자동 처리</h4>'+MID.map(x=>N[x[0]]).filter(vis).map(n=>box(n,'lr')).join('')+'</div>'+
   '<div class="fl-col"><h4>나가는 곳</h4>'+OUT.map(x=>N[x[0]]).filter(vis).map(n=>box(n,'l')).join('')+'</div>'+
- '</div></div><div class="fl-det" id="fl_det">'+det()+'</div></div></section>'};
+ '</div></div><div class="fl-det" id="fl_det">'+det()+'</div></div></section>'+
+ sec('항목별 연결',MID.length+'개 · 끊기거나 켜기 전인 선이 있으면 할 일이 나옵니다','<table><tr><th>자동 처리</th><th>언제</th><th>받는 곳</th><th>내보내는 곳</th><th>연결하려면</th></tr>'+MID.map(x=>N[x[0]]).map(n=>{const bad=[...n.ins,...n.outs].map(k=>N[k]).filter(m=>m.s!=='on');return '<tr class="ck" data-flr="'+n.id+'"><td><b>'+esc(n.t)+'</b></td><td>'+esc(n.trig)+'</td><td>'+n.ins.map(k=>esc(N[k].t)+' '+tag(N[k].s)).join('<br>')+'</td><td>'+(n.outs.length?n.outs.map(k=>esc(N[k].t)+' '+tag(N[k].s)).join('<br>'):'E-HR 안')+'</td><td>'+(bad.length?[...new Set(bad.map(m=>m.how))].map(h=>'· '+esc(h)).join('<br>'):'<span class="st o">다 연결됨</span>')+'</td></tr>'}).join('')+'</table>')};
 function det(){const n=N[sel];if(!n)return '<div class="tag">상자를 누르면 무엇이 어디로 이어지는지, 끊긴 곳은 무엇을 정해야 하는지 나옵니다</div>';
  if(n.k==='mid')return '<b>'+esc(n.t)+'</b> '+tag(n.s)+' <span class="tag">'+esc(n.trig)+'</span><div style="margin-top:4px">'+esc(n.what)+'</div>'+
   '<div class="row">받는 곳: '+n.ins.map(k=>'<a href="#" data-fl="'+k+'">'+esc(N[k].t)+'</a> '+tag(N[k].s)).join(' · ')+'</div>'+
@@ -78,6 +78,7 @@ function draw(){const svg=document.getElementById('fl_svg');if(!svg)return;const
  svg.innerHTML=h;document.querySelectorAll('.fl-n').forEach(e=>{e.classList.toggle('sel',e.dataset.fl===sel);e.classList.toggle('dim',!!near&&!near.has(e.dataset.fl))})}
 function wireFlow(){if(!document.getElementById('fl_svg'))return;
  document.querySelectorAll('[data-fl]').forEach(e=>e.onclick=ev=>{ev.preventDefault();sel=sel===e.dataset.fl?'':e.dataset.fl;document.getElementById('fl_det').innerHTML=det();wireFlow();draw()});
+ document.querySelectorAll('[data-flr]').forEach(e=>e.onclick=()=>{sel=e.dataset.flr;document.getElementById('fl_det').innerHTML=det();wireFlow();draw();document.querySelector('.fl-wrap').scrollIntoView({behavior:'smooth'})});
  document.querySelectorAll('[data-flf]').forEach(e=>e.onclick=ev=>{ev.preventDefault();only=e.dataset.flf;sel='';render()});
  requestAnimationFrame(draw)}
 window.addEventListener('resize',()=>requestAnimationFrame(draw));
