@@ -4,7 +4,9 @@
    - AI가 안 되면(열쇠 없음 · 오류 · 시간 초과) 바로 규칙 엔진으로 답하고, 그래도 안 되면 「직접 하기」로 손으로 합니다. */
 const X=new Proxy({},{get:(o,k)=>window.EHR[k]});
 const HAI={url:'https://api.anthropic.com/v1/messages',model:'claude-haiku-5-5',KEY:'hurom-ehr-ai-key',
- key(){return localStorage.getItem(this.KEY)||''},on(){return !!this.key()&&!X.st.aiOff}};
+ relay:'',key(){return localStorage.getItem(this.KEY)||''},on(){return !!this.key()&&!X.st.aiOff},
+ endpoint(){return this.relay&&!/^sk-ant/.test(this.key())?this.relay.replace(/\/$/,'')+'/v1/messages':this.url}};
+fetch('relay.json?'+Date.now()).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.url)HAI.relay=j.url}).catch(()=>{});
 const aiText=h=>String(h||'').replace(/<br\s*\/?>/g,'\n').replace(/<\/(tr|div|p)>/g,'\n').replace(/<\/t[dh]>/g,' | ').replace(/<[^>]+>/g,'').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/\n{2,}/g,'\n').trim();
 const AI_TOOLS=[
  {name:'ehr',description:'E-HR 에 짧은 한국어 명령을 보내고 화면 결과를 받습니다. 신청은 초안만 채우고 사람이 [이대로 신청]을 누릅니다. 날짜는 YYYY-MM-DD 로 바꿔 넣으세요. 명령 예: "2026-11-20 오후 반차", "2026-11-20~2026-11-21 연차", "2026-11-14 외근", "2026-11-17 대체휴무", "남은 연차", "연차 사용 내역", "대체휴무 얼마", "재직증명서", "경력증명서", "유연근무", "우리 팀 휴가", "연차 촉진", "승인할 것", "할 일", "급여", "52시간"',
@@ -20,8 +22,8 @@ function aiSystem(){const r=X.st.role,no=r==='emp'?X.st.me:X.viewerNo(),p=X.pers
  '- 규정·제도 질문은 rules 도구로 찾아 근거 규정 이름을 붙여 답한다. 규정에 없으면 모른다고 하고 인사팀(피플&컬처팀)에 물으라고 한다. 지어내지 않는다.\n'+
  '- 신청은 초안만 채운다. 「이대로 신청」 버튼은 화면에 따로 뜨니 「아래 버튼을 누르면 신청됩니다」라고만 말한다.\n'+
  '- 답은 한국어 존댓말 1~3문장, 결론부터. 마크다운 표·제목은 쓰지 않는다. 숫자는 도구 결과에 있는 것만 쓴다.'}
-async function aiCall(msgs){const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),20000);
- try{const r=await fetch(HAI.url,{method:'POST',signal:ac.signal,headers:{'content-type':'application/json','x-api-key':HAI.key(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+async function aiCall(msgs){const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),60000);
+ try{const r=await fetch(HAI.endpoint(),{method:'POST',signal:ac.signal,headers:{'content-type':'application/json','x-api-key':HAI.key(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
   body:JSON.stringify({model:HAI.model,max_tokens:700,system:aiSystem(),tools:AI_TOOLS,messages:msgs})});
   if(!r.ok)throw new Error('AI '+r.status+' '+(await r.text()).slice(0,120));return await r.json()}finally{clearTimeout(tm)}}
 async function aiAnswer(q){const vn=X.viewerNo(),past=(X.st.chat||[]).filter(c=>c.no===vn&&c.role===X.st.role).slice(-4),msgs=[];
@@ -31,15 +33,16 @@ async function aiAnswer(q){const vn=X.viewerNo(),past=(X.st.chat||[]).filter(c=>
   if(res.stop_reason!=='tool_use'||!tu.length){const txt=res.content.filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
    return X.esc(txt).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')+(card?'<div class="aicard">'+card+'</div>':'')+'<div class="tag" style="margin-top:6px">✦ AI 답 · 숫자·신청은 E-HR 기록 기준</div>'}
   msgs.push({role:'assistant',content:res.content});
-  msgs.push({role:'user',content:tu.map(b=>{let out;if(b.name==='ehr'){const h=X.chatAnswer(String(b.input.command||''));if(/data-chsend/.test(h)||(!/data-chsend/.test(card)&&/class="btn/.test(h)))card=h;out=aiText(h)}else out=aiRules(b.input.keyword||'');
-   return {type:'tool_result',tool_use_id:b.id,content:out.slice(0,4000)}})})}
+  let early='';msgs.push({role:'user',content:tu.map(b=>{let out;if(b.name==='ehr'){const h=X.chatAnswer(String(b.input.command||''));if(/data-chsend/.test(h)||(!/data-chsend/.test(card)&&/class="btn/.test(h)))card=h;out=aiText(h);if(b.input.say&&!/잘 알아듣지/.test(out))early=b.input.say}else out=aiRules(b.input.keyword||'');
+   return {type:'tool_result',tool_use_id:b.id,content:out.slice(0,4000)}})});
+  if(early)return X.esc(early)+(card?'<div class="aicard">'+card+'</div>':'')+'<div class="tag" style="margin-top:6px">✦ AI 답 · 숫자·신청은 E-HR 기록 기준</div>'}
  throw new Error('AI 답이 길어져 멈춤')}
 /* 첫 화면에 「AI 연결」 줄 붙이기 */
 function aiBar(){const hm=document.querySelector('.hm');if(!hm||hm.querySelector('.aibar'))return;const d=document.createElement('p');d.className='tag aibar';d.style.cssText='text-align:center;margin:6px 0 0';
- d.innerHTML=HAI.key()?'✦ AI 연결됨 (Claude) · <a href="#home" id="ai_key">열쇠 바꾸기</a> · <a href="#home" id="ai_del">AI 끊고 규칙으로만</a>':'지금은 규칙으로만 알아듣습니다 · <a href="#home" id="ai_key">AI 연결하기</a> <span>(열쇠는 이 브라우저에만 저장)</span>';
+ d.innerHTML=HAI.key()?(HAI.relay&&!/^sk-ant/.test(HAI.key())?'✦ AI 연결됨 (준보 님 Claude) · ':'✦ AI 연결됨 (Claude) · ')+'<a href="#home" id="ai_key">열쇠 바꾸기</a> · <a href="#home" id="ai_del">AI 끊고 규칙으로만</a>':'지금은 규칙으로만 알아듣습니다 · <a href="#home" id="ai_key">AI 연결하기</a> <span>(열쇠는 이 브라우저에만 저장)</span>';
  const q=hm.querySelector('.hq');(q&&q.nextSibling?hm.insertBefore(d,q.nextSibling):hm.appendChild(d));
  const k=d.querySelector('#ai_key'),x=d.querySelector('#ai_del');
- if(k)k.onclick=e=>{e.preventDefault();const v=prompt('Anthropic API 열쇠(sk-ant-…)를 넣어 주세요. 이 브라우저에만 저장되고 다른 곳으로 보내지 않습니다.',HAI.key());if(v!=null){v.trim()?localStorage.setItem(HAI.KEY,v.trim()):localStorage.removeItem(HAI.KEY);X.render()}};
+ if(k)k.onclick=e=>{e.preventDefault();const v=prompt('휴글 AI 열쇠를 넣어 주세요 (준보 님께 받은 열쇠, 또는 Anthropic sk-ant-…). 이 브라우저에만 저장됩니다.',HAI.key());if(v!=null){v.trim()?localStorage.setItem(HAI.KEY,v.trim()):localStorage.removeItem(HAI.KEY);X.render()}};
  if(x)x.onclick=e=>{e.preventDefault();localStorage.removeItem(HAI.KEY);X.render()}}
 document.head.insertAdjacentHTML('beforeend','<style>.aicard{margin-top:8px;padding-top:8px;border-top:1px dashed #cfd8cf}.aibar a{color:inherit}</style>');
 new MutationObserver(aiBar).observe(document.body,{childList:true,subtree:true});aiBar();
