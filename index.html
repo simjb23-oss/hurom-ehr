@@ -151,10 +151,12 @@ nav a{font-size:15px;padding:10px 12px}
 @keyframes hpulse{0%{box-shadow:0 0 0 0 #d9731a66}70%{box-shadow:0 0 0 7px #d9731a00}100%{box-shadow:0 0 0 0 #d9731a00}}
 .jfill{display:grid;grid-template-columns:92px 1fr;gap:18px;align-items:center;border-radius:16px;padding:16px 20px;margin-bottom:12px;cursor:pointer;transition:transform .15s,border-color .15s}.jfill:hover{transform:translateY(-1px);border-color:var(--brand-line)}
 .jfill small{display:block;color:var(--sub);font-size:12.5px}.jfill b{display:inline-block;font-size:40px;line-height:1.1;margin-top:2px;color:var(--ink);font-variant-numeric:tabular-nums}.jfill em{font-style:normal;color:var(--sub);margin-left:3px}.jfill .d{color:var(--mute);font-size:12px;margin-top:6px}
-.jbar{height:6px;border-radius:3px;background:#f1ece2;overflow:hidden;margin-top:8px}.jbar i{display:block;height:100%;width:var(--w);border-radius:3px;background:linear-gradient(90deg,#f6b56b,#d9731a)}.hsplit.anim .jbar i{animation:hbar 1.2s cubic-bezier(.2,.7,.2,1) .2s both}@keyframes hbar{from{width:0}}
-.jglass{width:92px;height:118px}.jglass .lq{transform:translateY(var(--y))}.hsplit.anim .jglass .lq{animation:jrise 1.4s cubic-bezier(.2,.7,.2,1) .2s backwards}@keyframes jrise{from{transform:translateY(120px)}}
-.jglass .wv{animation:jwave 6s linear infinite}.jglass .wv2{animation:jwave 9s linear infinite reverse}@keyframes jwave{to{transform:translateX(60px)}}
-.jglass .bub{opacity:0;animation:jbub 4s ease-in infinite}.jglass .bub:nth-of-type(2){animation-delay:1.3s}.jglass .bub:nth-of-type(3){animation-delay:2.6s}@keyframes jbub{0%{opacity:0;transform:translateY(0)}20%{opacity:.9}100%{opacity:0;transform:translateY(-40px)}}
+.jbar{height:6px;border-radius:3px;background:#f1ece2;overflow:hidden;margin-top:8px}.jbar i{display:block;height:100%;width:var(--w);border-radius:3px;background:linear-gradient(90deg,#a8d86a,#3f8f3a)}.hsplit.anim .jbar i{animation:hbar 1.2s cubic-bezier(.2,.7,.2,1) .2s both}@keyframes hbar{from{width:0}}
+.jglass{width:92px;height:118px;overflow:visible}.jglass .lq{transform:translateY(var(--y))}.hsplit.anim .jglass .lq{animation:jrise 1.6s cubic-bezier(.2,.7,.2,1) .3s backwards}@keyframes jrise{from{transform:translateY(118px)}}
+.jglass .wv{animation:jwave 3s linear infinite}.jglass .wv2{animation:jwave 4.5s linear infinite reverse}@keyframes jwave{to{transform:translateX(28px)}}
+.jglass .vg{opacity:0;animation:jdrop 4.8s cubic-bezier(.5,0,.8,.6) infinite}.jglass .v2{animation-delay:1.2s}.jglass .v3{animation-delay:2.4s}.jglass .v4{animation-delay:3.6s}@keyframes jdrop{0%{opacity:0;transform:translateY(0) rotate(0)}8%{opacity:1}30%{opacity:1;transform:translateY(34px) rotate(25deg)}38%{opacity:0;transform:translateY(42px) rotate(30deg) scale(.6)}100%{opacity:0}}
+.jglass .auger{animation:jscrew .8s linear infinite}@keyframes jscrew{to{transform:translateY(8px)}}.jglass .led{animation:jled 1.6s ease-in-out infinite}@keyframes jled{50%{opacity:.3}}
+.jglass .drip{opacity:0;animation:jdrip 1.2s ease-in infinite}.jglass .d2{animation-delay:.6s}@keyframes jdrip{0%{opacity:0;transform:translateY(0)}15%{opacity:1}100%{opacity:0;transform:translateY(14px)}}
 @media(prefers-reduced-motion:reduce){.hsplit *,.hsplit *::before,.hsplit *::after{animation:none!important;transition:none!important}}
 /* 대화가 길어져도 창이 밑으로 안 내려가게: 대화만 안에서 스크롤 (준보 2026-11-11) */
 .hsplit .msgs{max-height:max(260px,calc(100vh - 430px));overflow-y:auto;padding-right:6px;scroll-behavior:smooth;overscroll-behavior:contain}.hsplit .msgs::-webkit-scrollbar{width:6px}.hsplit .msgs::-webkit-scrollbar-thumb{background:#d8d2c4;border-radius:3px}
@@ -637,12 +639,23 @@ const QUICK={emp:[['연차·휴가 신청','#leave/new'],['대체휴무 신청',
  lead:[['승인함','#leave/approve'],['연장 승인','#work/ot'],['유연근무 승인','#work/flex'],['팀 근태 달력','#status'],['52시간','#work/all'],['휴롬 규정','#rules']],
  hr:[['연차 촉진','#promote'],['인사 확정','#leave/hr'],['근태 현황','#status'],['증명서 발급','#cert'],['인원 명부','#people'],['자동 처리','#auto'],['통지 기록','#auto/log'],['월 마감','#close']]};
 /* 첫 화면 오른쪽: 역할별 HR 정보 (대시보드 카드 · 대화로 신청하면 render 한 번에 같이 바뀜) */
-/* 주스잔 (AXHub 「좌석 채움 주스잔」 따라 함 — 곽두팔 2026-11-11 준보 「애니메이션 많이, 살아 있는 느낌」): 남은 비율만큼 차오르고 물결·거품이 천천히 */
-function juiceGlass(ratio,col){const r=Math.max(0,Math.min(1,ratio||0)),y=Math.round(8+(1-r)*102),w='q15 -6 30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0',c=col||['#f6b56b','#d9731a'];
- return '<svg class="jglass" viewBox="0 0 92 118" aria-hidden="true"><defs><clipPath id="jgc"><path d="M10 6h72l-8 104a6 6 0 0 1-6 6H24a6 6 0 0 1-6-6z"/></clipPath><linearGradient id="jgl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+c[0]+'"/><stop offset="1" stop-color="'+c[1]+'"/></linearGradient></defs>'+
- '<g clip-path="url(#jgc)"><rect x="0" y="0" width="92" height="118" fill="#fbf8f2"/><g class="lq" style="--y:'+y+'px"><path class="wv2" d="M-60 -2 '+w+' V130 H-60z" fill="'+c[0]+'" opacity=".55"/><path class="wv" d="M-60 1 '+w+' V130 H-60z" fill="url(#jgl)"/>'+
- '<circle class="bub" cx="34" cy="60" r="2.4" fill="#fff"/><circle class="bub" cx="52" cy="72" r="1.8" fill="#fff"/><circle class="bub" cx="44" cy="84" r="2" fill="#fff"/></g></g>'+
- '<path d="M10 6h72l-8 104a6 6 0 0 1-6 6H24a6 6 0 0 1-6-6z" fill="none" stroke="#cfd8d2" stroke-width="2"/><path d="M16 14l-1 18" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".7"/></svg>'}
+/* 원액기 (곽두팔 2026-11-11 준보 「주스 말고, 우리는 원액기 회사 — 야채·채소」): 채소·과일이 투입구로 떨어지고 스크루가 돌며 컵에 녹즙이 남은 연차 비율만큼 차오름 */
+function juiceGlass(ratio){const r=Math.max(0,Math.min(1,ratio||0)),y=Math.round(70+(1-r)*40),w='q7 -4 14 0 t14 0 t14 0 t14 0 t14 0 t14 0';
+ return '<svg class="jglass" viewBox="0 0 92 118" aria-hidden="true"><defs><clipPath id="jcup"><path d="M62 68h26l-3 42a3 3 0 0 1-3 3H68a3 3 0 0 1-3-3z"/></clipPath><linearGradient id="jgl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a8d86a"/><stop offset="1" stop-color="#3f8f3a"/></linearGradient>'+
+ '<pattern id="jsc" width="12" height="8" patternUnits="userSpaceOnUse"><path class="scr" d="M0 6L12 2" stroke="#b9c7bd" stroke-width="2.2"/></pattern></defs>'+
+ // 떨어지는 채소·과일: 당근·사과·잎채소·토마토
+ '<g transform="translate(0,10)"><g class="vg v1"><path d="M30 -14l5 12-10 0z" fill="#f08a24"/><path d="M30 -14l-3-5M30 -14l0-6M30 -14l3-5" stroke="#4f9a3a" stroke-width="1.6" stroke-linecap="round"/></g>'+
+ '<g class="vg v2"><circle cx="40" cy="-8" r="5.5" fill="#e0453a"/><path d="M40 -13q3-4 5-2" stroke="#4f9a3a" stroke-width="1.6" fill="none"/></g>'+
+ '<g class="vg v3"><ellipse cx="25" cy="-8" rx="6" ry="4" fill="#5fae43"/><path d="M20 -8h10" stroke="#3d7f2c" stroke-width="1"/></g>'+
+ '<g class="vg v4"><circle cx="35" cy="-8" r="4.5" fill="#f26b3a"/><path d="M33 -12h4" stroke="#4f9a3a" stroke-width="1.6"/></g></g>'+
+ // 투입구·몸통·스크루 창·받침
+ '<path d="M10 14h44l-7 16H17z" fill="#e6f3e3" stroke="#8fb39a" stroke-width="2"/><rect x="18" y="30" width="28" height="44" rx="6" fill="#f6fbf5" stroke="#8fb39a" stroke-width="2"/>'+
+ '<rect x="25" y="33" width="14" height="24" rx="3" fill="#eef3ef"/><rect class="auger" x="25" y="25" width="14" height="40" fill="url(#jsc)" clip-path="inset(8px 0 8px 0)"/>'+
+ '<path d="M46 56h10q3 0 3 3v3" fill="none" stroke="#8fb39a" stroke-width="3" stroke-linecap="round"/><rect x="12" y="74" width="40" height="12" rx="4" fill="#1f5a3c"/><circle class="led" cx="32" cy="80" r="2" fill="#a8d86a"/>'+
+ // 녹즙 방울 + 컵
+ '<circle class="drip" cx="59" cy="64" r="1.8" fill="#6fb54a"/><circle class="drip d2" cx="59" cy="64" r="1.5" fill="#6fb54a"/>'+
+ '<g clip-path="url(#jcup)"><rect x="60" y="66" width="30" height="50" fill="#fbf8f2"/><g class="lq" style="--y:'+y+'px"><path class="wv2" d="M40 -1 '+w+' V60 H40z" fill="#a8d86a" opacity=".6"/><path class="wv" d="M40 1 '+w+' V60 H40z" fill="url(#jgl)"/></g></g>'+
+ '<path d="M62 68h26l-3 42a3 3 0 0 1-3 3H68a3 3 0 0 1-3-3z" fill="none" stroke="#cfd8d2" stroke-width="2"/><path d="M67 74l-1 12" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".8"/></svg>'}
 const HANIM={};
 const TCOL=[['#f4a340','#e07b1f'],['#8cc63f','#5f9a2a'],['#f06a6a','#c94545'],['#a98bd9','#7d5fb8'],['#f7cf4a','#d9a91c'],['#5fc1b5','#3a958a']];
 function teamChar(q,i){const c=TCOL[(+String(q.no).replace(/\D/g,'')||i)%TCOL.length],ty=q.type,half=/반차|오전|오후/.test(ty),sl=/연차|대체|경조|휴가|병가/.test(ty)&&!half,out=/외근|출장/.test(ty),
