@@ -17,7 +17,7 @@ function aiRules(k){if(!X.RULES)return '규정을 아직 불러오지 못했습�
  for(const g in X.RULES.groups)X.RULES.groups[g].forEach(x=>{const s=ws.filter(w=>(x.title+x.text).includes(w)).length;if(s)hit.push([s+(ws.some(w=>x.title.includes(w))?2:0),g,x])});
  hit.sort((a,b)=>b[0]-a[0]);return hit.length?hit.slice(0,3).map(([,g,x])=>'['+g+'] '+x.title+'\n'+x.text.slice(0,1200)).join('\n\n'):'맞는 규정이 없습니다'}
 function aiSystem(){const r=X.st.role,no=r==='emp'?X.st.me:X.viewerNo(),p=X.person(no)||{},t=X.today();
- return '너는 휴롬 E-HR 첫 화면의 대화 비서 「휴글」이다. 오늘은 '+t+'('+X.WD[new Date(t+'T00:00').getDay()]+')이다. 지금 사용자는 '+(p.name||'')+' ('+(p.dept||'')+', 역할 '+({emp:'직원',lead:'팀장',hr:'인사'}[r]||r)+')이다.\n'+
+ return '너는 휴롬 E-HR 첫 화면의 인사 대화 비서다. 오늘은 '+t+'('+X.WD[new Date(t+'T00:00').getDay()]+')이다. 지금 사용자는 '+(p.name||'')+' ('+(p.dept||'')+', 역할 '+({emp:'직원',lead:'팀장',hr:'인사'}[r]||r)+')이다.\n'+
  '- 사람 말을 알아듣고 ehr 도구로 일을 처리한다. 휴가·반차·외근·대체휴무 신청 말이면 날짜를 YYYY-MM-DD 로 풀어 ehr 에 넣는다(「다음 주 금요일」, 「모레」 등은 오늘 기준으로 계산). 반차인데 오전·오후가 없으면 묻는다.\n'+
  '- 규정·제도 질문은 rules 도구로 찾아 근거 규정 이름을 붙여 답한다. 규정에 없으면 모른다고 하고 인사팀(피플&컬처팀)에 물으라고 한다. 지어내지 않는다.\n'+
  '- 신청은 초안만 채운다. 「이대로 신청」 버튼은 화면에 따로 뜨니 「아래 버튼을 누르면 신청됩니다」라고만 말한다.\n'+

@@ -156,6 +156,10 @@ nav a{font-size:15px;padding:10px 12px}
 .jglass .wv{animation:jwave 6s linear infinite}.jglass .wv2{animation:jwave 9s linear infinite reverse}@keyframes jwave{to{transform:translateX(60px)}}
 .jglass .bub{opacity:0;animation:jbub 4s ease-in infinite}.jglass .bub:nth-of-type(2){animation-delay:1.3s}.jglass .bub:nth-of-type(3){animation-delay:2.6s}@keyframes jbub{0%{opacity:0;transform:translateY(0)}20%{opacity:.9}100%{opacity:0;transform:translateY(-40px)}}
 @media(prefers-reduced-motion:reduce){.hsplit *,.hsplit *::before,.hsplit *::after{animation:none!important;transition:none!important}}
+/* 대화가 길어져도 창이 밑으로 안 내려가게: 대화만 안에서 스크롤 (준보 2026-11-11) */
+.hsplit .msgs{max-height:max(260px,calc(100vh - 430px));overflow-y:auto;padding-right:6px;scroll-behavior:smooth;overscroll-behavior:contain}.hsplit .msgs::-webkit-scrollbar{width:6px}.hsplit .msgs::-webkit-scrollbar-thumb{background:#d8d2c4;border-radius:3px}
+.hside{max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain}.hside::-webkit-scrollbar{width:6px}.hside::-webkit-scrollbar-thumb{background:#d8d2c4;border-radius:3px}
+@media(max-width:1000px){.hsplit .msgs{max-height:60vh}.hside{max-height:none;overflow:visible}}
 @media(max-width:1000px){.hsplit{grid-template-columns:1fr}.hside{position:static}}
 .hbtns{display:flex;gap:10px;justify-content:center;margin:18px 0 6px}.hbtns button{background:#f8f9fa;border:1px solid #f8f9fa;border-radius:6px;padding:9px 16px;font-size:14px;color:#3c4043;cursor:pointer;font-family:inherit}.hbtns button:hover{border-color:#dadce0;box-shadow:0 1px 1px rgba(0,0,0,.1)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:12px 0 4px}.chips button{border:1px solid var(--line);background:#fff;border-radius:16px;padding:5px 12px;font-size:13px;cursor:pointer}.chips button:hover{border-color:var(--brand)}
@@ -294,16 +298,16 @@ function switchRole(r,route){if(r==='admin'){st.asAdmin=1;r='hr'}else st.asAdmin
 
 /* ---------- 메뉴 ---------- */
 const MENUS={
- hr:[['홈',[['home','휴글'],['dash','대시보드'],['inbox','알림함'],['close','월 마감']]],
+ hr:[['홈',[['home','홈'],['dash','대시보드'],['inbox','알림함'],['close','월 마감']]],
   ['사람',[['people','인원 명부'],['card','인사카드'],['onoff','입사·퇴사'],['move','인사발령'],['org','조직도'],['reorg','조직 개편'],['juice','신입 주스기'],['eval','평가'],['edu','교육'],['hire','채용']]],
   ['근태',[['promote','연차촉진 관리'],['otc','시간외근로 확정'],['otsum','시간외근로 현황'],['altsum','대체휴무 현황'],['reqs','근태신청 현황'],['flexm','유연근무제 관리'],['leave','근태 확정'],['status','근태 현황'],['work','출퇴근·52시간']]],
   ['급여',[['pay','급여'],['welfare','복리후생'],['exp','경비'],['yearend','연말정산'],['lic','자격수당'],['cert','증명서신청 관리']]],
   ['관리',[['auto','자동 처리'],['perm','권한 관리'],['forms','신청·접수'],['level','커리어레벨'],['ct','계약·수습'],['deputy','대신 승인'],['bulk','일괄 처리'],['voucher','전표'],['erp','ERP 연동'],['audit','열람 기록'],['rules','휴롬 규정'],['data','데이터 관리'],['plan','기획서'],['prd','PRD'],['link','자동화·연결']]]],
- emp:[['홈',[['home','휴글'],['dash','대시보드'],['inbox','할 일']]],
+ emp:[['홈',[['home','홈'],['dash','대시보드'],['inbox','할 일']]],
   ['근태 신청',[['leave/new','근태·휴가'],['status','팀 근태 달력'],['work/me','출퇴근'],['work/flex','유연근무'],['work/ot','연장·휴일'],['cert','증명서']]],
   ['급여',[['pay','급여명세서'],['exp','경비'],['welfare','복리후생'],['yearend','연말정산'],['lic','자격증']]],
   ['내 정보',[['card/{me}','인사카드'],['level','레벨'],['eval','평가'],['edu','교육'],['cert','증명서'],['forms','신청·접수'],['rules','휴롬 규정'],['org','조직도']]]],
- lead:[['홈',[['home','휴글'],['dash','대시보드'],['inbox','할 일']]],
+ lead:[['홈',[['home','홈'],['dash','대시보드'],['inbox','할 일']]],
   ['승인함',[['leave/approve','근태·휴가'],['work/ot','연장'],['work/flex','유연근무'],['exp','경비'],['juice','주스기'],['level','레벨업 추천'],['eval','팀원 평가']]],
   ['우리 팀',[['status','근태 현황'],['work/all','52시간'],['ct','계약·수습'],['deputy','대신 승인'],['forms/offjt','OFF-JT'],['org','조직도'],['rules','휴롬 규정']]]]};
 function curGroup(cur){const hash=(location.hash||'#dash').slice(1),M=MENUS[st.role]||MENUS.hr;const rr=r=>r.replace('{me}',st.me||'');
@@ -540,7 +544,7 @@ const rqGrp=r=>TYPES[r.type].deduct?'일반(연차)':TYPES[r.type].alt?'대체�
 V.reqs=()=>{if(st.role!=='hr')return head('근태신청 현황')+hrOnly();const f=F('rq'),t=today(),fr=f.fr||addD(t,-40),to=f.to||addD(t,60),g=f.g||'전체',ss=f.ss||'전체',nm=f.nm||'';
  const xs=st.reqs.filter(r=>r.to>=fr&&r.from<=to&&(g==='전체'||rqGrp(r)===g)&&(ss==='전체'||RQS[r.status]===ss)&&(!nm||((person(r.no)||{}).name||'').includes(nm))).sort((a,b)=>a.at<b.at?1:-1);
  const H=['결재상태','ERP반영','근태번호','원근태번호','결재구분','부서','근태자','직급','사유/목적','근태구분','근태유형','시작일자','종료일자','소요시간','등록자','등록일자','결재일자'];
- const row=r=>{const p=person(r.no)||{},h=r.hist||[],last=h.slice(-1)[0];return [RQS[r.status],r.status===S.OK?'완료':'',rqNo(r),r.orig||'',[S.CL,S.CH,S.CX].includes(r.status)?'취소':'신청',p.dept,p.name,p.grade||'',r.reason||'',rqGrp(r),r.type,r.from,r.to,(TYPES[r.type].days===0.5?4:r.days*8)+':00',(h[0]&&h[0].memo==='휴글 대화'?'휴글':(h[0]||{}).who||p.name),r.at.slice(0,10),last&&r.status!==S.LEAD?last.at.slice(0,16):'']};
+ const row=r=>{const p=person(r.no)||{},h=r.hist||[],last=h.slice(-1)[0];return [RQS[r.status],r.status===S.OK?'완료':'',rqNo(r),r.orig||'',[S.CL,S.CH,S.CX].includes(r.status)?'취소':'신청',p.dept,p.name,p.grade||'',r.reason||'',rqGrp(r),r.type,r.from,r.to,(TYPES[r.type].days===0.5?4:r.days*8)+':00',(h[0]&&h[0].memo==='AI 대화'?'AI 대화':(h[0]||{}).who||p.name),r.at.slice(0,10),last&&r.status!==S.LEAD?last.at.slice(0,16):'']};
  st._x=['근태신청현황',H,xs.map(row)];
  return head('근태신청 현황','결재 상태·ERP 반영까지 한 표로')+
  fbar('rq','<span class="lb">기간</span><input type="date" id="rq_fr" value="'+fr+'"> - <input type="date" id="rq_to" value="'+to+'"><select id="rq_g">'+['전체','일반(연차)','대체휴무','외근','일반(기타)'].map(x=>'<option'+(x===g?' selected':'')+'>'+x+'</option>').join('')+'</select><select id="rq_ss">'+['전체','결재중','완료','반려','취소요청','취소'].map(x=>'<option'+(x===ss?' selected':'')+'>'+x+'</option>').join('')+'</select><input id="rq_nm" placeholder="근태자" value="'+esc(nm)+'" style="width:110px">')+
@@ -640,7 +644,7 @@ V.hugle=a=>V.home(a);
 V.home=(arg)=>{if(!st.people.length)return V.dash();const ak=st.role+'-'+viewerNo(),an=!HANIM[ak];HANIM[ak]=1;return '<div class="hsplit'+(an?' anim':'')+'">'+homeChat(arg)+'<aside class="hside">'+homeSide()+'</aside></div>'};
 function homeChat(arg){const vn=viewerNo(),all=arg==='all',mine=(st.chat||[]).filter(c=>c.no===vn&&c.role===st.role),show=all?mine:mine.slice(-8),p=person(vn)||{},hr=+now().slice(11,13);
  const hi=(hr<11?'좋은 아침이에요':hr<17?'좋은 오후예요':'오늘도 수고 많으셨어요')+(p.name?', '+esc(p.name)+'님':''),arrow='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',chev='<svg class="cv" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>';
- return '<div class="hm'+(show.length?'':' first')+'"><div class="hhead"><span class="hmark" title="휴글 = 휴롬 + 구글"><span class="c1">휴</span><span class="c2">글</span></span><h1>'+hi+'</h1><p>'+(show.length?'이어서 말씀하세요. 신청은 [이대로 신청]을 눌러야 들어갑니다.':'말로 하시면 찾아보고, 신청서까지 채워 드립니다.')+'</p></div>'+
+ return '<div class="hm'+(show.length?'':' first')+'"><div class="hhead"><h1>'+hi+'</h1><p>'+(show.length?'이어서 말씀하세요. 신청은 [이대로 신청]을 눌러야 들어갑니다.':'말로 하시면 찾아보고, 신청서까지 채워 드립니다.')+'</p></div>'+
  (st.aiOff?'<div class="aioff"><b>AI가 지금 응답하지 않습니다.</b> 아래 「직접 하기」에서 똑같이 처리할 수 있습니다. <button class="btn sm" id="ai_on">AI 다시 켜기</button></div>':'')+
  (show.length?'<div class="msgs">'+(mine.length>show.length?'<p class="tag" style="text-align:center"><a href="#home/all">지난 대화 '+(mine.length-show.length)+'건 더 보기</a></p>':'')+show.map(c=>'<div class="msg me"><div>'+esc(c.q)+'<small>'+c.at.slice(5,16)+'</small></div></div><div class="msg"><div>'+c.a+'</div></div>').join('')+'</div>':'')+
  '<div class="hq"><input id="hq" placeholder="'+(st.aiOff?'AI 꺼짐 — 아래에서 직접 하세요':'예: 다음 주 금요일 오후 반차 쓰고 싶어')+'"'+(st.aiOff?' disabled':'')+' autocomplete="off"><div class="hqb"><span>Enter 로 보내기 · 대화는 기록됩니다</span><button class="btn p" id="hq_go" title="보내기"'+(st.aiOff?' disabled':'')+'>'+arrow+'</button></div></div>'+
@@ -683,11 +687,11 @@ function chatSubmit(d){const p=person(st.me),ty=TYPES[d.type],f=d.from,t=ty.days
  if(!days)return '고른 기간에 근무일(월~금)이 없습니다';if(f<today()&&!['외근','병가'].includes(d.type))return '지난 날짜는 신청할 수 없습니다';
  const ov=st.reqs.find(r=>r.no===p.no&&[S.LEAD,S.HR,S.OK,S.CL,S.CH].includes(r.status)&&!(t<r.from||f>r.to)&&!(r.type==='오전반차'&&d.type==='오후반차'||r.type==='오후반차'&&d.type==='오전반차'));if(ov)return '겹치는 신청이 있습니다: '+ov.type+' '+period(ov);
  if(ty.alt&&altBal(p.no).rem<days)return '대체휴무가 모자랍니다 (남은 '+altBal(p.no).rem+'일)';if(ty.deduct){const b=bal(p.no);if(b.rem-b.pend<days)return '잔여 연차가 모자랍니다 (잔여 '+b.rem+'일)'}
- const r={id:st.seq++,no:p.no,type:d.type,from:f,to:t,days,reason:'휴글 대화로 신청',status:S.LEAD,at:now(),retro:f<today(),hist:[]};act(r,p.name,'신청','휴글 대화');st.reqs.push(r);return r}
-function wireHome(){const hsa=document.querySelector('.hsplit.anim');if(hsa&&!matchMedia('(prefers-reduced-motion: reduce)').matches)hsa.querySelectorAll('.hside .kpi .card b, .jfill b.cnt').forEach(el=>{const t=el.firstChild;if(!t||t.nodeType!==3)return;const n=parseFloat(t.nodeValue);if(!(n>0))return;const t0=performance.now(),d=900,f=x=>{const k=Math.min(1,(x-t0)/d),e=1-Math.pow(1-k,3),v=n*e;t.nodeValue=Number.isInteger(n)?Math.round(v):Math.round(v*10)/10;if(k<1)requestAnimationFrame(f)};t.nodeValue='0';requestAnimationFrame(f)});const i=$('#hq');
+ const r={id:st.seq++,no:p.no,type:d.type,from:f,to:t,days,reason:'대화로 신청',status:S.LEAD,at:now(),retro:f<today(),hist:[]};act(r,p.name,'신청','AI 대화');st.reqs.push(r);return r}
+function wireHome(){const hmsg=document.querySelector('.hsplit .msgs');if(hmsg)hmsg.scrollTop=hmsg.scrollHeight;const hsa=document.querySelector('.hsplit.anim');if(hsa&&!matchMedia('(prefers-reduced-motion: reduce)').matches)hsa.querySelectorAll('.hside .kpi .card b, .jfill b.cnt').forEach(el=>{const t=el.firstChild;if(!t||t.nodeType!==3)return;const n=parseFloat(t.nodeValue);if(!(n>0))return;const t0=performance.now(),d=900,f=x=>{const k=Math.min(1,(x-t0)/d),e=1-Math.pow(1-k,3),v=n*e;t.nodeValue=Number.isInteger(n)?Math.round(v):Math.round(v*10)/10;if(k<1)requestAnimationFrame(f)};t.nodeValue='0';requestAnimationFrame(f)});const i=$('#hq');
  const send=async q=>{q=(q||'').trim();if(!q)return;let a=null;if(typeof HAI!=='undefined'&&HAI.on()){const b=$('#hq_go');if(b){b.disabled=true;b.textContent='생각 중…'}try{a=await aiAnswer(q)}catch(e){a=null;toast('AI 연결이 안 돼 규칙으로 답합니다')}}
  if(a==null)try{if(st.aiOff)throw 0;a=chatAnswer(q)}catch(e){a='<b>AI가 응답하지 않습니다.</b> 아래 「직접 하기」에서 처리해 주세요.'}
-  (st.chat=st.chat||[]).push({id:nid(),no:viewerNo(),role:st.role,q,a,at:now()});save();render();setTimeout(()=>{const x=$('#hq');if(x)x.focus();const m=document.querySelector('.msgs');if(m&&m.lastElementChild)m.lastElementChild.scrollIntoView({block:'center'})},0)};
+  (st.chat=st.chat||[]).push({id:nid(),no:viewerNo(),role:st.role,q,a,at:now()});save();render();setTimeout(()=>{const x=$('#hq');if(x)x.focus();const m=document.querySelector('.msgs');if(m)m.scrollTop=m.scrollHeight},0)};
  if(i){i.onkeydown=e=>{if(e.key==='Enter'&&!e.isComposing)send(i.value)};$('#hq_go').onclick=()=>send(i.value)}
  document.querySelectorAll('[data-sug]').forEach(b=>b.onclick=()=>send(b.dataset.sug));
  const ha=$('#hq_ask'),hs=$('#hq_self');if(ha)ha.onclick=()=>{const x=$('#hq');x.value.trim()?send(x.value):x.focus()};if(hs)hs.onclick=()=>$('#hself').scrollIntoView({behavior:'smooth'});
