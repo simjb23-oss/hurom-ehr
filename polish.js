@@ -5,7 +5,7 @@
 html.sh a{color:inherit;text-decoration:none}
 html.sh .view p a:not(.btn),html.sh .view td a:not(.btn),html.sh .view small a{color:var(--brand);font-weight:600}
 html.sh .hsplit .tiles a,html.sh .hsplit .tiles button{color:var(--ink)!important;font-weight:500}
-html.sh .card .hd b{white-space:nowrap}
+html.sh .card .hd b{word-break:keep-all;min-width:0}
 html.sh .view a:not(.btn):not([class]):hover{text-decoration:underline}
 html.sh #bell{text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 html.sh body{font-variant-numeric:tabular-nums}
@@ -52,6 +52,9 @@ html.sh .empty{color:var(--mute);font-size:14px;padding:22px 0;text-align:center
  html.sh .tabs2 a{white-space:nowrap;flex:none}
  html.sh .card .hd{flex-wrap:wrap;gap:4px 10px}
  html.sh table th{white-space:nowrap;font-size:11px}
+ html.sh .hsplit .tiles{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}
+ html.sh .hsplit .tiles a,html.sh .hsplit .tiles button{font-size:13px;padding:10px 12px}
+ html.sh .kpi .card small{font-size:13px;word-break:keep-all}
  html.sh .cal{gap:3px}
  html.sh .cal .c{min-height:54px;padding:4px;font-size:11px}
  html.sh .cal .c i{font-size:9.5px;padding:1px 4px}
