@@ -31,7 +31,7 @@ async function aiAnswer(q){const vn=X.viewerNo(),past=(X.st.chat||[]).filter(c=>
   if(res.stop_reason!=='tool_use'||!tu.length){const txt=res.content.filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
    return X.esc(txt).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')+(card?'<div class="aicard">'+card+'</div>':'')+'<div class="tag" style="margin-top:6px">✦ AI 답 · 숫자·신청은 E-HR 기록 기준</div>'}
   msgs.push({role:'assistant',content:res.content});
-  msgs.push({role:'user',content:tu.map(b=>{let out;if(b.name==='ehr'){const h=X.chatAnswer(String(b.input.command||''));if(/data-chsend|class="btn/.test(h))card=h;out=aiText(h)}else out=aiRules(b.input.keyword||'');
+  msgs.push({role:'user',content:tu.map(b=>{let out;if(b.name==='ehr'){const h=X.chatAnswer(String(b.input.command||''));if(/data-chsend/.test(h)||(!/data-chsend/.test(card)&&/class="btn/.test(h)))card=h;out=aiText(h)}else out=aiRules(b.input.keyword||'');
    return {type:'tool_result',tool_use_id:b.id,content:out.slice(0,4000)}})})}
  throw new Error('AI 답이 길어져 멈춤')}
 /* 첫 화면에 「AI 연결」 줄 붙이기 */

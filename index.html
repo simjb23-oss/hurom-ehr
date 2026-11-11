@@ -582,7 +582,7 @@ function chatDates(q){const y=today().slice(0,4),o=[],t=today();
  q.replace(/(\d{4})[-.\/](\d{1,2})[-.\/](\d{1,2})|(\d{1,2})\s*(?:\/|\.|월)\s*(\d{1,2})\s*일?/g,(m,a,b,c,d,e)=>{o.push(a?a+'-'+pad(+b)+'-'+pad(+c):y+'-'+pad(+d)+'-'+pad(+e));return m});
  if(/오늘/.test(q))o.push(t);if(/내일/.test(q))o.push(addD(t,1));if(/모레/.test(q))o.push(addD(t,2));
  const wd={'월':1,'화':2,'수':3,'목':4,'금':5};q.replace(/(이번\s*주|다음\s*주|담주)?\s*([월화수목금])요일/g,(m,w,d)=>{let x=addD(weekStart(t),wd[d]-1);if(w&&/다음|담/.test(w))x=addD(x,7);else if(!w&&x<t)x=addD(x,7);o.push(x);return m});
- for(let i=0;i<o.length;i++)if(o[i]<addD(t,-180))o[i]=(+o[i].slice(0,4)+1)+o[i].slice(4);
+ for(let i=0;i<o.length;i++)if(o[i]<addD(t,-180)&&!q.includes(o[i].slice(0,4)))o[i]=(+o[i].slice(0,4)+1)+o[i].slice(4);
  return o.sort()}
 function chatAnswer(q){const r=st.role,t=today(),y=t.slice(0,4),no=r==='emp'?st.me:viewerNo(),p=person(no)||{},A=(h,go,l)=>h+(go?'<div style="margin-top:8px"><a class="btn sm" href="'+go+'">'+(l||'열기')+' ›</a></div>':'');
  const ds=chatDates(q),ask=/얼마|몇|남은|남았|잔여|내역|썼|사용|언제/.test(q);
