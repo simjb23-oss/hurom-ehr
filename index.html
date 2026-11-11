@@ -225,7 +225,7 @@ function bal(no){
   if(r.status===S.OK||r.status===S.CL||r.status===S.CH)used+=r.days;
   else if(r.status===S.HR)res+=r.days;else if(r.status===S.LEAD)pend+=r.days});
  const g=grant(p);return {grant:g,used,res,pend,rem:g-used-res}}
-function altBal(no){const g=st.ots.filter(o=>o.no===no&&o.status==='승인'&&o.comp==='대체휴무').reduce((a,o)=>a+Math.round(o.h/8*4)/4,0);
+function altBal(no){const g=st.ots.filter(o=>o.no===no&&o.cf&&o.comp==='대체휴무').reduce((a,o)=>a+Math.round(o.cfH/8*16)/16,0);
  const u=st.reqs.filter(r=>r.no===no&&TYPES[r.type]&&TYPES[r.type].alt&&[S.LEAD,S.HR,S.OK,S.CL,S.CH].includes(r.status)).reduce((a,r)=>a+r.days,0);return {grant:g,used:u,rem:Math.max(0,g-u)}} // 대체휴무: 휴일근로를 대체휴무로 받으면 8시간 = 1일
 function stepName(r){const p=person(r.no);return p&&p.pos==='팀장'?'본부장 승인':'팀장 승인'}
 function badge(s){const m={[S.LEAD]:'w',[S.HR]:'ch',[S.OK]:'o',[S.NO]:'n',[S.CL]:'c',[S.CH]:'c',[S.CX]:'c',[S.WD]:'c'};
@@ -257,8 +257,8 @@ function switchRole(r,route){if(r==='admin'){st.asAdmin=1;r='hr'}else st.asAdmin
 const MENUS={
  hr:[['홈',[['home','휴글'],['dash','대시보드'],['inbox','알림함'],['close','월 마감']]],
   ['사람',[['people','인원 명부'],['card','인사카드'],['onoff','입사·퇴사'],['move','인사발령'],['org','조직도'],['reorg','조직 개편'],['juice','신입 주스기'],['eval','평가'],['edu','교육'],['hire','채용']]],
-  ['근태',[['leave','근태·휴가'],['work','출퇴근·52시간'],['status','근태 현황'],['promote','연차 촉진']]],
-  ['급여',[['pay','급여'],['welfare','복리후생'],['exp','경비'],['yearend','연말정산'],['lic','자격수당'],['cert','증명서']]],
+  ['근태',[['promote','연차촉진 관리'],['otc','시간외근로 확정'],['otsum','시간외근로 현황'],['altsum','대체휴무 현황'],['reqs','근태신청 현황'],['flexm','유연근무제 관리'],['leave','근태 확정'],['status','근태 현황'],['work','출퇴근·52시간']]],
+  ['급여',[['pay','급여'],['welfare','복리후생'],['exp','경비'],['yearend','연말정산'],['lic','자격수당'],['cert','증명서신청 관리']]],
   ['관리',[['auto','자동 처리'],['perm','권한 관리'],['forms','신청·접수'],['level','커리어레벨'],['ct','계약·수습'],['deputy','대신 승인'],['bulk','일괄 처리'],['voucher','전표'],['erp','ERP 연동'],['audit','열람 기록'],['rules','휴롬 규정'],['data','데이터 관리'],['plan','기획서'],['prd','PRD'],['link','자동화·연결']]]],
  emp:[['홈',[['home','휴글'],['dash','대시보드'],['inbox','할 일']]],
   ['근태 신청',[['leave/new','근태·휴가'],['status','팀 근태 달력'],['work/me','출퇴근'],['work/flex','유연근무'],['work/ot','연장·휴일'],['cert','증명서']]],
@@ -420,12 +420,12 @@ function statusPerson(no){const r=st.role,p=person(no),vp=person(r==='emp'?st.me
  const rs=st.reqs.filter(q=>q.no===no).sort((x,y)=>x.from<y.from?1:-1),dd=rs.filter(q=>TYPES[q.type].deduct),ot=rs.filter(q=>!TYPES[q.type].deduct);
  const row=q=>'<tr><td>'+full(q.from)+(q.to!==q.from?' ~ '+full(q.to):'')+'</td><td>'+q.type+'</td><td class="right">'+(TYPES[q.type].days===0.5?0.5:q.days)+'일</td><td>'+badge(q.status)+'</td><td class="tag">'+q.at.slice(0,10)+'</td>'+(self?'<td class="tag">'+esc(q.reason||'')+'</td>':'')+'</tr>';
  const H=['날짜','종류','일수','상태','신청일'].concat(self?['사유']:[]);
- const ag=st.ots.filter(o=>o.no===no&&o.comp==='대체휴무').sort((x,y)=>x.date<y.date?1:-1);
+ const ag=st.ots.filter(o=>o.no===no&&o.cf&&o.comp==='대체휴무').sort((x,y)=>x.date<y.date?1:-1);
  return head(esc(p.name)+' 근태 상세',esc(p.dept))+'<p><a href="#status">‹ 달력으로</a></p>'+
  '<div class="kpi">'+kp('발생',b.grant,'일','','#status/'+no)+kp('사용',b.used,'일','인사 확정','#status/'+no)+kp('예약',b.res,'일','팀장 승인','#status/'+no)+kp('잔여',b.rem,'일','','#status/'+no)+kp('대체휴무 남음',a.rem,'일','생김 '+a.grant+' · 씀 '+a.used,'#status/'+no)+'</div>'+
  sec('연차 사용 내역',dd.length+'건 · 최근 것부터',tbl(H,dd.map(row),'연차를 쓴 내역이 없습니다'))+
  sec('그 밖의 근태',ot.length+'건 · 외근·대체휴무·경조 등',tbl(H,ot.map(row),'없습니다'))+
- sec('대체휴무 생긴 내역',ag.length+'건 · 휴일근로 8시간 = 1일',tbl(['휴일근로 날짜','시간','대체휴무','상태'],ag.map(o=>'<tr><td>'+full(o.date)+'</td><td>'+o.h+'h</td><td>'+Math.round(o.h/8*4)/4+'일</td><td>'+stB(o.status)+'</td></tr>'),'없습니다'))}
+ sec('대체휴무 생긴 내역',ag.length+'건 · 인사가 확정한 시간외근로 · 8시간 = 1일',tbl(['근무일자','근태유형','확정시간','대체휴무','확정일'],ag.map(o=>'<tr><td>'+full(o.date)+'</td><td>'+otKind(o)+'</td><td>'+hm(o.cfH)+'</td><td>'+Math.round(o.cfH/8*16)/16+'일</td><td class="tag">'+o.cf.slice(0,10)+'</td></tr>'),'없습니다'))}
 function dashMe(){const r=st.role,no=r==='emp'?st.me:viewerNo(),p=person(no),t=today(),y=t.slice(0,4),b=bal(no),a=altBal(no),it=inboxItems();
  const sc=st.people.filter(x=>x.status!=='퇴직'&&x.dept===p.dept),inS=n=>sc.some(x=>x.no===n),ab=absentOn(t).filter(q=>inS(q.no));
  const wk=[];for(let i=1;i<=7;i++)absentOn(addD(t,i)).filter(q=>inS(q.no)).forEach(q=>{if(!wk.includes(q))wk.push(q)});
@@ -446,6 +446,122 @@ function dashMe(){const r=st.role,no=r==='emp'?st.me:viewerNo(),p=person(no),t=t
  h+='<div class="g2">'+sec('우리 팀 근태',esc(p.dept)+' · 오늘 '+ab.length+'명 · 다음 7일 '+wk.length+'건','<div class="todo">'+(ab.concat(wk).slice(0,8).map(q=>li(q.from<=t&&t<=q.to?'오늘':q.from.slice(5),esc((person(q.no)||{}).name)+' '+q.type,'','#status')).join('')||'<div class="empty">오늘과 다음 7일에 부재가 없습니다</div>')+'</div><p style="margin:8px 0 0"><a href="#status">팀 근태 달력 ›</a></p>')+
   sec('바로 하기','','<div class="tiles"><a href="#leave/new">연차·휴가 신청</a><button data-qt="대체휴무">대체휴무 신청</button><a href="#work/flex">유연근무 '+fx+'형 ('+FLEX[fx][0]+'~'+FLEX[fx][1]+')</a><a href="#cert">증명서 신청</a><a href="#work/ot">연장·휴일근로</a><a href="#pay">급여명세서</a></div>')+'</div>';
  return h+todoList(it,'처리할 일이 없습니다')}
+
+
+/* ---------- 인사 관리자 화면 7가지 (기존 MY인사 관리자 메뉴와 같은 구조 · 2026-11-11 준보 님 캡처 기준, 실명은 넣지 않음) ---------- */
+function xlDown(name,hd,rows){if(!xlsxReady()){toast('엑셀 도구를 불러오는 중입니다');return}const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([hd].concat(rows)),name.slice(0,30));XLSX.writeFile(wb,'EHR_'+name+'_'+today()+'.xlsx')}
+const hm=h=>{const m=Math.round((+h||0)*60);return Math.floor(m/60)+'시간'+(m%60?' '+m%60+'분':'')};
+const fmM=m=>pad(Math.floor(((m%1440)+1440)%1440/60))+':'+pad(((m%60)+60)%60);
+const dw=d=>d+' ('+WD[new Date(d+'T00:00').getDay()]+')';
+function otKind(o){return o.kind==='휴일근로'?'휴일근로':'연장근로'+(o.kind==='조근'?' (조근)':'')}
+function otPlan(o){const f=FLEX[flexOf(o.no,o.date)],a=toMin(f[0]),b=toMin(f[1]),h=o.h*60;
+ if(o.kind==='휴일근로')return [a,a+h+(a<=720&&a+h>720?60:0)];if(o.kind==='조근')return [a-h,a];return [b,b+h]}
+function otActual(o){const x=st.punches.find(q=>q.no===o.no&&q.date===o.date);if(!x||!x.in||!x.out)return null;const [pa,pb]=otPlan(o),i=toMin(x.in),u=toMin(x.out);
+ let m=o.kind==='휴일근로'?workMin(x):o.kind==='조근'?Math.max(0,pb-i):Math.max(0,u-pa);return {in:x.in,out:x.out,h:Math.floor(m/30)/2}}
+function otAuto(o){const a=otActual(o);return a?Math.min(o.h,a.h):0} // CAPS 실제 근무시간으로 자동 (계획시간까지) · 기록이 없으면 0 → 인사가 입력
+function otMon(no,ym,cf){return st.ots.filter(o=>o.no===no&&o.date.slice(0,7)===ym&&(cf?o.cf:o.status!=='반려')).reduce((a,o)=>a+(cf?o.cfH:o.h),0)}
+function fbar(id,inner,btn){return '<div class="bar" style="margin-bottom:12px">'+inner+'<button class="btn p sm" id="'+id+'_q">조회</button>'+(btn||'')+'<span class="sp"></span><button class="btn sm" id="'+id+'_x">엑셀</button></div>'}
+const F=k=>(st.flt=st.flt||{})[k]||(st.flt[k]={});
+function fv(id,v){const e=$('#'+id);return e?e.value:v}
+
+/* 1. 시간외근로 확정 [중요] */
+V.otc=()=>{if(st.role!=='hr')return head('시간외근로 확정')+hrOnly();const f=F('otc'),t=today(),fr=f.fr||addD(t,-70),to=f.to||t,ss=f.ss||'전체',nm=f.nm||'';
+ const xs=st.ots.filter(o=>o.status!=='반려'&&o.date>=fr&&o.date<=to&&(ss==='전체'||(ss==='확정'?o.cf:!o.cf))&&(!nm||((person(o.no)||{}).name||'').includes(nm))).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:((person(a.no)||{}).dept||'')<((person(b.no)||{}).dept||'')?-1:1);
+ const un=xs.filter(o=>!o.cf&&o.status==='승인').length;
+ return head('시간외근로 확정','휴일·연장근로 신청 명단 · 보상유형과 확정시간을 정합니다')+
+ fbar('otc','<span class="lb">근태일자</span><input type="date" id="otc_fr" value="'+fr+'"> - <input type="date" id="otc_to" value="'+to+'"><span class="lb">확정상태</span><select id="otc_ss">'+['전체','미확정','확정'].map(x=>'<option'+(x===ss?' selected':'')+'>'+x+'</option>').join('')+'</select><span class="lb">이름</span><input id="otc_nm" value="'+esc(nm)+'" style="width:110px">',un?' <button class="btn sm" id="otc_all" title="출퇴근 기록이 있는 미확정 건을 자동 시간·희망 보상으로 확정">미확정 '+un+'건 자동값으로 확정</button>':'')+
+ sec('명단',xs.length+'건 · 실제근무시간은 CAPS 출퇴근 기록에서 가져옵니다 · 지문을 안 찍은 날은 확정시간을 직접 넣습니다',tbl(['확정상태','근무일자','부서','이름','근태유형','계획근무시간','계획시간','실제근무시간','경고','확정시간','보상유형','확정처리'],xs.map(o=>{const p=person(o.no)||{},pl=otPlan(o),a=otActual(o),ed=st.otEdit===o.id;
+  const r='<tr><td>'+(o.cf?'<span class="st o">확정</span>':o.status==='승인'?'<span class="st w">미확정</span>':'<span class="st c">팀장 승인 전</span>')+'</td><td>'+dw(o.date)+'</td><td>'+esc(p.dept)+'</td><td><b>'+esc(p.name)+'</b></td><td>'+otKind(o)+'</td><td>'+fmM(pl[0])+' - '+fmM(pl[1])+'</td><td>'+hm(o.h)+'</td><td>'+(a?a.in+' - '+a.out:'-')+'</td><td>'+(a?'':'<span class="st n">출퇴근누락</span>')+'</td><td>'+(o.cf?hm(o.cfH):'')+'</td><td>'+(o.cf?o.comp:'<span class="tag">희망 '+(o.comp||'수당')+'</span>')+'</td><td class="right">'+(o.status==='승인'?'<button class="btn sm'+(o.cf?'':' p')+'" data-otc="'+o.id+'">'+(o.cf?'수정':'확정')+'</button>':'<button class="btn sm" data-otcok="'+o.id+'" title="팀장이 승인 시기를 놓친 경우">대신 승인</button>')+'</td></tr>';
+  if(!ed)return r;const dh=o.cf?o.cfH:otAuto(o),H=Math.floor(dh),M=Math.round((dh-H)*60),ym=o.date.slice(0,7);
+  return r+'<tr><td colspan="12" style="background:#FBF8F2"><div class="form" style="align-items:end"><label>대상<input disabled value="'+esc(p.dept+' '+p.name)+' · '+dw(o.date)+'"></label><label>시간외근로(월계)<input disabled value="'+hm(otMon(o.no,ym))+'"></label><label>확정시간(월계)<input disabled value="'+hm(otMon(o.no,ym,1))+'"></label><label>확정시간<span style="display:flex;gap:4px;align-items:center"><select id="oc_h">'+Array.from({length:17},(_,i)=>'<option'+(i===H?' selected':'')+'>'+i+'</option>').join('')+'</select>시간<select id="oc_m">'+[0,30].map(i=>'<option'+(i===M?' selected':'')+'>'+i+'</option>').join('')+'</select>분</span></label><label>보상유형<select id="oc_c">'+['대체휴무','수당','미보상'].map(x=>'<option'+(x===(o.cf?o.comp:(a?o.comp||'수당':'미보상'))?' selected':'')+'>'+x+'</option>').join('')+'</select></label></div>'+(a?'<p class="tag">실제근무 '+a.in+' - '+a.out+' → 자동 '+hm(otAuto(o))+' (계획시간까지)</p>':'<p class="tag" style="color:var(--no)">출퇴근 기록이 없습니다 — 확인한 시간을 직접 넣어 주세요</p>')+'<button class="btn p sm" data-otcgo="'+o.id+'">확정</button> <button class="btn sm" data-otcx>닫기</button></td></tr>'}),'기간 안에 시간외근로 신청이 없습니다'))};
+
+/* 2. 시간외근로 현황 */
+V.otsum=()=>{if(st.role!=='hr')return head('시간외근로 현황')+hrOnly();const t=today(),ym=t.slice(0,7),pm=addM(ym+'-01',-1).slice(0,7),ws=weekStart(t);
+ const H=o=>o.cf?o.cfH:o.status==='승인'?o.h:0,sum=(no,f)=>st.ots.filter(o=>o.no===no&&f(o)).reduce((a,o)=>a+H(o),0);
+ const W=[0,1,2,3,4].map(i=>addD(ws,-7*i)),ppl=st.people.filter(p=>st.ots.some(o=>o.no===p.no&&H(o)>0)).sort((a,b)=>a.dept<b.dept?-1:1);
+ const rows=ppl.map(p=>[p.dept,p.name,sum(p.no,o=>o.date.slice(0,7)===ym),sum(p.no,o=>o.date.slice(0,7)===pm)].concat(W.map(w=>sum(p.no,o=>o.date>=w&&o.date<=addD(w,6)))));
+ st._x=['시간외근로현황',['부서','이름','당월합계','전월합계','주차(현재)','주차(-1)','주차(-2)','주차(-3)','주차(-4)'],rows.map(r=>r.map((v,i)=>i>1?hm(v):v))];
+ return head('시간외근로 현황','확정된 시간 (미확정은 승인 시간)')+'<div class="bar" style="margin-bottom:12px"><span class="lb">'+ym+' 기준 · 주는 월요일 시작</span><span class="sp"></span><button class="btn sm" id="xl_cur">엑셀</button></div>'+
+ sec('사람별',ppl.length+'명',tbl(['부서','이름','>당월합계','>전월합계','>주차(현재)','>주차(-1)','>주차(-2)','>주차(-3)','>주차(-4)'],rows.map((r,i)=>'<tr class="ck" data-go="#status/'+ppl[i].no+'"><td>'+esc(r[0])+'</td><td><b>'+esc(r[1])+'</b></td>'+r.slice(2).map((v,j)=>'<td class="right">'+(v?hm(v):'')+(j===0&&v>12*4?' <span class="st n">많음</span>':'')+'</td>').join('')+'</tr>'),'시간외근로가 없습니다'))};
+
+/* 3. 대체휴무 현황 — 남은 사람만, 다 쓰면 명단에서 빠짐 */
+V.altsum=()=>{if(st.role!=='hr')return head('대체휴무 현황')+hrOnly();const y=F('alt').y||today().slice(0,4);
+ const rows=st.people.map(p=>{const os=st.ots.filter(o=>o.no===p.no&&o.cf&&o.comp==='대체휴무'&&o.date.slice(0,4)===y),A=os.reduce((a,o)=>a+o.cfH,0),P=os.reduce((a,o)=>a+o.h,0),B=st.reqs.filter(r=>r.no===p.no&&TYPES[r.type].alt&&[S.LEAD,S.HR,S.OK,S.CL,S.CH].includes(r.status)&&r.from.slice(0,4)===y).reduce((a,r)=>a+r.days*8,0);return {p,P,A,B,R:A-B}}).filter(x=>x.A>0&&x.R>0);
+ st._x=['대체휴무현황',['발생년도','부서','사번','이름','계획시간','확정시간(A)','사용시간(B)','잔여시간'],rows.map(x=>[y,x.p.dept,x.p.no,x.p.name,hm(x.P),hm(x.A),hm(x.B),hm(x.R)])];
+ return head('대체휴무 현황','확정처리한 시간외근로 내역만 조회됩니다')+'<div class="bar" style="margin-bottom:12px"><span class="lb">발생년도</span><select id="alt_y">'+[+y-1,+y,+y+1].map(v=>'<option'+(String(v)===y?' selected':'')+'>'+v+'</option>').join('')+'</select><span class="tag">남은 시간이 있는 사람만 · 다 쓰면 명단에서 빠집니다</span><span class="sp"></span><button class="btn sm" id="xl_cur">엑셀</button></div>'+
+ sec('남은 사람',rows.length+'명',tbl(['NO','발생년도','부서','사번','이름','>계획시간','>확정시간(A)','>사용시간(B)','>잔여시간',''],rows.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+y+'</td><td>'+esc(x.p.dept)+'</td><td class="tag">'+x.p.no+'</td><td><b>'+esc(x.p.name)+'</b></td><td class="right">'+hm(x.P)+'</td><td class="right">'+hm(x.A)+'</td><td class="right">'+(x.B?hm(x.B):'')+'</td><td class="right" style="color:var(--no)"><b>'+hm(x.R)+'</b></td><td class="right"><a class="btn sm p" href="#status/'+x.p.no+'">잔여내역</a></td></tr>'),'남은 대체휴무가 있는 사람이 없습니다'))};
+
+/* 4. 근태신청 현황 */
+const RQS={[S.LEAD]:'결재중',[S.HR]:'결재중',[S.OK]:'완료',[S.NO]:'반려',[S.CL]:'취소요청',[S.CH]:'취소요청',[S.CX]:'취소',[S.WD]:'회수'};
+const rqNo=r=>r.at.slice(0,10).replace(/-/g,'')+'-'+String(r.id).padStart(3,'0');
+const rqGrp=r=>TYPES[r.type].deduct?'일반(연차)':TYPES[r.type].alt?'대체휴무':r.type==='외근'?'외근':'일반(기타)';
+V.reqs=()=>{if(st.role!=='hr')return head('근태신청 현황')+hrOnly();const f=F('rq'),t=today(),fr=f.fr||addD(t,-40),to=f.to||addD(t,60),g=f.g||'전체',ss=f.ss||'전체',nm=f.nm||'';
+ const xs=st.reqs.filter(r=>r.to>=fr&&r.from<=to&&(g==='전체'||rqGrp(r)===g)&&(ss==='전체'||RQS[r.status]===ss)&&(!nm||((person(r.no)||{}).name||'').includes(nm))).sort((a,b)=>a.at<b.at?1:-1);
+ const H=['결재상태','ERP반영','근태번호','원근태번호','결재구분','부서','근태자','직급','사유/목적','근태구분','근태유형','시작일자','종료일자','소요시간','등록자','등록일자','결재일자'];
+ const row=r=>{const p=person(r.no)||{},h=r.hist||[],last=h.slice(-1)[0];return [RQS[r.status],r.status===S.OK?'완료':'',rqNo(r),r.orig||'',[S.CL,S.CH,S.CX].includes(r.status)?'취소':'신청',p.dept,p.name,p.grade||'',r.reason||'',rqGrp(r),r.type,r.from,r.to,(TYPES[r.type].days===0.5?4:r.days*8)+':00',(h[0]&&h[0].memo==='휴글 대화'?'휴글':(h[0]||{}).who||p.name),r.at.slice(0,10),last&&r.status!==S.LEAD?last.at.slice(0,16):'']};
+ st._x=['근태신청현황',H,xs.map(row)];
+ return head('근태신청 현황','결재 상태·ERP 반영까지 한 표로')+
+ fbar('rq','<span class="lb">기간</span><input type="date" id="rq_fr" value="'+fr+'"> - <input type="date" id="rq_to" value="'+to+'"><select id="rq_g">'+['전체','일반(연차)','대체휴무','외근','일반(기타)'].map(x=>'<option'+(x===g?' selected':'')+'>'+x+'</option>').join('')+'</select><select id="rq_ss">'+['전체','결재중','완료','반려','취소요청','취소'].map(x=>'<option'+(x===ss?' selected':'')+'>'+x+'</option>').join('')+'</select><input id="rq_nm" placeholder="근태자" value="'+esc(nm)+'" style="width:110px">')+
+ sec('근태계',xs.length+'건 · 누르면 그 사람 근태 상세',tbl(H,xs.map(r=>{const v=row(r);return '<tr class="ck" data-go="#status/'+r.no+'">'+v.map((x,i)=>'<td'+(i===0&&x==='결재중'?' style="background:#E8F5D0"':'')+(i>12?' class="tag"':'')+'>'+esc(x)+'</td>').join('')+'</tr>'}),'기간 안에 근태 신청이 없습니다'))};
+
+/* 5. 유연근무제 관리 */
+function flexSt(f){const t=today();return f.status!=='승인'?(f.to&&f.to<t||f.from<t&&f.status==='팀장 대기'?'종료':'예정'):f.from>t?'예정':f.to&&f.to<t?'종료':'진행'}
+V.flexm=()=>{if(st.role!=='hr')return head('유연근무제 관리')+hrOnly();const f=F('fx'),g=f.g||'전체',ss=f.ss||'전체',nm=f.nm||'',ed=st.fxEdit;
+ const xs=st.flex.filter(x=>x.status!=='반려'&&(g==='전체'||(x.kind||'시차출퇴근')===g)&&(ss==='전체'||flexSt(x)===ss)&&(!nm||((person(x.no)||{}).name||'').includes(nm))).sort((a,b)=>a.at<b.at?1:-1);
+ const tm=x=>x.kind==='단축근무'?[x.in,x.out]:FLEX[x.type];
+ st._x=['유연근무제',['상태','구분','승인상태','승인구분','부서','이름','시작일자','종료일자','근무유형','출근시간','퇴근시간','신청일자'],xs.map(x=>{const p=person(x.no)||{};return [flexSt(x),x.kind||'시차출퇴근',x.status==='승인'?'승인완료':'승인대기',x.by||'일반승인',p.dept,p.name,x.from,x.to||'무기한',x.kind==='단축근무'?'단축':x.type+' 타입',tm(x)[0],tm(x)[1],x.at.slice(0,10)]})];
+ const add=st.fxAdd?'<section class="card"><div class="hd"><b>'+st.fxAdd+' 등록</b><span class="tag">관리자가 직접 등록 · 바로 승인완료'+(st.fxAdd==='단축근무'?' · 근무시간은 최소 3시간':'')+'</span></div><div class="bd"><div class="form"><label>대상'+pick('fa_no',actives(),'')+'</label><label>시작일자<input id="fa_fr" type="date" value="'+today()+'"></label><label>종료일자<input id="fa_to" type="date"></label><label><span><input type="checkbox" id="fa_u"> 무기한</span></label>'+(st.fxAdd==='단축근무'?'<label>출근시간<input id="fa_in" type="time" value="09:00"></label><label>퇴근시간<input id="fa_out" type="time" value="13:00"></label>':'<label>근무유형<select id="fa_ty">'+Object.keys(FLEX).map(k=>'<option value="'+k+'">'+k+' 타입 '+FLEX[k].join('~')+'</option>').join('')+'</select></label>')+'</div><div class="err" id="fa_err"></div><button class="btn p" id="fa_go">저장</button> <button class="btn" id="fa_x">닫기</button></div></section>':'';
+ return head('유연근무제 관리','진행 중·예정인 시차출퇴근과 단축근무')+
+ fbar('fx','<span class="lb">구분</span><select id="fx_g">'+['전체','시차출퇴근','단축근무'].map(x=>'<option'+(x===g?' selected':'')+'>'+x+'</option>').join('')+'</select><span class="lb">진행상태</span><select id="fx_ss">'+['전체','진행','예정','종료'].map(x=>'<option'+(x===ss?' selected':'')+'>'+x+'</option>').join('')+'</select><span class="lb">이름</span><input id="fx_nm" value="'+esc(nm)+'" style="width:110px">',' <button class="btn sm p" data-fxadd="시차출퇴근">시차출퇴근 등록</button> <button class="btn sm p" data-fxadd="단축근무">단축근로 등록</button>')+add+
+ sec('목록',xs.length+'건',tbl(['NO','상태','구분','승인상태','승인구분','부서','이름','시작일자','종료일자','근무유형','출근시간','퇴근시간','신청일자',''],xs.map((x,i)=>{const p=person(x.no)||{},k=flexSt(x),T=tm(x);
+  if(ed===x.id)return '<tr><td>'+(i+1)+'</td><td colspan="6"><b>'+esc(p.name)+'</b> '+(x.kind||'시차출퇴근')+' 고치기</td><td><input id="fe_fr" type="date" value="'+x.from+'"></td><td><input id="fe_to" type="date" value="'+(x.to||'')+'"><br><span class="tag">비우면 무기한</span></td><td>'+(x.kind==='단축근무'?'단축':'<select id="fe_ty">'+Object.keys(FLEX).map(z=>'<option'+(z===x.type?' selected':'')+'>'+z+'</option>').join('')+'</select>')+'</td><td>'+(x.kind==='단축근무'?'<input id="fe_in" type="time" value="'+x.in+'">':T[0])+'</td><td>'+(x.kind==='단축근무'?'<input id="fe_out" type="time" value="'+x.out+'">':T[1])+'</td><td></td><td class="right"><button class="btn p sm" data-fesave="'+x.id+'">저장</button> <button class="btn sm" data-fex>닫기</button></td></tr>';
+  return '<tr><td>'+(i+1)+'</td><td><b style="color:'+(k==='진행'?'var(--brand)':k==='예정'?'var(--no)':'var(--sub)')+'">'+k+'</b></td><td>'+(x.kind||'시차출퇴근')+'</td><td>'+(x.status==='승인'?'승인완료':'<span class="st n">승인대기</span>')+'</td><td>'+(x.status==='승인'?(x.by&&x.by!=='일반승인'?'<span style="color:var(--no)">'+x.by+'</span>':'일반승인'):'')+'</td><td>'+esc(p.dept)+'</td><td>'+esc(p.name)+'</td><td>'+x.from+'</td><td>'+(x.to||'무기한')+'</td><td>'+(x.kind==='단축근무'?'단축':x.type+' 타입')+'</td><td>'+T[0]+'</td><td>'+T[1]+'</td><td>'+x.at.slice(0,10)+'</td><td class="right" style="white-space:nowrap">'+(x.status==='승인'?'<button class="btn sm" data-fxe="'+x.id+'">수정</button> <button class="btn sm no" data-fxd="'+x.id+'">삭제</button>':'<button class="btn p sm" data-fxdep="'+x.id+'" title="팀장이 승인 시기를 놓친 경우">대신 승인</button>')+'</td></tr>'}),'유연근무가 없습니다'))};
+
+/* 6. 증명서신청 관리 */
+const CST={'신청':'승인대기','발급':'발행완료','반려':'취소'};
+function certAdmin(){const f=F('ct'),t=today(),k=f.k||'전체',fr=f.fr||addD(t,-30),to=f.to||t,ss=f.ss||'전체',q=f.q||'';
+ const xs=st.certs.filter(c=>(k==='전체'||c.kind===k)&&c.at.slice(0,10)>=fr&&c.at.slice(0,10)<=to&&(ss==='전체'||CST[c.status]===ss)&&(!q||((person(c.no)||{}).name+(c.use||'')+(c.to||'')).includes(q))).sort((a,b)=>a.status==='신청'?-1:b.status==='신청'?1:a.at<b.at?1:-1);
+ st._x=['증명서신청',['진행상태','신청자','증명서구분','신청일','발행매수','용도','제출처','주민번호표시','발행일','발행자','출력수'],xs.map(c=>[CST[c.status],(person(c.no)||{}).name,c.kind,c.at.slice(0,10),c.n,c.use,c.to||'',c.rr||'마스킹',(c.issuedAt||'').slice(0,10),c.by||'',c.prints?c.prints+'/'+c.n:''])];
+ return head('증명서신청 관리','E-HR 증명서 신청 내역 · 골라서 승인(발행)·취소')+
+ '<div class="bar" style="margin-bottom:12px"><button class="btn p sm" id="ct_ok">승인</button><button class="btn sm" id="ct_no">취소</button><span class="sp"></span><span class="lb">구분</span><select id="ct_k">'+['전체','재직증명서','경력증명서','근로소득원천징수영수증'].map(x=>'<option'+(x===k?' selected':'')+'>'+x+'</option>').join('')+'</select><span class="lb">기간</span><input type="date" id="ct_fr" value="'+fr+'"> - <input type="date" id="ct_to" value="'+to+'"><span class="lb">진행상태</span><select id="ct_ss">'+['전체','승인대기','발행완료','취소'].map(x=>'<option'+(x===ss?' selected':'')+'>'+x+'</option>').join('')+'</select><input id="ct_q" placeholder="검색어" value="'+esc(q)+'" style="width:110px"><button class="btn p sm" id="ct_q_go">조회</button><button class="btn sm" id="xl_cur">엑셀</button></div>'+
+ sec('신청 내역',xs.length+'건',tbl(['선택','진행상태','내용','신청자','증명서구분','신청일','>발행매수','용도','제출처','주민번호표시','발행일','발행자','출력수'],xs.map(c=>{const p=person(c.no)||{};return '<tr><td>'+(c.status==='신청'?'<input type="checkbox" class="ct_c" value="'+c.id+'">':'')+'</td><td>'+(c.status==='신청'?'<b style="color:var(--no)">승인대기</b>':CST[c.status])+'</td><td>'+(c.status==='발급'?'<a href="#cert/'+c.id+'">보기</a>':'')+'</td><td>'+esc(p.name)+'</td><td>'+c.kind+'</td><td>'+c.at.slice(0,10)+'</td><td class="right">'+c.n+'</td><td>'+esc(c.use)+'</td><td>'+esc(c.to||'')+'</td><td>'+(c.rr||'마스킹')+'</td><td>'+(c.issuedAt||'').slice(0,10)+'</td><td>'+esc(c.by||'')+'</td><td>'+(c.prints?c.prints+'/'+c.n:'')+'</td></tr>'}),'기간 안에 증명서 신청이 없습니다'))+ruleBox(['증명서 발급 절차'])}
+
+/* 7. 연차촉진 관리 [제일 중요] — 1차/2차 나눠 대상자 관리 */
+function pmTable(){const f=F('pm'),y=f.y||today().slice(0,4),rd=+(f.rd||1),sb=f.sb||'전체',rate=st.pmRate||80;
+ const ns=st.notices.filter(n=>n.year===y&&n.round===rd),rows=ns.map(n=>{const p=person(n.no)||{},b=bal(n.no),pl=st.lvplans.find(q=>q.no===n.no&&q.year===y),must=Math.round(b.grant*rate/10)/10;
+  return {p,b,n,pl,must,left:Math.max(0,Math.round((must-b.used)*10)/10),ur:b.grant?Math.round(b.used/b.grant*100):0}}).filter(x=>sb==='전체'||(sb==='제출'?x.pl:!x.pl));
+ st._x=['연차촉진_'+rd+'차',['부서','이름','직책','그룹입사일','발생연차','사용연차','연차사용율','의무사용율','의무사용','의무사용잔여','통지일','촉진확인일','계획제출일'],rows.map(x=>[x.p.dept,x.p.name,x.p.pos==='팀원'?'':x.p.pos,x.p.join,x.b.grant,x.b.used,x.ur+'%',rate+'%',x.must,x.left,x.n.at,(x.n.readAt||'').slice(0,10),x.pl?x.pl.at.slice(0,10):''])];
+ const stg=st.pmStg?'<div class="guide" style="display:block"><b>촉진단계관리</b> — 1차 통지 '+y+'-07-01 ~ '+y+'-07-10 (사용 시기 제출 10일) · 2차 회사 지정 통지 ~ '+y+'-10-31 · 1년 미만 입사자는 따로 · <label>의무사용율 <input id="pm_rate" type="number" min="0" max="100" value="'+rate+'" style="width:60px">%</label> <button class="btn sm" id="pm_rate_go">저장</button> <span class="tag">(의무사용율은 회사 기준을 넣으세요 — 지금 80%)</span></div>':'';
+ return '<div class="bar" style="margin-bottom:12px"><span class="lb">기준년도</span><input id="pm_y" type="number" value="'+y+'" style="width:80px"><span class="lb">촉진단계</span><select id="pm_rd"><option value="1"'+(rd===1?' selected':'')+'>1차</option><option value="2"'+(rd===2?' selected':'')+'>2차</option></select><span class="lb">사용계획제출</span><select id="pm_sb">'+['전체','제출','미제출'].map(x=>'<option'+(x===sb?' selected':'')+'>'+x+'</option>').join('')+'</select><button class="btn p sm" id="pm_q">조회</button><span class="sp"></span><button class="btn sm p" id="pm_stg">촉진단계관리</button><a class="btn sm p" href="#promote/target">대상자관리</a><button class="btn sm" id="xl_cur">엑셀</button></div>'+stg+
+ sec(rd+'차 대상자',rows.length+'명 · 촉진확인일 = 직원이 안내문을 연 날',tbl(['NO','부서','이름','직책','그룹입사일','>발생연차','>사용연차','>연차사용율','>의무사용율','>의무사용','>의무사용잔여','촉진확인일','계획제출일',''],rows.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(x.p.dept)+'</td><td><b>'+esc(x.p.name)+'</b></td><td>'+(x.p.pos==='팀원'?'':esc(x.p.pos))+'</td><td>'+x.p.join+'</td><td class="right">'+x.b.grant.toFixed(1)+'</td><td class="right">'+x.b.used.toFixed(1)+'</td><td class="right" style="color:var(--no)">'+x.ur+' %</td><td class="right" style="color:var(--brand)">'+rate+' %</td><td class="right">'+x.must.toFixed(1)+'</td><td class="right">'+x.left.toFixed(1)+'</td><td>'+(x.n.readAt?x.n.readAt.slice(0,10):'<span class="st n">안 읽음</span>')+'</td><td>'+(x.pl?x.pl.at.slice(0,10):'<span class="st w">미제출</span>')+'</td><td><a class="btn sm" href="#status/'+x.p.no+'">상세</a></td></tr>'),'이 단계에 통지된 대상자가 없습니다 — 「대상자관리」에서 통지하거나, 기간이 되면 자동으로 통지됩니다'))}
+
+function wireAdmin(){const on=(s,fn)=>{const e=$(s);if(e)e.onclick=fn};document.querySelectorAll('[data-cprint]').forEach(b=>b.onclick=()=>{const c=st.certs.find(x=>x.id===+b.dataset.cprint);c.prints=(c.prints||0)+1;save();window.print()});const all=(s,fn)=>document.querySelectorAll(s).forEach(fn);const go=()=>{save();render()};
+ on('#otc_q',()=>{Object.assign(F('otc'),{fr:fv('otc_fr'),to:fv('otc_to'),ss:fv('otc_ss'),nm:fv('otc_nm')});go()});
+ on('#rq_q',()=>{Object.assign(F('rq'),{fr:fv('rq_fr'),to:fv('rq_to'),g:fv('rq_g'),ss:fv('rq_ss'),nm:fv('rq_nm')});go()});
+ on('#fx_q',()=>{Object.assign(F('fx'),{g:fv('fx_g'),ss:fv('fx_ss'),nm:fv('fx_nm')});go()});
+ on('#ct_q_go',()=>{Object.assign(F('ct'),{k:fv('ct_k'),fr:fv('ct_fr'),to:fv('ct_to'),ss:fv('ct_ss'),q:fv('ct_q')});go()});
+ on('#pm_q',()=>{Object.assign(F('pm'),{y:fv('pm_y'),rd:fv('pm_rd'),sb:fv('pm_sb')});go()});
+ on('#pm_stg',()=>{st.pmStg=!st.pmStg;go()});on('#pm_rate_go',()=>{st.pmRate=Math.max(0,Math.min(100,+fv('pm_rate')||80));go();toast('의무사용율 '+st.pmRate+'%로 바꿨습니다')});
+ const ay=$('#alt_y');if(ay)ay.onchange=()=>{F('alt').y=ay.value;go()};
+ ['otc','rq','fx'].forEach(k=>on('#'+k+'_x',()=>{render();if(st._x)xlDown(...st._x)}));on('#xl_cur',()=>{if(st._x)xlDown(...st._x)});
+ if((location.hash||'').startsWith('#otc')&&st.ots.length){const xs=st.ots;const h=['근무일자','부서','이름','근태유형','계획시간','실제근무시간','확정시간','보상유형','확정상태'];const ox=$('#otc_x');if(ox)ox.onclick=()=>xlDown('시간외근로확정',h,xs.filter(o=>o.status!=='반려').map(o=>{const p=person(o.no)||{},a=otActual(o);return [o.date,p.dept,p.name,otKind(o),hm(o.h),a?a.in+'-'+a.out:'출퇴근누락',o.cf?hm(o.cfH):'',o.cf?o.comp:'',o.cf?'확정':'미확정']}))}
+ all('[data-otc]',b=>b.onclick=()=>{st.otEdit=+b.dataset.otc;render()});all('[data-otcx]',b=>b.onclick=()=>{st.otEdit=0;render()});
+ all('[data-otcok]',b=>b.onclick=()=>{const o=st.ots.find(x=>x.id===+b.dataset.otcok);o.status='승인';o.by='대신승인';go();toast('대신 승인했습니다 → 이제 확정할 수 있습니다')});
+ all('[data-otcgo]',b=>b.onclick=()=>{const o=st.ots.find(x=>x.id===+b.dataset.otcgo),h=+fv('oc_h')+(+fv('oc_m'))/60,c=fv('oc_c'),p=person(o.no)||{};
+  (o.cfHist=o.cfHist||[]).push({at:now(),h,c,prev:o.cf?hm(o.cfH)+' '+o.comp:''});o.cf=now();o.cfH=h;o.comp=c;o.cfBy='인사 담당';st.otEdit=0;
+  alert1(o.no,'근태','시간외근로 '+o.date+' '+otKind(o)+' 확정: '+hm(h)+' · '+c,c==='대체휴무'?'#status/'+o.no:'#work/ot','otc-'+o.id+'-'+o.cfHist.length);go();toast(p.name+' '+o.date+' '+hm(h)+' · '+c+'로 확정했습니다')});
+ on('#otc_all',()=>{let n=0;st.ots.filter(o=>!o.cf&&o.status==='승인'&&otActual(o)).forEach(o=>{const h=otAuto(o);(o.cfHist=o.cfHist||[]).push({at:now(),h,c:o.comp||'수당',auto:1});o.cf=now();o.cfH=h;o.comp=o.comp||'수당';o.cfBy='인사 담당(자동값)';n++});alog('otca-'+now(),'시간외근로',n+'건 CAPS 실제근무시간으로 확정 (출퇴근 누락은 남김)');go();toast(n+'건 확정했습니다 — 출퇴근 누락 건은 직접 넣어 주세요')});
+ all('[data-fxadd]',b=>b.onclick=()=>{st.fxAdd=b.dataset.fxadd;go()});on('#fa_x',()=>{st.fxAdd='';go()});
+ on('#fa_go',()=>{const no=fv('fa_no'),fr=fv('fa_fr'),u=$('#fa_u').checked,to=u?'':fv('fa_to');if(!fr||(!u&&(!to||to<fr))){$('#fa_err').textContent='시작일·종료일(또는 무기한)을 확인하세요';return}
+  const x={id:nid(),no,from:fr,to,status:'승인',by:'관리자등록',at:now()};if(st.fxAdd==='단축근무'){const i=fv('fa_in'),o=fv('fa_out');if(!i||!o||toMin(o)-toMin(i)<180){$('#fa_err').textContent='근무시간은 최소 3시간 이상 넣어야 합니다';return}Object.assign(x,{kind:'단축근무',in:i,out:o,type:'C'})}else Object.assign(x,{kind:'시차출퇴근',type:fv('fa_ty')});
+  st.flex.push(x);st.fxAdd='';alert1(no,'근태',(x.kind)+' 등록: '+fr+'부터 '+(to||'무기한'),'#work/flex','fxa-'+x.id);go();toast((person(no)||{}).name+' '+x.kind+'을 등록했습니다')});
+ all('[data-fxdep]',b=>b.onclick=()=>{const x=st.flex.find(z=>z.id===+b.dataset.fxdep);x.status='승인';x.by='대신승인';go();toast('관리자가 대신 승인했습니다')});
+ all('[data-fxe]',b=>b.onclick=()=>{st.fxEdit=+b.dataset.fxe;render()});all('[data-fex]',b=>b.onclick=()=>{st.fxEdit=0;render()});
+ all('[data-fesave]',b=>b.onclick=()=>{const x=st.flex.find(z=>z.id===+b.dataset.fesave);x.from=fv('fe_fr')||x.from;x.to=fv('fe_to');if(x.kind==='단축근무'){const i=fv('fe_in'),o=fv('fe_out');if(toMin(o)-toMin(i)<180){toast('근무시간은 최소 3시간입니다');return}x.in=i;x.out=o}else x.type=fv('fe_ty')||x.type;x.edited=now();st.fxEdit=0;go();toast('고쳤습니다')});
+ all('[data-fxd]',b=>b.onclick=()=>{if(!b.dataset.c){b.dataset.c=1;b.textContent='정말 삭제';return}const x=st.flex.find(z=>z.id===+b.dataset.fxd);x.status='반려';x.deleted=now();go();toast('삭제했습니다 (기록은 남습니다)')});
+ const sel=()=>[...document.querySelectorAll('.ct_c:checked')].map(c=>st.certs.find(x=>x.id===+c.value));
+ on('#ct_ok',()=>{const xs=sel();if(!xs.length){toast('승인할 신청을 고르세요');return}xs.forEach(c=>{c.status='발급';c.issuedAt=now();c.by='인사 담당';alert1(c.no,'증명서',c.kind+'이 발행됐습니다','#cert/'+c.id,'cert-'+c.id)});go();toast(xs.length+'건 발행했습니다')});
+ on('#ct_no',()=>{const xs=sel();if(!xs.length){toast('취소할 신청을 고르세요');return}xs.forEach(c=>{c.status='반려'});go();toast(xs.length+'건 취소했습니다')})}
 
 /* ---------- 홈: 대화창 (규칙으로 알아듣는 시험판 · 사내 이전 때 AI 연결) — AI가 멈춰도 아래 「직접 하기」로 같은 일을 함 ---------- */
 const SUG={emp:['남은 연차','다음 주 금요일 연차','11/20 오후 반차','대체휴무 얼마','연차 사용 내역','재직증명서','우리 팀 휴가','유연근무'],lead:['승인할 것','우리 팀 휴가','이번 주 52시간','할 일'],hr:['연차 촉진 안 읽은 사람','결재 대기','오늘 부재','증명서 발급 대기','대체휴무 규정']};
@@ -474,7 +590,7 @@ function chatAnswer(q){const r=st.role,t=today(),y=t.slice(0,4),no=r==='emp'?st.
   if(ty==='반차')return '오전 반차인가요, 오후 반차인가요? 예: 「'+ds[0].slice(5).replace('-','/')+' 오후 반차」';
   const half=TYPES[ty].days===0.5,f=ds[0],to=half?f:(ds[ds.length-1]),d=half?0.5:workdays(f,to);
   return '<b>'+ty+'</b> '+f+'('+WD[new Date(f+'T00:00').getDay()]+')'+(to!==f?' ~ '+to:'')+' · '+d+'일로 신청서를 채웠습니다.<br><span class="tag">아직 신청 전입니다 — 「이대로 신청」을 누르면 팀장 승인으로 갑니다</span><div style="margin-top:8px"><button class="btn p sm" data-chsend="'+esc(JSON.stringify({type:ty,from:f,to}))+'">이대로 신청</button> <button class="btn sm" data-draft="'+esc(JSON.stringify({type:ty,from:f,to,reason:''}))+'">고쳐서 신청 ›</button></div>'}
- if(/대체/.test(q)&&!/규정|제도|방법/.test(q)){const a=altBal(no);return A('대체휴무 <b>'+a.rem+'일</b> 남았습니다 (생김 '+a.grant+'일 · 씀 '+a.used+'일).<br><span class="tag">휴일근로를 「대체휴무」로 신청해 팀장이 승인하면 8시간당 1일이 생깁니다</span>','#status/'+no,'내역 보기')}
+ if(/대체/.test(q)&&!/규정|제도|방법/.test(q)){const a=altBal(no);return A('대체휴무 <b>'+a.rem+'일</b> 남았습니다 (생김 '+a.grant+'일 · 씀 '+a.used+'일).<br><span class="tag">휴일·연장근로를 하고 인사가 「대체휴무」로 확정하면 8시간당 1일이 생깁니다</span>','#status/'+no,'내역 보기')}
  if(/연차|휴가/.test(q)&&/내역|썼|사용|언제/.test(q)&&r!=='hr'){const u=st.reqs.filter(x=>x.no===no&&TYPES[x.type].deduct&&[S.OK,S.HR,S.LEAD,S.CL,S.CH].includes(x.status)).sort((a,c)=>a.from<c.from?1:-1);
   return A(u.length?'연차 '+u.length+'건을 썼거나 신청했습니다.'+tbl(['날짜','종류','일수','상태'],u.slice(0,6).map(x=>'<tr><td>'+period(x)+'</td><td>'+x.type+'</td><td>'+x.days+'일</td><td>'+badge(x.status)+'</td></tr>')):'아직 쓴 연차가 없습니다.','#status/'+no,'전체 내역')}
  if(/연차|휴가/.test(q)&&ask&&!/촉진|팀|누가/.test(q)&&r!=='hr'){const b=bal(no);return A('남은 연차 <b>'+b.rem+'일</b>입니다 (발생 '+b.grant+' · 사용 '+b.used+' · 예약 '+b.res+').','#status/'+no,'사용 내역')}
@@ -555,12 +671,13 @@ V.cert=(id)=>{
  if(!st.people.length)return head('증명서')+needP();
  if(id){const c=st.certs.find(x=>x.id===+id);if(c&&c.status==='발급')return certDoc(c)}
  const r=st.role;let b='';
- if(r==='emp'){const p=person(st.me);b=sec('증명서 신청',esc(p.name),'<div class="form"><label>종류<select id="c_kind"><option>재직증명서</option><option>경력증명서</option></select></label><label>용도<input id="c_use" placeholder="예: 은행 제출"></label><label>부수<input id="c_n" type="number" value="1" min="1" max="5"></label></div><div class="err" id="c_err"></div><button class="btn p" id="c_go">신청</button>')}
+ if(r==='emp'){const p=person(st.me);b=sec('증명서 신청',esc(p.name),'<div class="form"><label>종류<select id="c_kind"><option>재직증명서</option><option>경력증명서</option><option>근로소득원천징수영수증</option></select></label><label>용도<input id="c_use" placeholder="예: 제출용"></label><label>제출처<input id="c_to" placeholder="예: 금융기관"></label><label>주민번호 표시<select id="c_rr"><option>마스킹</option><option>전체</option></select></label><label>부수<input id="c_n" type="number" value="1" min="1" max="5"></label></div><div class="err" id="c_err"></div><button class="btn p" id="c_go">신청</button>')}
  else if(r==='lead')b=hrOnly();
  const list=(r==='emp'?st.certs.filter(c=>c.no===st.me):st.certs).slice().sort((a,b)=>a.at<b.at?1:-1);
+ if(r==='hr')return certAdmin();
  return head('증명서','재직·경력증명서 신청 → 인사 발급')+b+ruleBox(['증명서 발급 절차'])+sec(r==='hr'?'발급 대기·목록':'내 신청',list.length+'건',tbl(['신청 시각','신청자','종류','용도','부수','상태',''],list.map(c=>{const p=person(c.no)||{};return '<tr><td class="tag">'+c.at+'</td><td>'+esc(p.name)+'</td><td>'+c.kind+'</td><td>'+esc(c.use)+'</td><td>'+c.n+'</td><td>'+stB(c.status)+'</td><td class="right">'+(c.status==='신청'&&r==='hr'?'<button class="btn p sm" data-cert="'+c.id+'">발급</button> <button class="btn no sm" data-certno="'+c.id+'">반려</button>':c.status==='발급'?'<a class="btn sm" href="#cert/'+c.id+'">보기·인쇄</a>':'')+'</td></tr>'}),'신청이 없습니다'))};
 function certDoc(c){const p=person(c.no)||{};const mv=st.moves.filter(m=>m.no===c.no);
- return '<div class="top"><h1>'+c.kind+'</h1><a class="btn sm" href="#cert">목록</a><button class="btn sm p" onclick="window.print()">인쇄</button></div><section class="card"><div class="bd" style="max-width:640px;margin:0 auto;padding:40px 30px;font-size:15px;line-height:2"><h2 style="text-align:center;letter-spacing:12px">'+c.kind+'</h2><table style="font-size:14px">'+
+ return '<div class="top"><h1>'+c.kind+'</h1><a class="btn sm" href="#cert">목록</a><button class="btn sm p" data-cprint="'+c.id+'">인쇄</button></div><section class="card"><div class="bd" style="max-width:640px;margin:0 auto;padding:40px 30px;font-size:15px;line-height:2"><h2 style="text-align:center;letter-spacing:12px">'+c.kind+'</h2><table style="font-size:14px">'+
  [['성명',p.name],['사번',p.no],['소속','휴롬 '+(p.dept||'')],['직급·직책',(p.grade||'')+' · '+(p.pos||'')],['입사일',p.join],[c.kind==='경력증명서'?'재직 기간':'재직 상태',c.kind==='경력증명서'?p.join+' ~ '+(p.status==='퇴직'?p.leftAt:'현재'):p.status],['용도',c.use||'—'],['발급 번호','HR-'+c.issuedAt.slice(0,4)+'-'+String(c.id).padStart(4,'0')]].map(x=>'<tr><th style="width:120px">'+x[0]+'</th><td>'+esc(x[1])+'</td></tr>').join('')+'</table>'+
  (c.kind==='경력증명서'&&mv.length?'<p style="font-size:13px;margin-top:16px"><b>발령 이력</b><br>'+mv.map(m=>m.date+' '+m.kind+' '+esc(m.chg)).join('<br>')+'</p>':'')+
  '<p style="text-align:center;margin-top:30px">위와 같이 증명합니다.<br>'+c.issuedAt.slice(0,10)+'<br><b>주식회사 휴롬 대표이사</b> (인)</p><p class="tag" style="text-align:center">시뮬레이션 화면 — 실제 증명서가 아닙니다</p></div></section>'}
@@ -664,7 +781,7 @@ function wireMods(page){
  const on=(s,f)=>{const e=$(s);if(e)e.onclick=f};
  document.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>switchRole(b.dataset.role));
  on('#m_go',doMove);
- on('#c_go',()=>{st.certs.push({id:nid(),no:st.me,kind:$('#c_kind').value,use:$('#c_use').value.trim(),n:+$('#c_n').value||1,status:'신청',at:now()});save();render();toast('증명서를 신청했습니다','인사로 발급하기',()=>switchRole('hr','#cert'))});
+ on('#c_go',()=>{st.certs.push({id:nid(),no:st.me,kind:$('#c_kind').value,use:$('#c_use').value.trim(),to:($('#c_to')||{}).value||'',rr:($('#c_rr')||{}).value||'마스킹',n:+$('#c_n').value||1,status:'신청',at:now()});save();render();toast('증명서를 신청했습니다','인사로 발급하기',()=>switchRole('hr','#cert'))});
  document.querySelectorAll('[data-cert]').forEach(b=>b.onclick=()=>{const c=st.certs.find(x=>x.id===+b.dataset.cert);c.status='발급';c.issuedAt=now();save();toast('발급했습니다','증명서 보기',()=>location.hash='#cert/'+c.id);render()});
  document.querySelectorAll('[data-certno]').forEach(b=>b.onclick=()=>{const c=st.certs.find(x=>x.id===+b.dataset.certno);c.status='반려';save();render()});
  const pc=$('#pay_calc');if(pc)pc.onclick=()=>payCalc(pc.dataset.ym);
@@ -983,9 +1100,9 @@ V.work=(tab)=>{
   const mine=st.punches.filter(x=>x.no===p.no).sort((a,c)=>a.date<c.date?1:-1).slice(0,14);
   b+=sec('최근 기록',mine.length+'일',tbl(['날짜','유형','출근','퇴근','근무','연장',''],mine.map(x=>'<tr><td>'+x.date+' ('+WD[new Date(x.date+'T00:00').getDay()]+')</td><td>'+flexOf(x.no,x.date)+'</td><td>'+x.in+'</td><td>'+(x.out||'—')+'</td><td>'+(workMin(x)/60).toFixed(1)+'h</td><td>'+(otOfDay(x)?otOfDay(x).toFixed(1)+'h':'')+'</td><td>'+lateTag(x)+'</td></tr>'),'기록이 없습니다'))}
  if(tab==='ot'){
-  if(r==='emp'){const p=person(st.me);b+=sec('시간외근로 신청',esc(p.name)+' · 팀장 승인 → 급여 수당','<div class="form"><label>날짜<input id="o_d" type="date" value="'+t+'"></label><label>종류<select id="o_k"><option>야근</option><option>조근</option><option>휴일근로</option></select></label><label>보상<select id="o_c"><option>수당</option><option>대체휴무</option></select></label><label>시간<input id="o_h" type="number" step="0.5" min="0.5" max="12" value="2"></label><label>그중 22시 이후 (야간)<input id="o_n" type="number" step="0.5" min="0" value="0"></label><label class="full">사유<input id="o_r" placeholder="예: 신제품 출시 준비"></label></div><div class="err" id="o_err"></div><button class="btn p" id="o_go">신청</button>')+ruleBox(['근태계 작성법','기본규정'])}
+  if(r==='emp'){const p=person(st.me);b+=sec('시간외근로 신청',esc(p.name)+' · 팀장 승인 → 급여 수당','<div class="form"><label>날짜<input id="o_d" type="date" value="'+t+'"></label><label>종류<select id="o_k"><option>야근</option><option>조근</option><option>휴일근로</option></select></label><label>희망 보상<select id="o_c"><option>대체휴무</option><option>수당</option></select></label><label>시간<input id="o_h" type="number" step="0.5" min="0.5" max="12" value="2"></label><label>그중 22시 이후 (야간)<input id="o_n" type="number" step="0.5" min="0" value="0"></label><label class="full">사유<input id="o_r" placeholder="예: 신제품 출시 준비"></label></div><div class="err" id="o_err"></div><button class="btn p" id="o_go">신청</button>')+ruleBox(['근태계 작성법','기본규정'])}
   const q=r==='lead'?otQ():[],list=(r==='emp'?st.ots.filter(o=>o.no===st.me):st.ots).slice().reverse();
-  const row=(o,btn)=>{const p=person(o.no)||{};return '<tr><td>'+o.date+'</td><td>'+esc(p.name)+'</td><td>'+esc(p.dept)+'</td><td>'+o.kind+(o.comp==='대체휴무'?' <span class="st ch">대체휴무 '+Math.round(o.h/8*4)/4+'일</span>':'')+'</td><td class="right">'+o.h+'h'+(o.night?' (야간 '+o.night+'h)':'')+'</td><td>'+esc(o.reason)+'</td><td>'+stB(o.status)+'</td><td class="right">'+(btn||'')+'</td></tr>'};
+  const row=(o,btn)=>{const p=person(o.no)||{};return '<tr><td>'+o.date+'</td><td>'+esc(p.name)+'</td><td>'+esc(p.dept)+'</td><td>'+o.kind+(o.cf?' <span class="st o">확정 '+hm(o.cfH)+' · '+o.comp+'</span>':o.comp==='대체휴무'?' <span class="tag">희망: 대체휴무</span>':'')+'</td><td class="right">'+o.h+'h'+(o.night?' (야간 '+o.night+'h)':'')+'</td><td>'+esc(o.reason)+'</td><td>'+stB(o.status)+'</td><td class="right">'+(btn||'')+'</td></tr>'};
   if(r==='lead')b+=sec('팀장 승인함',q.length+'건',tbl(['날짜','신청자','부서','종류','시간','사유','상태',''],q.map(o=>row(o,'<button class="btn p sm" data-ot="'+o.id+'">승인</button> <button class="btn no sm" data-otno="'+o.id+'">반려</button>')),'승인할 건이 없습니다'));
   b+=sec(r==='emp'?'내 신청':'전체 신청',list.length+'건',tbl(['날짜','신청자','부서','종류','시간','사유','상태',''],list.map(o=>row(o)),'신청이 없습니다'))}
  if(tab==='all'){const act=actives();const ym=t.slice(0,7);
@@ -1014,7 +1131,7 @@ let draftFx='B';
 const isClosed=ym=>st.closes.some(c=>c.ym===ym);
 const BONUS={'설 상여':500000,'추석 상여':500000,'여름휴가 상여':300000};
 function otPay(p,ym){ // 고정 O/T 월 36시간 넘는 승인분만 지급, 1.5배 + 야간 0.5배 가산
- const xs=st.ots.filter(o=>o.no===p.no&&o.status==='승인'&&o.comp!=='대체휴무'&&o.date.slice(0,7)===ym);const h=xs.reduce((a,o)=>a+o.h,0),n=xs.reduce((a,o)=>a+(+o.night||0),0);
+ const xs=st.ots.filter(o=>o.no===p.no&&(o.cf?o.comp==='수당':o.status==='승인'&&o.comp!=='대체휴무')&&o.date.slice(0,7)===ym);const h=xs.reduce((a,o)=>a+(o.cf?o.cfH:o.h),0),n=xs.reduce((a,o)=>a+(+o.night||0),0);
  const ex=Math.max(0,h-36);return {h,ex,night:n,amt:fl10(hourly(p)*(ex*1.5+n*0.5))}}
 function bonusOf(p,ym){const k=st.bonus[ym];return k&&p.status==='재직'?{k,amt:BONUS[k]}:{k:'',amt:0}}
 V.close=(ym)=>{
@@ -1078,12 +1195,13 @@ V.contract=(no)=>{const p=person(no);if(!p)return head('근로계약서')+needP(
  '<p class="tag" style="text-align:center">시뮬레이션 양식 — 실제 계약서 원본은 피플&컬처팀 양식으로 바꿉니다</p></div></section>'};
 
 /* 연차 사용 촉진 (근로기준법 61조) */
-V.promote=()=>{
+V.promote=(tab)=>{
  if(st.role!=='hr')return head('연차 사용 촉진')+hrOnly();const y=today().slice(0,4);
+ if(tab!=='target')return head('연차촉진 관리','1차/2차 나눠 대상자 관리 · 근로기준법 61조')+pmTable()+ruleBox(['휴롬의 연차제도']);
  const r1=[y+'-07-01',y+'-07-10'],r2=y+'-10-31';const tg=actives().filter(p=>p.status==='재직').map(p=>({p,b:bal(p.no)})).filter(x=>x.b.rem>0);
  const sent=(no,rd)=>st.notices.find(n=>n.no===no&&n.round===rd&&n.year===y);
  const win=t=>t<r1[0]?'1차 통지 '+r1[0]+' ~ '+r1[1]:t<=r1[1]?'지금 1차 통지 기간 ('+r1[1]+'까지)':t<=r2?'지금 2차 통지 기간 ('+r2+'까지)':'올해 통지 기한 지남 — 늦게라도 보내면 기록은 남지만 사용 촉진 효력(연차수당 면제)은 없습니다';
- return head('연차 사용 촉진','근로기준법 61조 · 휴롬은 1월 1일 기준 (선연차)')+
+ return head('연차촉진 · 대상자관리','근로기준법 61조 · 휴롬은 1월 1일 기준 (선연차)')+'<p><a href="#promote">‹ 연차촉진 관리</a></p>'+
  '<div class="guide"><span class="nx"><b>'+win(today())+'</b><br>1차: 연차 기간이 끝나기 6개월 전 기준 10일 안에 남은 일수를 알리고 사용 시기를 정해 내라고 요구 · 2차: 직원이 10일 안에 시기를 안 내면 끝나기 2개월 전까지 회사가 사용일을 정해 통지</span></div>'+
  sec('통지 대상',tg.length+'명 · 남은 연차가 있는 재직자 · 안내문을 연 시각이 남습니다 (안 읽으면 3일 뒤 자동 재알림)','<div style="margin-bottom:8px;display:flex;gap:6px">'+(unreadN(y)?'<button class="btn sm" id="lv_rd">안 읽은 '+unreadN(y)+'명에게 다시 알림</button>':'')+'<button class="btn p sm" data-pm="1">1차 통지 일괄 기록</button><button class="btn sm" data-pm="2">2차 통지 일괄 기록</button></div>'+tbl(['이름','부서','발생','남은 연차','1차 통지','안내문 읽음','2차 통지','안내문 읽음'],tg.map(x=>{const a=sent(x.p.no,1),c=sent(x.p.no,2);return '<tr><td><b>'+esc(x.p.name)+'</b></td><td>'+esc(x.p.dept)+'</td><td class="right">'+x.b.grant+'</td><td class="right"><b>'+x.b.rem+'</b>일</td><td>'+(a?'<span class="st o">'+a.at.slice(0,10)+' · '+a.rem+'일</span>':'<span class="st w">안 보냄</span>')+'</td><td>'+readTag(a)+'</td><td>'+(c?'<span class="st o">'+c.at.slice(0,10)+'</span>':'<span class="st w">안 보냄</span>')+'</td><td>'+readTag(c)+'</td></tr>'}),'통지할 사람이 없습니다'))+
  '<p class="tag">1년 미만 근무자는 따로: 1차 끝나기 3개월 전, 2차 1개월 전 (61조 2항). 연차수당은 12월 귀속 급여에 1일 통상임금으로 지급(휴롬 연차제도).</p>'+lvAutoSec(y)+ruleBox(['휴롬의 연차제도'])};
@@ -1652,7 +1770,7 @@ function wireData(){
 function render(){
  const h=(location.hash||'#home').slice(1).split('/');const page=V[h[0]]?h[0]:'home';
  if(st.role==='emp'){let rd=0;st.alerts.filter(a=>a.no===st.me&&!a.read&&a.go===(location.hash||'')).forEach(a=>{a.read=now();rd=1});if(rd)save()} // 알림을 열어 본 시각 기록
- SIMD=st.simDate||'';autoRun();nav(page);bar();guide();ensureTasks();bell();const v=$('#view');v.classList.remove('view');void v.offsetWidth;v.classList.add('view');v.innerHTML=V[page](h[1]);wire(page);wireReset();if(page==='reorg')wireReorg();wireAuto();wirePerm();wireHome();window.scrollTo(0,0)}
+ SIMD=st.simDate||'';autoRun();nav(page);bar();guide();ensureTasks();bell();const v=$('#view');v.classList.remove('view');void v.offsetWidth;v.classList.add('view');v.innerHTML=V[page](h[1]);wire(page);wireReset();if(page==='reorg')wireReorg();wireAuto();wirePerm();wireHome();wireAdmin();window.scrollTo(0,0)}
 function wire(page){
  document.querySelectorAll('[data-go]').forEach(e=>e.onclick=()=>location.hash=e.dataset.go);
  const th=$('#tohr')||$('#tohr2');if(th)th.onclick=()=>switchRole('hr','#people');
