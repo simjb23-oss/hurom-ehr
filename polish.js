@@ -87,6 +87,28 @@ html.sh .empty{color:var(--mute);font-size:14px;padding:22px 0;text-align:center
  html.sh .toast{left:14px;right:14px;transform:translateY(20px);max-width:none}
  html.sh .toast.show{transform:none}
 }
+@media(max-width:640px){
+ html.sh .view table.mc,html.sh .view table.mc tbody,html.sh .view table.mc tr,html.sh .view table.mc td{display:block;width:auto!important;min-width:0!important}
+ html.sh .view table.mc tr.mh{display:none}
+ html.sh .view table.mc tr{padding:10px 0;border-bottom:1px solid #f0f0f2}
+ html.sh .view table.mc tr:last-child{border-bottom:0}
+ html.sh .view table.mc td{border:0!important;padding:3px 0!important;white-space:normal!important;text-align:left!important;display:flex;gap:10px;align-items:baseline;font-size:13px}
+ html.sh .view table.mc td:empty{display:none}
+ html.sh .view table.mc td[data-l]::before{content:attr(data-l);flex:none;width:76px;color:var(--mute);font-size:12px;font-weight:600}
+ html.sh .view table.mc td[colspan]{display:block}
+ html.sh .view table.mc td:first-child{font-weight:700;font-size:14px}
+ html.sh .bd th,html.sh .bd td{white-space:normal}
+ html.sh .btn{white-space:nowrap;flex:none;min-width:max-content}
+}
 `;
   var s=document.createElement('style');s.id='polish-css';s.textContent=css;document.head.appendChild(s);
+  /* 휴대폰: 표를 줄마다 카드로 (머리글을 칸 이름표로) */
+  function cards(){document.querySelectorAll('.view table:not(.mc)').forEach(function(t){
+    if(t.closest('.rg,.paper,.cal,.org,.ogrid'))return;var rows=t.rows;if(!rows.length)return;var h=null;
+    for(var i=0;i<rows.length;i++){var r=rows[i];if(r.querySelector('th')&&!r.querySelector('td')){h=[].map.call(r.cells,function(c){return c.textContent.trim()});r.classList.add('mh');continue}
+      if(!h)continue;var k=0;[].forEach.call(r.cells,function(c){var sp=c.colSpan||1;if(sp===1&&h[k]&&!c.dataset.l)c.dataset.l=h[k];k+=sp})}
+    if(h)t.classList.add('mc')})}
+  var q=0;function run(){q=0;try{cards()}catch(e){console.warn('polish',e)}}
+  function boot(){var m=document.querySelector('main');if(!m)return setTimeout(boot,100);new MutationObserver(function(){if(!q)q=requestAnimationFrame(run)}).observe(m,{childList:true,subtree:true});run()}
+  document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot):boot();
 })();
