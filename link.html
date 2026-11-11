@@ -1,6 +1,6 @@
 <!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>EHR 자동화·연결 계획 v0.1</title><style>body{font-family:"Pretendard","Malgun Gothic",sans-serif;max-width:960px;margin:24px auto;padding:0 16px;color:#222;line-height:1.6}table{border-collapse:collapse;width:100%;font-size:14px;margin:6px 0 14px}td,th{border:1px solid #ddd;padding:6px 8px;vertical-align:top;text-align:left}th{background:#f3f6ee}a{color:#5a7d1e}.k{display:inline-block;font-size:12px;padding:0 6px;border-radius:4px;background:#eef3e4;white-space:nowrap}.w{background:#fdf1dc}.n{background:#f6e3e3}</style>
 <p><a href="./">← 목록</a> · <a href="prd.html">PRD(요구사항)</a></p>
-<p><b>EHR 자동화·연결 계획 v0.1</b> (김호철 · 2026-11-11 · PRD v0.5 옆 문서 · 근거: 곽두팔 「자동으로 되는 것 / 안 되는 것」 msg_fda2d14b · Teams 알림 결정 msg_15ba96a0 · EHR_수동작업_자동화_v1.md msg_cf7af0d3 · 시뮬레이션 자동 처리 13가지 d00b3aa)</p>
+<p><b>EHR 자동화·연결 계획 v0.1</b> (김호철 · 2026-11-11 · PRD v0.5 옆 문서 · 근거: 곽두팔 「자동으로 되는 것 / 안 되는 것」 msg_fda2d14b · Teams 알림 결정 msg_15ba96a0 · EHR_수동작업_자동화_v1.md msg_cf7af0d3 · 시뮬레이션 자동 처리 12가지 d00b3aa)</p>
 
 <p><b>1. 원칙</b></p>
 <li>사람 정보는 E-HR 한 곳에만 둡니다. Teams·ERP·교육 업체는 E-HR에서 받아 가거나 E-HR에 넣어 줍니다.</li>
@@ -31,7 +31,7 @@
 <tr><td>슬랙 「공지사항-휴롬」 양식 7개</td><td>대체</td><td>근무복·선물 배송지·소방훈련 등</td><td>E-HR 「신청 양식」 한 틀로 받고 부서별 합계 자동. 엑셀은 내려받기만</td><td><span class="k">만드는 중</span></td></tr>
 <tr><td>기존 그룹웨어 근태</td><td style="white-space:nowrap">→ E-HR</td><td>지난 연차·근태 기록</td><td>한 번만 엑셀로 옮기기(일괄 처리 화면)</td><td><span class="k n">결정 필요</span></td></tr></table>
 
-<p><b>4. 자동 처리 13가지 — 언제 무엇을</b></p>
+<p><b>4. 자동 처리 12가지 — 언제 무엇을</b></p>
 <table><tr><th>일</th><th>방식</th><th>언제</th><th>받는 것 → 내보내는 것</th></tr>
 <tr><td>연차촉진</td><td><span class="k">시간</span></td><td>1차 통지, 마감 D-3·D-1 재알림, 기한이 지나면 회사 지정안</td><td>인원·근태 → Teams 통지 + 통지 기록(증빙)</td></tr>
 <tr><td>법정의무교육</td><td><span class="k">시간</span> <span class="k">파일</span></td><td>10/1 배정, 매주 월요일 미이수 재알림</td><td>협회 수료 명단 → 이수 반영 · Teams 재알림</td></tr>
@@ -41,7 +41,6 @@
 <tr><td>출퇴근 누락 보정</td><td><span class="k">시간</span> <span class="k">파일</span></td><td>매일 아침</td><td>CAPS 파일 → 장애 날 보정 · 본인 알림</td></tr>
 <tr><td>국민연금 변동</td><td><span class="k">파일</span></td><td>기준표가 들어올 때</td><td>변동액 → 개인 알림 · ERP</td></tr>
 <tr><td>휴가샵 포인트</td><td><span class="k">시간</span> <span class="k">파일</span></td><td>11월</td><td>사용 명단 → 미사용자만 알림</td></tr>
-<tr><td>노사협의회 선거인 명부</td><td><span class="k">사건</span></td><td>선거 기준일을 정할 때</td><td>재직자 명부(팀장 이상 제외) → 본인 확인</td></tr>
 <tr><td>일학습병행 OFF-JT</td><td><span class="k">시간</span></td><td>훈련일 3일 전</td><td>본인·팀장 알림</td></tr>
 <tr><td>사내공모</td><td><span class="k">사건</span></td><td>합격자를 고를 때</td><td>나머지 지원자에게 결과 자동 안내(팀장에게 안 보임)</td></tr>
 <tr><td>티켓 선착순</td><td><span class="k">사건</span></td><td>신청 때</td><td>시각 순으로 당첨·대기</td></tr>
