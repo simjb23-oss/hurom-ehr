@@ -1583,6 +1583,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-a="no"],[d
 function wireReset(){const rs=$('#reset');if(rs)rs.onclick=()=>{const b=$('#reset');if(b.dataset.c){localStorage.removeItem(KEY);st=blank();draft={type:'연차'};b.textContent='처음부터 다시';delete b.dataset.c;location.hash='#dash';render();toast('처음 상태로 돌렸습니다');return}
  b.dataset.c=1;b.textContent='정말 지울까요? 한 번 더 누르기';b.classList.add('no');setTimeout(()=>{b.textContent='처음부터 다시';delete b.dataset.c;b.classList.remove('no')},4000)}}
 window.addEventListener('hashchange',render);render();
+window.EHR={get st(){return st},save,render,switchRole,person,bal,absentOn,today,V,MENUS,esc,TYPES,workdays}; // 휴글(hugle.js)이 쓰는 문
 })();
 </script>
+<script src="hugle.js" defer></script>
 </body></html>
