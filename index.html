@@ -249,7 +249,7 @@ const MENUS={
   ['사람',[['people','인원 명부'],['card','인사카드'],['onoff','입사·퇴사'],['move','인사발령'],['org','조직도'],['reorg','조직 개편'],['juice','신입 주스기'],['eval','평가'],['edu','교육'],['hire','채용']]],
   ['근태',[['leave','근태·휴가'],['work','출퇴근·52시간'],['status','근태 현황'],['promote','연차 촉진']]],
   ['급여',[['pay','급여'],['welfare','복리후생'],['exp','경비'],['yearend','연말정산'],['lic','자격수당'],['cert','증명서']]],
-  ['관리',[['auto','자동 처리'],['perm','권한 관리'],['forms','신청·접수'],['level','커리어레벨'],['ct','계약·수습'],['deputy','대신 승인'],['bulk','일괄 처리'],['voucher','전표'],['erp','ERP 연동'],['audit','열람 기록'],['rules','휴롬 규정'],['data','데이터 관리'],['plan','기획서'],['prd','PRD']]]],
+  ['관리',[['auto','자동 처리'],['perm','권한 관리'],['forms','신청·접수'],['level','커리어레벨'],['ct','계약·수습'],['deputy','대신 승인'],['bulk','일괄 처리'],['voucher','전표'],['erp','ERP 연동'],['audit','열람 기록'],['rules','휴롬 규정'],['data','데이터 관리'],['plan','기획서'],['prd','PRD'],['link','자동화·연결']]]],
  emp:[['홈',[['inbox','할 일']]],
   ['근태 신청',[['leave/new','근태·휴가'],['work/me','출퇴근'],['work/flex','시차출퇴근'],['work/ot','연장·휴일']]],
   ['급여',[['pay','급여명세서'],['exp','경비'],['welfare','복리후생'],['yearend','연말정산'],['lic','자격증']]],
@@ -612,6 +612,7 @@ function wireErp(){
   st.erp.push({id:nid(),dir:'받기',kind:'파일',desc:f.name+' — 부서 '+nd+' · 계정 '+na+' 추가',status:'반영 완료',at:now()});save();render();toast('ERP 파일 반영: 부서 '+nd+' · 계정 '+na)})}}
 
 function soon(t,d){return '<div class="top"><h1>'+t+'</h1><span class="demo">다음 단계</span></div><section class="card"><div class="soon">'+d+'<br><br><a class="btn" href="#dash">대시보드로</a></div></section>'}
+V.link=()=>'<div class="top"><h1>자동화·연결 계획</h1><a class="btn sm" href="link.html" target="_blank">새 창</a></div><iframe class="doc" src="link.html"></iframe>';
 V.plan=()=>'<div class="top"><h1>기획서</h1><a class="btn sm" href="plan.html" target="_blank">새 창</a></div><iframe class="doc" src="plan.html"></iframe>';
 V.prd=()=>'<div class="top"><h1>PRD(요구사항)</h1><a class="btn sm" href="prd.html" target="_blank">새 창</a></div><iframe class="doc" src="prd.html"></iframe>';
 

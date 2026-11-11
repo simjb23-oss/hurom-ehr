@@ -1,0 +1,66 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>EHR 자동화·연결 계획 v0.1</title><style>body{font-family:"Pretendard","Malgun Gothic",sans-serif;max-width:960px;margin:24px auto;padding:0 16px;color:#222;line-height:1.6}table{border-collapse:collapse;width:100%;font-size:14px;margin:6px 0 14px}td,th{border:1px solid #ddd;padding:6px 8px;vertical-align:top;text-align:left}th{background:#f3f6ee}a{color:#5a7d1e}.k{display:inline-block;font-size:12px;padding:0 6px;border-radius:4px;background:#eef3e4;white-space:nowrap}.w{background:#fdf1dc}.n{background:#f6e3e3}</style>
+<p><a href="./">← 목록</a> · <a href="prd.html">PRD(요구사항)</a></p>
+<p><b>EHR 자동화·연결 계획 v0.1</b> (김호철 · 2026-11-11 · PRD v0.5 옆 문서 · 근거: 곽두팔 「자동으로 되는 것 / 안 되는 것」 msg_fda2d14b · Teams 알림 결정 msg_15ba96a0 · EHR_수동작업_자동화_v1.md msg_cf7af0d3 · 시뮬레이션 자동 처리 13가지 d00b3aa)</p>
+
+<p><b>1. 원칙</b></p>
+<li>사람 정보는 E-HR 한 곳에만 둡니다. Teams·ERP·교육 업체는 E-HR에서 받아 가거나 E-HR에 넣어 줍니다.</li>
+<li>사람은 판단만 합니다. 버튼은 3개입니다: 발령 확정, 휴넷 승인, 공모 합격.</li>
+<li>나머지는 네 가지 방식으로 돕니다: <span class="k">시간</span> 정해진 날 · <span class="k">사건</span> 신청·승인·확정 때 · <span class="k">파일</span> 받는 폴더에 파일이 들어올 때 · <span class="k">연결</span> 다른 시스템과 주고받기.</li>
+<li>모든 자동 처리와 알림은 기록(누구에게·언제·무엇을)을 남깁니다. 연차촉진처럼 법적 증빙이 필요한 일에 그대로 씁니다.</li>
+
+<p><b>2. 어떻게 돌리나 (사내 SharePoint로 옮긴 뒤)</b></p>
+<table><tr><th>부분</th><th>지금 (공개 시뮬레이션)</th><th>옮긴 뒤</th></tr>
+<tr><td>데이터</td><td>브라우저 저장소(샘플 4명)</td><td>인사 전용 비공개 SharePoint 사이트의 목록(인원·부서·근태·결재이력·발령·교육·양식 응답·알림 대기열·자동 처리 기록)</td></tr>
+<tr><td>화면</td><td>GitHub Pages 한 페이지</td><td>SPFx 웹파트(PLM과 같은 방식). 역할은 로그인한 사람의 권한에서 가져오고, 「보는 사람」과 역할 바꾸기 버튼은 끕니다</td></tr>
+<tr><td><span class="k">시간</span> 자동 처리</td><td>화면을 열 때마다 계산(날짜 바꿔 보기로 시험)</td><td>Power Automate 예약 흐름이 매일 아침 07:00에 한 번 돕니다. 아무도 화면을 열지 않아도 됩니다</td></tr>
+<tr><td><span class="k">사건</span> 자동 처리</td><td>버튼을 누르면 바로 반영</td><td>같음(웹파트가 목록에 쓰고, 알림은 대기열에 넣음)</td></tr>
+<tr><td>알림 보내기</td><td>「발송 대기열」에 「발송 예정」으로 쌓임</td><td>대기열에 새 줄이 생기면 Teams로 보내고 「보냄 · 시각」을 적습니다</td></tr>
+<tr><td><span class="k">파일</span> 받기</td><td>「받은 명단 넣기」에 파일을 직접 올림(열 이름으로 종류를 알아냄)</td><td>받는 폴더 「P_00_데이터 허브 › EHR_연동자료」에 파일이 들어오면 같은 규칙으로 반영하고, 결과(반영 n줄 · 못 읽은 줄)를 기록합니다</td></tr></table>
+<p>Power Automate의 SharePoint·Teams·Outlook 연결은 M365에 포함된 표준 연결이라 추가 비용이 없습니다. 흐름은 개인 계정이 아니라 인사팀 공용 계정이 갖게 합니다(담당자가 바뀌어도 멈추지 않게).</p>
+
+<p><b>3. 연결할 곳</b></p>
+<table><tr><th>상대</th><th>방향</th><th>무엇을</th><th>방법</th><th>상태</th></tr>
+<tr><td>Teams 개인 알림</td><td style="white-space:nowrap">E-HR →</td><td>연차촉진 통지·재알림, 교육 미이수, 레벨업 신청, 양식 미제출, 결재 요청</td><td>대기열 → Teams 1:1 채팅. 글에 E-HR 해당 화면 링크</td><td><span class="k w">옮기는 날 켬</span></td></tr>
+<tr><td>Teams 공지_01_휴롬그룹</td><td style="white-space:nowrap">E-HR →</td><td>인사발령 게시 + 공문 PDF</td><td>발령 확정 → 공문 PDF를 SharePoint에 저장 → 채널에 게시</td><td><span class="k w">옮기는 날 켬</span></td></tr>
+<tr><td>휴넷 · 법정교육 협회</td><td style="white-space:nowrap">→ E-HR</td><td>수료 명단</td><td>업체 엑셀을 받는 폴더에 넣음 → 자동 반영. 업체가 API를 열어 주면 파일도 필요 없음</td><td><span class="k">화면 있음</span></td></tr>
+<tr><td>휴가샵</td><td style="white-space:nowrap">→ E-HR</td><td>포인트 사용 명단</td><td>받는 폴더 → 미사용자에게만 11월 알림</td><td><span class="k">화면 있음</span></td></tr>
+<tr><td>국민연금 기준표</td><td style="white-space:nowrap">→ E-HR</td><td>기준소득월액</td><td>받는 폴더 → 사람마다 공제 변동액 계산·알림</td><td><span class="k">화면 있음</span></td></tr>
+<tr><td>CAPS 출퇴근</td><td style="white-space:nowrap">→ E-HR</td><td>출퇴근 기록</td><td>CAPS가 하루 한 번 파일로 받는 폴더에 내보냄(가능한지 IT 확인) → 52시간·누락 계산, 장애 날 자동 보정</td><td><span class="k n">IT 확인</span></td></tr>
+<tr><td>ERP(영림원)</td><td style="white-space:nowrap">E-HR →</td><td>입·퇴사·발령, 급여 반영(휴넷 미수료 공제·연금 변동·자격수당·O/T)</td><td>1단계: 지금 있는 「ERP 연동」 엑셀 내보내기를 급여 담당이 올림. 2단계: 영림원 주관사와 연결 방식(API·DB 연계) 협의</td><td><span class="k n">결정 필요</span></td></tr>
+<tr><td>M365 계정·라이선스</td><td style="white-space:nowrap">E-HR →</td><td>입사자 계정 발급, 퇴사자 회수</td><td>1단계: 입사·퇴사 체크리스트가 IT에 Teams로 요청. 2단계: 계정 자동 생성(IT 권한 필요)</td><td><span class="k w">1단계부터</span></td></tr>
+<tr><td>슬랙 「공지사항-휴롬」 양식 7개</td><td>대체</td><td>근무복·선물 배송지·소방훈련 등</td><td>E-HR 「신청 양식」 한 틀로 받고 부서별 합계 자동. 엑셀은 내려받기만</td><td><span class="k">만드는 중</span></td></tr>
+<tr><td>기존 그룹웨어 근태</td><td style="white-space:nowrap">→ E-HR</td><td>지난 연차·근태 기록</td><td>한 번만 엑셀로 옮기기(일괄 처리 화면)</td><td><span class="k n">결정 필요</span></td></tr></table>
+
+<p><b>4. 자동 처리 13가지 — 언제 무엇을</b></p>
+<table><tr><th>일</th><th>방식</th><th>언제</th><th>받는 것 → 내보내는 것</th></tr>
+<tr><td>연차촉진</td><td><span class="k">시간</span></td><td>1차 통지, 마감 D-3·D-1 재알림, 기한이 지나면 회사 지정안</td><td>인원·근태 → Teams 통지 + 통지 기록(증빙)</td></tr>
+<tr><td>법정의무교육</td><td><span class="k">시간</span> <span class="k">파일</span></td><td>10/1 배정, 매주 월요일 미이수 재알림</td><td>협회 수료 명단 → 이수 반영 · Teams 재알림</td></tr>
+<tr><td>휴넷 이러닝</td><td><span class="k">시간</span> <span class="k">사건</span> <span class="k">파일</span></td><td>매월 10일 공지, 신청 → 팀장 의견 → 인사 승인</td><td>휴넷 수료 명단 → 미수료 50% 공제 → ERP</td></tr>
+<tr><td>M365 교육</td><td><span class="k">사건</span></td><td>「듣고 싶어요」가 기준 인원이 되면</td><td>개설·등록·전날 알림</td></tr>
+<tr><td>인사발령 게시</td><td><span class="k">사건</span></td><td>발령 확정 때</td><td>대장·인사카드 → 공지_01 게시 · ERP</td></tr>
+<tr><td>출퇴근 누락 보정</td><td><span class="k">시간</span> <span class="k">파일</span></td><td>매일 아침</td><td>CAPS 파일 → 장애 날 보정 · 본인 알림</td></tr>
+<tr><td>국민연금 변동</td><td><span class="k">파일</span></td><td>기준표가 들어올 때</td><td>변동액 → 개인 알림 · ERP</td></tr>
+<tr><td>휴가샵 포인트</td><td><span class="k">시간</span> <span class="k">파일</span></td><td>11월</td><td>사용 명단 → 미사용자만 알림</td></tr>
+<tr><td>노사협의회 선거인 명부</td><td><span class="k">사건</span></td><td>선거 기준일을 정할 때</td><td>재직자 명부(팀장 이상 제외) → 본인 확인</td></tr>
+<tr><td>일학습병행 OFF-JT</td><td><span class="k">시간</span></td><td>훈련일 3일 전</td><td>본인·팀장 알림</td></tr>
+<tr><td>사내공모</td><td><span class="k">사건</span></td><td>합격자를 고를 때</td><td>나머지 지원자에게 결과 자동 안내(팀장에게 안 보임)</td></tr>
+<tr><td>티켓 선착순</td><td><span class="k">사건</span></td><td>신청 때</td><td>시각 순으로 당첨·대기</td></tr>
+<tr><td>통지 기록</td><td>늘</td><td>모든 알림</td><td>받는 사람·시각 → 엑셀 내려받기</td></tr></table>
+<p><b>사람이 해야 하는 것:</b> 인사발령 확정, 레벨업 심사 결정, 사내공모 합격, 휴넷 업무 관련성 승인, 회의·강의 진행, 실물 지급. 연차 PC 제한 프로그램 설치는 전산팀이 하고, E-HR은 대상자 명단만 넘깁니다.</p>
+
+<p><b>5. 옮기는 순서</b></p>
+<li>① 인사 전용 비공개 사이트와 목록을 만들고, 가짜 30명으로 화면(SPFx)을 옮깁니다. 역할은 로그인 권한에서 가져옵니다.</li>
+<li>② 알림: 받는 사람을 준보 님 1명으로 두고 Teams 1:1이 실제로 가는지 시험한 뒤 전체로 엽니다.</li>
+<li>③ 받는 폴더: 휴넷·협회·휴가샵·국민연금 파일을 하나씩 넣어 시험합니다.</li>
+<li>④ 매일 07:00 예약 흐름을 켭니다(연차촉진·교육 재알림·출퇴근 보정).</li>
+<li>⑤ 실제 인원을 옮깁니다 — 준보 님 승인 뒤에만 합니다.</li>
+<li>⑥ ERP·CAPS·계정 자동 생성은 IT·영림원 협의가 끝나는 대로 붙입니다.</li>
+
+<p><b>6. 정할 것</b></p>
+<table><tr><th>무엇</th><th>추천</th><th>누가</th></tr>
+<tr><td>사내 SharePoint로 옮기는 시점</td><td>신청 양식 7개까지 시험을 마친 뒤</td><td>준보 님</td></tr>
+<tr><td>Teams 보내는 방법</td><td><b>Power Automate 흐름 봇</b>(IT의 Graph 권한 승인 없이 됨). Graph 채팅 권한(Chat.Create·ChatMessage.Send)으로 보내려면 IT 승인이 필요합니다. PLM은 11/3에 이 권한을 쓰지 않고 Teams 딥링크만 쓰기로 정해서, 가져다 쓸 발송 코드가 없습니다</td><td>준보 님</td></tr>
+<tr><td>흐름을 가질 공용 계정</td><td>인사팀 공용 계정 1개</td><td>IT</td></tr>
+<tr><td>CAPS 출퇴근 파일 자동 내보내기</td><td>하루 한 번 받는 폴더로</td><td>IT</td></tr>
+<tr><td>ERP 연결 방식</td><td>1단계 엑셀, 2단계 영림원 협의</td><td>준보 님 · 영림원</td></tr>
+<tr><td>기존 그룹웨어 근태 기록 옮기기</td><td>올해 것만 한 번</td><td>준보 님</td></tr></table>
