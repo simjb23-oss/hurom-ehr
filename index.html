@@ -229,10 +229,10 @@ function guide(){
   ['상품전략1팀','피플&컬처팀'].forEach(d=>{if(!st.depts.includes(d))st.depts.push(d)});
   const mk=(o,memo)=>{const no='H'+String(st.pseq++).padStart(4,'0');st.people.push({no,emp:'정규',status:'재직',cl:'LV1',...o});addMove(no,'입사',o.join,memo);return no};
   const no=mk({name:'홍길동',dept:'상품전략1팀',pos:'팀원',grade:'대리',join:y(3),base:3500000,allow:200000},'샘플');
-  mk({name:'이몽룡',dept:'상품전략1팀',pos:'팀장',grade:'차장',cl:'LV3',join:y(9),base:5200000,allow:300000},'샘플');
-  mk({name:'성춘향',dept:'피플&컬처팀',pos:'팀원',grade:'과장',cl:'LV2',join:y(6),base:4300000,allow:200000,hrRole:1},'샘플');
+  mk({name:'강지훈',dept:'상품전략1팀',pos:'팀장',grade:'차장',cl:'LV3',join:y(9),base:5200000,allow:300000},'샘플');
+  mk({name:'윤하은',dept:'피플&컬처팀',pos:'팀원',grade:'과장',cl:'LV2',join:y(6),base:4300000,allow:200000,hrRole:1},'샘플');
   {const p=person(no);onbItems({...p,join:today()}).forEach(([n,d,k])=>st.tasks.push({id:nid(),no,set:'입사',j:p.join,name:n,due:d,k:k||'',done:k==='auto'?now():''}))}st.me=no;save();
-  toast('샘플 3명을 넣었습니다 — 홍길동(직원) · 이몽룡(팀장) · 성춘향(인사)');switchRole('emp','#leave/new')}}
+  toast('샘플 3명을 넣었습니다 — 홍길동(직원) · 강지훈(팀장) · 윤하은(인사)');switchRole('emp','#leave/new')}}
 
 /* ---------- 상단 역할 ---------- */
 function bar(){
