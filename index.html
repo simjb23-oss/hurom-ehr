@@ -415,7 +415,7 @@ V.card=(no)=>{
  const b=bal(no),rs=st.reqs.filter(r=>r.no===no).sort((a,c)=>a.at<c.at?1:-1),hr=st.role==='hr';
  return '<div class="top"><h1>인사카드</h1>'+(st.role!=='emp'?'<select id="c_sel" class="btn sm">'+st.people.map(x=>'<option value="'+x.no+'"'+(x.no===no?' selected':'')+'>'+esc(x.name)+' ('+x.no+')</option>').join('')+'</select>':'<span class="tag">내 카드</span>')+'</div>'+
  '<section class="card"><div class="hd"><b>'+esc(p.name)+' <span class="tag">'+p.no+'</span></b><span class="st '+(p.status==='재직'?'o':p.status==='휴직'?'w':'n')+'">'+p.status+'</span></div><div class="bd"><div class="info">'+
- [['회사','휴롬'],['부서',p.dept],['직책',p.pos],...(kjOf(p).length?[['겸직',kjTxt(p)]]:[]),['레벨',clOf(p)||'계약직 (레벨 없음)'],['입사일',p.join],['고용',p.emp],['결재선',(p.pos==='팀장'?'본부장':'팀장')+' → 인사'+(kjOf(p).some(k=>k.pos==='팀장')?' · 겸직 팀 결재도 함':'')],['근속',grant(p)>=15?Math.floor(((Date.now()-new Date(p.join))/31557600000))+'년':'1년 미만']].map(x=>'<div><small>'+x[0]+'</small>'+esc(x[1])+'</div>').join('')+'</div>'+
+ [['회사',p.co==='H'?'휴롬':'휴롬엘에스'],['부서',p.dept],['직책',p.pos],...(kjOf(p).length?[['겸직',kjTxt(p)]]:[]),['레벨',clOf(p)||'계약직 (레벨 없음)'],['입사일',p.join],['고용',p.emp],['결재선',(p.pos==='팀장'?'본부장':'팀장')+' → 인사'+(kjOf(p).some(k=>k.pos==='팀장')?' · 겸직 팀 결재도 함':'')],['근속',grant(p)>=15?Math.floor(((Date.now()-new Date(p.join))/31557600000))+'년':'1년 미만']].map(x=>'<div><small>'+x[0]+'</small>'+esc(x[1])+'</div>').join('')+'</div>'+
  (hr?'<div style="margin-top:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="tag">상태 바꾸기</span>'+['재직','휴직','퇴직'].map(s=>'<button class="btn sm" data-ps="'+s+'"'+(s===p.status?' disabled':'')+'>'+s+'</button>').join('')+'</div>'+'<div style="margin-top:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="tag">겸직</span>'+kjOf(p).map((k,i)=>'<span class="st">'+esc(k.dept)+' '+esc(k.pos)+' <a href="#" data-kjdel="'+i+'" title="겸직 해제">×</a></span>').join(' ')+'<select id="kj_d" class="btn sm">'+st.depts.filter(d=>!deptsOf(p).includes(d)).map(d=>'<option>'+esc(d)+'</option>').join('')+'</select><select id="kj_p" class="btn sm"><option>팀원</option><option>팀장</option></select><button class="btn sm" id="kj_add">겸직 추가</button></div>':'')+'</div></section>'+
  '<section class="card"><div class="hd"><b>연차</b><span class="tag">잔여 = 발생 − 사용 − 예약 · 예약은 팀장 승인 때, 사용은 인사 확정 때</span></div><div class="bd"><div class="bal">'+
  '<div><small>발생</small><b>'+b.grant+'</b>일</div><div class="rem"><small>잔여</small><b>'+b.rem+'</b>일</div><div><small>예약</small><b>'+b.res+'</b>일</div><div><small>사용</small><b>'+b.used+'</b>일</div></div>'+
@@ -1120,15 +1120,15 @@ V.reorg=(tab)=>{orgInit();if(st.role!=='hr')return head('조직 개편')+hrOnly(
  else b+=bar+'<div class="g2"><section class="card"><div class="hd"><b>조직 (조직도 원본)</b><span class="tag" title="한 줄에 한 조직. 두 칸 들여 쓰면 아래 조직. 「팀 이름 | 조직장 이름 직책」, 겸직은 (겸), 이름 변경은 「새이름 <- 옛이름」. 대표 바로 아래 줄 끝에 #직속 · #법인 · #위원회">쓰는 법</span></div><div class="bd">'+
   '<textarea id="rg_src" class="rgsrc" spellcheck="false">'+esc(d?d.text:RG.base())+'</textarea>'+
   '<div class="form" style="margin-top:8px"><label>새 조직도 일자<input id="rg_date" type="date" value="'+(d?d.date:today())+'"></label><label>인사발령 호수<input id="rg_no" value="'+esc(d&&d.no?d.no:'')+'" placeholder="'+(st.org.no+1)+'"></label></div>'+
-  '<button class="btn p" id="rg_apply">적용해서 보기</button> <button class="btn" id="rg_ex" title="상품전략1·2팀을 상품전략팀으로 합치고 432번 휴롬직원을 전보하는 예시">예시 넣기</button></div></section>'+
+  '<button class="btn p" id="rg_apply">적용해서 보기</button> <button class="btn" id="rg_ex" title="상품전략1·2팀을 상품전략팀으로 합치고 심준보을 전보하는 예시">예시 넣기</button></div></section>'+
   '<section class="card"><div class="hd"><b>바뀐 것</b></div><div class="bd">'+chg()+'</div></section>'+
-  '<section class="card"><div class="hd"><b>팀원 발령</b><span class="tag" title="조직도에 이름이 없는 팀원 이동·입사. 「전보 | 이름 | 옛 부서 | 새 부서」 · 「임용 | 이름 | 부서 | 수습기간」">쓰는 법</span></div><div class="bd"><textarea id="rg_ppl" class="rgppl" spellcheck="false" placeholder="전보 | 432번 휴롬직원 | 상품전략1팀 | 상품전략팀">'+esc(d?d.ppl||'':'')+'</textarea></div></section></div>';
+  '<section class="card"><div class="hd"><b>팀원 발령</b><span class="tag" title="조직도에 이름이 없는 팀원 이동·입사. 「전보 | 이름 | 옛 부서 | 새 부서」 · 「임용 | 이름 | 부서 | 수습기간」">쓰는 법</span></div><div class="bd"><textarea id="rg_ppl" class="rgppl" spellcheck="false" placeholder="전보 | 심준보 | 상품전략1팀 | 상품전략팀">'+esc(d?d.ppl||'':'')+'</textarea></div></section></div>';
  return head('조직 개편','조직을 바꾸면 조직도 · 인사발령 공문 · Teams 글이 같이 나옵니다')+b};
 function wireReorg(){const on=(s,f)=>{const e=$(s);if(e)e.onclick=f};orgInit();
  const grab=()=>({text:$('#rg_src').value,date:$('#rg_date').value||today(),no:$('#rg_no').value.trim(),ppl:$('#rg_ppl').value});
  on('#rg_apply',()=>{st.orgDraft=grab();save();render();toast('적용했습니다 — 조직도 · 인사발령 초안 · Teams 글이 바뀌었습니다','인사발령 초안 보기',()=>location.hash='#reorg/doc')});
  on('#rg_ex',()=>{const t=RG.base().replace(/\n    상품전략1팀[^\n]*\n    상품전략2팀[^\n]*/,m=>{const ld=(m.match(/상품전략1팀 \| ([^\n]*)/)||[])[1];return '\n    상품전략팀'+(ld?' | '+ld:'')});
-  $('#rg_src').value=t;$('#rg_ppl').value=st.people.some(p=>p.name==='432번 휴롬직원')?'전보 | 432번 휴롬직원 | 상품전략1팀 | 상품전략팀':'';$('#rg_apply').click()});
+  $('#rg_src').value=t;$('#rg_ppl').value=st.people.some(p=>p.name==='심준보')?'전보 | 심준보 | 상품전략1팀 | 상품전략팀':'';$('#rg_apply').click()});
  on('#rg_cancel',()=>{st.orgDraft=null;save();location.hash='#reorg/edit';render();toast('편집을 취소했습니다')});
  on('#rg_print',()=>window.print());
  on('#rg_copy',()=>{const t=$('#rg_post').textContent;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('복사했습니다 — Teams 공지_01에 붙여 넣으세요'),()=>toast('복사가 막혀 있습니다 — 글을 직접 선택해 복사하세요'))});
@@ -1974,6 +1974,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-a="no"],[d
  td.querySelector('[data-ready]').onclick=()=>{window.__memo=m.value.trim()||'사유 없음';doAct(a,+id)}},true);
 function wireReset(){const rs=$('#reset');if(rs)rs.onclick=()=>{const b=$('#reset');if(b.dataset.c){localStorage.removeItem(KEY);st=blank();draft={type:'연차'};b.textContent='처음부터 다시';delete b.dataset.c;location.hash='#dash';render();toast('처음 상태로 돌렸습니다');return}
  b.dataset.c=1;b.textContent='정말 지울까요? 한 번 더 누르기';b.classList.add('no');setTimeout(()=>{b.textContent='처음부터 다시';delete b.dataset.c;b.classList.remove('no')},4000)}}
+window.EHRX={get st(){return st},V,RG,MENUS,S,act,now,ymd,esc,save,render,switchRole,person,addMove,head,sec,toast,$,orgInit,ORG_BASE,get guide(){return guide},set guide(f){guide=f},get wire(){return wire},set wire(f){wire=f},get wireReorg(){return wireReorg},set wireReorg(f){wireReorg=f}}; // orgx.js(조직 개편 회사별·끌어 놓기·직원 조회)가 쓰는 문
 window.addEventListener('hashchange',render);render();
 window.EHR={get st(){return st},save,render,switchRole,person,bal,absentOn,today,V,MENUS,esc,TYPES,workdays,chatAnswer,viewerNo,WD,get RULES(){return RULES}}; // 휴글 AI(ai.js)가 쓰는 문
 })();
@@ -1983,4 +1984,5 @@ window.EHR={get st(){return st},save,render,switchRole,person,bal,absentOn,today
 <script src="shealth.js"></script>
 <script src="polish.js"></script>
 <script src="ai.js"></script>
+<script src="orgx.js"></script>
 </body></html>
