@@ -2,6 +2,8 @@
    하위 탭을 알약으로 통일, 달력 칸 너비 고르게, 파란 기본 링크·밑줄 정리, 메뉴 숫자 배지 색 통일, 숫자 자리 맞춤, 모바일 보는 사람 줄 정리. index.html 은 한 줄만. */
 (function(){
   var css=`
+html.sh select.fld,html.sh #c_sel{field-sizing:content;max-width:none!important;min-width:64px;padding-right:28px}
+.cal .c i .cs{display:none}
 html.sh a{color:inherit;text-decoration:none}
 html.sh .view p a:not(.btn),html.sh .view td a:not(.btn),html.sh .view small a{color:var(--brand);font-weight:600}
 html.sh .hsplit .tiles a,html.sh .hsplit .tiles button{color:var(--ink)!important;font-weight:500}
@@ -73,8 +75,8 @@ html.sh .empty{color:var(--mute);font-size:14px;padding:22px 0;text-align:center
  html.sh #roles small{display:none}
  html.sh #me{flex:1;min-width:0}
  html.sh .bar .lb{display:none}
- html.sh .tabs2{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
- html.sh .tabs2 a{white-space:nowrap;flex:none}
+ html.sh #tabs .tabs2,html.sh .tabs2,html.sh .tabs{flex-wrap:wrap;overflow:visible;gap:6px}
+ html.sh #tabs .tabs2 a,html.sh .tabs a{white-space:nowrap;flex:none;padding:7px 13px}
  html.sh .card .hd{flex-wrap:wrap;gap:4px 10px}
  html.sh table th{white-space:nowrap;font-size:11px}
  html.sh .hsplit .tiles{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}
@@ -82,10 +84,20 @@ html.sh .empty{color:var(--mute);font-size:14px;padding:22px 0;text-align:center
  html.sh .kpi .card small{font-size:13px;word-break:keep-all}
  html.sh .cal{gap:3px}
  html.sh .cal .c{min-height:54px;padding:4px;font-size:11px}
- html.sh .cal .c i{font-size:9.5px;padding:2px 3px;word-break:break-all}
  html.sh .btn{white-space:normal;max-width:100%}
+ html.sh .cal .c i{font-size:10.5px;padding:1px 3px;text-align:center}
+ html.sh .cal .c i .cf{display:none}html.sh .cal .c i .cs{display:inline}
  html.sh .toast{left:14px;right:14px;transform:translateY(20px);max-width:none}
  html.sh .toast.show{transform:none}
+ html.sh .app{grid-template-rows:auto 1fr;align-content:start}
+ html.sh nav{padding:6px 8px;gap:2px;flex-wrap:wrap;overflow:visible;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+ html.sh nav::-webkit-scrollbar{display:none}
+ html.sh nav{flex-wrap:wrap!important;overflow:visible!important}
+}
+@media(max-width:600px){
+ html.sh nav a.logo{display:none!important}
+ html.sh nav{justify-content:flex-start}
+ html.sh nav a{padding:8px 10px!important;font-size:14.5px!important}
 }
 @media(max-width:640px){
  html.sh .view table.mc,html.sh .view table.mc tbody,html.sh .view table.mc tr,html.sh .view table.mc td{display:block;width:auto!important;min-width:0!important}
