@@ -2,6 +2,8 @@
    하위 탭을 알약으로 통일, 달력 칸 너비 고르게, 파란 기본 링크·밑줄 정리, 메뉴 숫자 배지 색 통일, 숫자 자리 맞춤, 모바일 보는 사람 줄 정리. index.html 은 한 줄만. */
 (function(){
   var css=`
+html.sh nav a.logo,html.sh nav a.logo:hover{display:block;padding:10px 14px;margin:0 0 14px;background:none!important;color:var(--ink,#1b1b1d)!important;transform:none!important;box-shadow:none;font-size:17px;font-weight:800;letter-spacing:.02em}
+html.sh nav a.logo::before{display:none!important}
 html.sh select.fld,html.sh #c_sel{field-sizing:content;max-width:none!important;min-width:64px;padding-right:28px}
 .cal .c i .cs{display:none}
 html.sh a{color:inherit;text-decoration:none}
