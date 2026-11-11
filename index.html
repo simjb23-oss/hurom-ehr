@@ -324,19 +324,25 @@ let tt;function toast(msg,btn,go){const t=$('#toast');t.innerHTML=esc(msg)+(btn?
 function switchRole(r,route){if(r==='admin'){st.asAdmin=1;r='hr'}else st.asAdmin=0;st.role=r;save();if(!route){const cur=(location.hash||'#dash').slice(1).split('/')[0];const ok=(MENUS[r]||[]).some(([g,its])=>its.some(([x])=>x.split('/')[0]===cur));if(!ok)route='#home'}if(route&&location.hash!==route)location.hash=route;else render()}
 
 /* ---------- 메뉴 ---------- */
-const MENUS={
- hr:[['홈',[['home','홈'],['close','월 마감']]],
-  ['사람',[['people','인원 명부'],['card','인사카드'],['onoff','입사·퇴사'],['move','인사발령'],['org','조직도'],['reorg','조직 개편'],['juice','신입 주스기'],['eval','평가'],['edu','교육'],['hire','채용']]],
-  ['근태',[['promote','연차촉진 관리'],['otc','시간외근로 확정'],['otsum','시간외근로 현황'],['altsum','대체휴무 현황'],['reqs','근태신청 현황'],['flexm','유연근무제 관리'],['leave','근태 확정'],['status','근태 현황'],['work','출퇴근·52시간']]],
-  ['급여',[['pay','급여'],['pay/work','급여작업(대장→전표)'],['welfare','복리후생'],['exp','경비'],['yearend','연말정산'],['lic','자격수당'],['cert','증명서신청 관리']]],
-  ['관리',[['auto','자동 처리'],['perm','권한 관리'],['forms','신청·접수'],['level','커리어레벨'],['ct','계약·수습'],['deputy','대신 승인'],['bulk','일괄 처리'],['voucher','전표'],['erp','ERP 연동'],['audit','열람 기록'],['rules','휴롬 규정'],['data','데이터 관리'],['plan','기획서'],['prd','PRD'],['link','자동화·연결']]]],
+const MENUS={ /* 메뉴 정리(곽두팔 2026-11-12 준보 「사용 친화적으로 탭 분류 깔끔하게」): 묶음마다 탭 7개 이하, 같은 탭 두 번 안 나오게, 자주 쓰는 것 앞에, 개발 문서는 맨 끝 「시스템」으로 */
+ hr:[['홈',[['home','오늘 할 일'],['close','월 마감']]],
+  ['인사',[['people','인원 명부'],['card','인사카드'],['onoff','입사·퇴사'],['move','인사발령'],['org','조직도'],['reorg','조직 개편']]],
+  ['근태',[['leave','근태 확정'],['status','근태 현황'],['reqs','신청 현황'],['work','출퇴근·52시간'],['flexm','유연근무제']]],
+  ['연차·시간외',[['promote','연차촉진'],['otc','시간외 확정'],['otsum','시간외 현황'],['altsum','대체휴무 현황']]],
+  ['급여',[['pay','급여'],['pay/work','급여작업'],['voucher','전표'],['yearend','연말정산'],['exp','경비'],['welfare','복리후생'],['lic','자격수당']]],
+  ['성장·채용',[['eval','평가'],['edu','교육'],['level','커리어레벨'],['hire','채용'],['juice','신입 주스기']]],
+  ['업무 처리',[['forms','신청·접수'],['cert','증명서 발급'],['ct','계약·수습'],['deputy','대신 승인'],['bulk','일괄 처리'],['auto','자동 처리'],['rules','휴롬 규정']]],
+  ['시스템',[['perm','권한 관리'],['audit','열람 기록'],['data','데이터 관리'],['erp','ERP 연동'],['link','자동화·연결'],['plan','기획서'],['prd','PRD']]]],
  emp:[['홈',[['home','홈']]],
-  ['근태 신청',[['leave/new','근태·휴가'],['status','팀 근태 달력'],['work/me','출퇴근'],['work/flex','유연근무'],['work/ot','연장·휴일'],['cert','증명서']]],
-  ['급여',[['pay','급여명세서'],['exp','경비'],['welfare','복리후생'],['yearend','연말정산'],['lic','자격증']]],
-  ['내 정보',[['card/{me}','인사카드'],['level','레벨'],['eval','평가'],['edu','교육'],['cert','증명서'],['forms','신청·접수'],['rules','휴롬 규정'],['org','조직도']]]],
+  ['근태',[['leave/new','휴가 신청'],['status','팀 근태 달력'],['work/me','출퇴근'],['work/flex','유연근무'],['work/ot','연장·휴일근로']]],
+  ['급여',[['pay','급여명세서'],['exp','경비'],['welfare','복리후생'],['yearend','연말정산'],['lic','자격증 수당']]],
+  ['성장',[['eval','평가'],['edu','교육'],['level','커리어레벨']]],
+  ['내 정보',[['card/{me}','인사카드'],['cert','증명서'],['forms','신청·접수'],['org','조직도'],['rules','휴롬 규정']]]],
  lead:[['홈',[['home','홈']]],
-  ['승인함',[['leave/approve','근태·휴가'],['work/ot','연장'],['work/flex','유연근무'],['exp','경비'],['juice','주스기'],['level','레벨업 추천'],['eval','팀원 평가']]],
-  ['우리 팀',[['status','근태 현황'],['work/all','52시간'],['ct','계약·수습'],['deputy','대신 승인'],['forms/offjt','OFF-JT'],['org','조직도'],['rules','휴롬 규정']]]]};
+  ['승인함',[['leave/approve','휴가'],['work/ot','연장근로'],['work/flex','유연근무'],['exp','경비'],['juice','주스기']]],
+  ['우리 팀',[['status','근태 현황'],['work/all','52시간'],['org','조직도']]],
+  ['팀원 관리',[['eval','팀원 평가'],['level','레벨업 추천'],['ct','계약·수습'],['forms/offjt','OFF-JT'],['deputy','대신 승인']]],
+  ['규정',[['rules','휴롬 규정']]]]};
 function curGroup(cur){const hash=(location.hash||'#dash').slice(1),M=MENUS[st.role]||MENUS.hr;const rr=r=>r.replace('{me}',st.me||'');
  let g=M.find(([,its])=>its.some(([r])=>rr(r)===hash))||M.find(([,its])=>its.some(([r])=>r.split('/')[0]===cur));
  if(!g)return [M[0],-1];const its=g[1];let i=its.findIndex(([r])=>rr(r)===hash);if(i<0)i=its.findIndex(([r])=>r.split('/')[0]===cur);return [g,i]}
