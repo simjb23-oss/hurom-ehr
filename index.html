@@ -81,6 +81,7 @@ tr:last-child td{border:0}tr.ck{cursor:pointer}tr.ck:hover td{background:#FBF8F2
 .step.x{color:var(--no);border-color:#F1B8B2;background:var(--no-50)}
 .hb div{display:grid;grid-template-columns:90px 1fr 30px;gap:10px;align-items:center;margin-bottom:9px;font-size:13px}
 .hb span{color:var(--sub)}.hb .tr{height:14px;background:#F3EDE2;border-radius:3px;overflow:hidden}
+.ck .tr{height:10px;background:#E5E5E5;border-radius:5px;overflow:hidden}.ck .tr i{display:block;height:100%;background:var(--brand);border-radius:5px}
 .hb .tr i{display:block;height:100%;background:var(--brand)}.hb b{text-align:right}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:11px}
 .cal .h{color:var(--sub);text-align:center}
@@ -407,7 +408,7 @@ function nid(){return st.xseq++}
 function addMove(no,kind,date,memo,chg){st.moves.push({id:nid(),no,kind,date,memo:memo||'',chg:chg||'',at:now()});const p=person(no);erpQ('인원',no,(p?p.name:no)+' '+kind+(chg?' ('+chg+')':''))}
 function head(t,tag){const tx=String(tag||'').replace(/<[^>]+>/g,'');return '<div class="top"><h1'+(tx.length>16?' title="'+esc(tx)+'"':'')+'>'+t+'</h1>'+(tag&&tx.length<=16?'<span class="tag">'+tag+'</span>':'')+'</div>'}
 function sec(t,tag,b){return '<section class="card"><div class="hd"><b>'+t+'</b><span class="tag">'+(tag||'')+'</span></div><div class="bd" style="overflow-x:auto">'+b+'</div></section>'}
-function tbl(h,rows,emp){return rows.length?'<table><tr>'+h.map(x=>'<th>'+x+'</th>').join('')+'</tr>'+rows.join('')+'</table>':'<div class="empty">'+(emp||'아직 없습니다')+'</div>'}
+function tbl(h,rows,emp){return rows.length?'<table><tr>'+h.map(x=>x[0]==='>'?'<th class="right">'+x.slice(1)+'</th>':'<th>'+x+'</th>').join('')+'</tr>'+rows.join('')+'</table>':'<div class="empty">'+(emp||'아직 없습니다')+'</div>'}
 function pick(id,list,cur){return '<select id="'+id+'">'+list.map(p=>'<option value="'+p.no+'"'+(p.no===cur?' selected':'')+'>'+esc(p.name)+' · '+esc(p.dept)+'</option>').join('')+'</select>'}
 const actives=()=>st.people.filter(p=>p.status!=='퇴직');
 function needP(){return '<section class="card"><div class="empty">먼저 인원을 등록해 주세요<br><a class="btn sm p" href="#people">인원 명부로</a></div></section>'}
@@ -1202,7 +1203,7 @@ function wireAuto(){const on=(s,f)=>{const e=$(s);if(e)e.onclick=f};const all=(s
 
 /* ---------- 인사 대시보드 · 권한 관리 ---------- */
 const coOf=p=>p.co||'휴롬';
-const bar1=(l,a,b,go)=>b?'<div class="ck" data-go="'+go+'" style="display:grid;grid-template-columns:170px 1fr 110px;gap:12px;align-items:center"><span>'+l+'</span><div class="tr"><i style="width:'+Math.round(a/b*100)+'%"></i></div><b>'+Math.round(a/b*100)+'% <small class="tag">'+a+' / '+b+'</small></b></div>':'';
+const bar1=(l,a,b,go,u)=>b?'<div class="ck" data-go="'+go+'" style="display:grid;grid-template-columns:170px 1fr 110px;gap:12px;align-items:center"><span>'+l+'</span><div class="tr"><i style="width:'+Math.round(a/b*100)+'%"></i></div><b>'+Math.round(a/b*100)+'% <small class="tag">'+a+' / '+b+(u||'')+'</small></b></div>':'';
 function dashHr(){const t=today(),y=t.slice(0,4),ym=t.slice(0,7),hv=person(viewerNo())||{};if(st.coF==null&&hv.scope&&hv.scope!=='전체')st.coF=hv.scope;const cf=st.coF||'';
  const P=st.people.filter(p=>!cf||coOf(p)===cf),inP=no=>P.some(p=>p.no===no),act=P.filter(p=>p.status!=='퇴직');
  const ab=absentOn(t).filter(r=>inP(r.no)),q=leadQ().concat(hrQ()).filter(r=>inP(r.no)),it=inboxItems();
@@ -1212,7 +1213,7 @@ function dashHr(){const t=today(),y=t.slice(0,4),ym=t.slice(0,7),hv=person(viewe
  const K=[['재직',act.length,'명','#people',0,1],['결재 대기',q.length,'건','#leave/hr',1,1],['이번 달 입사',jn,'명','#people'],['이번 달 퇴사',lf,'명','#people'],['휴직',lv,'명','#onoff/lv'],['계약·수습 30일 안 만료',ct,'명','#ct',1],['오늘 부재',ab.length,'명','#status',0,1],['이번 주 48시간 넘음',h52,'명','#work/all',1],['어제 출퇴근 누락',miss,'명','#auto/caps',1]].filter(k=>k[1]||k[5]);
  const n1=st.notices.filter(n=>n.year===y&&n.round===1&&inP(n.no)),n1d=n1.filter(n=>st.lvplans.some(q=>q.no===n.no&&q.year===y)||st.notices.some(z=>z.no===n.no&&z.year===y&&z.round===2)).length;
  const ed=st.edus.filter(e=>e.year===y&&inP(e.no)),hu=st.hunet.filter(h=>h.ym.slice(0,4)===y&&inP(h.no)),hw=st.forms.filter(f=>f.kind==='hunr'&&f.status==='인사 승인 대기').length,vt=st.forms.filter(f=>f.kind==='votes').slice(-1)[0];
- const bars=bar1('연차 사용 시기 지정',n1d,n1.length,'#promote')+bar1('법정교육 이수',ed.filter(e=>e.done).length,ed.length,'#edu')+bar1('휴넷 수료',hu.filter(h=>h.done).length,hu.length,'#auto/hunet')+(vt?bar1('선거인 명부 본인 확인',st.forms.filter(f=>f.kind==='votec'&&f.sid===vt.id).length,vt.list.length,'#forms/vote'):'')+(hw?'<div class="ck" data-go="#forms/hunet"><span class="k">휴넷</span><span class="tx">승인 대기 '+hw+'건</span><span class="ar">›</span></div>':'');
+ const bars=bar1('연차 사용 시기 지정',n1d,n1.length,'#promote')+bar1('법정교육 이수',[...new Set(ed.map(e=>e.no))].filter(no=>ed.every(e=>e.no!==no||e.done)).length,new Set(ed.map(e=>e.no)).size,'#edu','명')+bar1('휴넷 수료',hu.filter(h=>h.done).length,hu.length,'#auto/hunet')+(vt?bar1('선거인 명부 본인 확인',st.forms.filter(f=>f.kind==='votec'&&f.sid===vt.id).length,vt.list.length,'#forms/vote'):'')+(hw?'<div class="ck" data-go="#forms/hunet"><span class="k">휴넷</span><span class="tx">승인 대기 '+hw+'건</span><span class="ar">›</span></div>':'');
  const U=[];const up=(d,k,txt,go)=>{if(d>=t&&d<=addD(t,60))U.push({d,k,txt,go})};
  (st.orders||[]).forEach(o=>up(o.date,'발령','제 '+o.no+'호 발령일','#reorg/list'));
  if(ed.some(e=>!e.done))up(y+'-11-30','교육','법정교육 이수 마감 · 미이수 '+new Set(ed.filter(e=>!e.done).map(e=>e.no)).size+'명','#edu');
@@ -1229,7 +1230,7 @@ function dashHr(){const t=today(),y=t.slice(0,4),ym=t.slice(0,7),hv=person(viewe
   sec('오늘 처리할 것',it.length+'건',it.length?'<div class="todo">'+it.slice(0,8).map(x=>'<div class="ck" data-go="'+x.go+'"><span class="k">'+x.k+'</span><span class="tx">'+x.txt+'</span>'+(x.due?dueTag(x.due):'')+'<span class="ar">›</span></div>').join('')+(it.length>8?'<div class="ck" data-go="#inbox"><span class="tx">나머지 '+(it.length-8)+'건 알림함에서 보기</span><span class="ar">›</span></div>':'')+'</div>':'<div class="empty">오늘 처리할 일이 없습니다</div>')+
   '<div class="kpi" style="grid-template-columns:repeat('+Math.min(K.length,5)+',1fr)">'+K.map(k=>kp(k[0],k[1],k[2],'',k[3],k[4]&&k[1])).join('')+'</div>'+
   (bars?sec('진행 중인 일','누르면 명단으로','<div class="todo">'+bars+'</div>'):'')+
-  sec('부서별 인원',act.length+'명',tbl(['부서','재직','휴직','이번 달 입사'],[...new Set(act.map(p=>p.dept))].sort().map(d=>{const xs=act.filter(p=>p.dept===d);return '<tr><td>'+esc(d)+'</td><td class="right">'+xs.filter(p=>p.status==='재직').length+'</td><td class="right">'+(xs.filter(p=>p.status==='휴직').length||'')+'</td><td class="right">'+(xs.filter(p=>(p.join||'').slice(0,7)===ym).length||'')+'</td></tr>'})))+
+  sec('부서별 인원',act.length+'명',tbl(['부서','>재직','>휴직','>이번 달 입사'],[...new Set(act.map(p=>p.dept))].sort().map(d=>{const xs=act.filter(p=>p.dept===d);return '<tr><td>'+esc(d)+'</td><td class="right">'+xs.filter(p=>p.status==='재직').length+'</td><td class="right">'+(xs.filter(p=>p.status==='휴직').length||'')+'</td><td class="right">'+(xs.filter(p=>(p.join||'').slice(0,7)===ym).length||'')+'</td></tr>'})))+
   (U.length?sec('다가오는 일정','60일 안',tbl(['날짜','','내용'],U.slice(0,10).map(u=>'<tr data-go="'+u.go+'" style="cursor:pointer"><td>'+u.d+' <span class="tag">D-'+dayLeft(u.d)+'</span></td><td><span class="k">'+u.k+'</span></td><td>'+u.txt+'</td></tr>'))):'')+
   sec(tl.length?'오늘 E-HR이 대신 한 일':'최근 자동 처리',al.length+'건',tbl(['시각','일','내용'],al.slice().reverse().map(x=>'<tr><td class="tag">'+x.at+'</td><td>'+esc(x.k)+'</td><td>'+esc(x.txt)+'</td></tr>'),'아직 없습니다')+'<p><a class="btn sm" href="#auto/log">전체 기록</a></p>')}
 
