@@ -4,7 +4,7 @@
 (function(){
   document.documentElement.classList.add('sh');
   var css=`
-html.sh{--brand:#0b7a3e;--ink:#1d1d1f;--sub:#6e6e73;--mute:#a1a1a6;--line:#ececee;--shg:#f2f2f4}
+html.sh{--brand:#0b7a3e;--ivory:#f7f7f8;--brand-50:#e8f6ee;--brand-line:#e8f6ee;--ink:#1d1d1f;--sub:#6e6e73;--mute:#a1a1a6;--line:#ececee;--shg:#f2f2f4}
 html.sh body{background:var(--shg)!important;font-family:"Samsung One","SamsungOne","Pretendard","Segoe UI","맑은 고딕","Malgun Gothic",sans-serif;letter-spacing:-.01em}
 html.sh body::before,html.sh body::after{display:none!important}
 html.sh nav a .mi,html.sh .top .dc-deco,html.sh .empty .dc-ch,html.sh .st-ic,html.sh .st-go,html.sh .card>.hd b::before{display:none!important}
@@ -70,6 +70,15 @@ html.sh .sh-ring{width:96px;height:96px;flex:none}
 html.sh .sh-ring circle{fill:none;stroke-width:10}html.sh .sh-ring .bg{stroke:#eeeef0}
 html.sh .sh-ring .fg{stroke:#2fbf71;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset .9s cubic-bezier(.2,.8,.2,1)}
 html.sh .jfill small{font-size:15px;font-weight:700;color:var(--ink)}html.sh .jfill b{font-size:34px;font-weight:800}
+html.sh .tch>svg{display:none!important}html.sh .tch{animation:none;padding:10px 4px}html.sh .tch:hover{transform:none;background:#f7f7f8}
+html.sh .sh-av{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;background:#2fbf71;margin-bottom:4px}
+html.sh .bal{gap:10px}html.sh .bal div{border:0;border-radius:18px;padding:12px 14px;background:#f7f7f8}html.sh .bal .rem{background:#e8f6ee}
+html.sh .bal small{font-size:13px;font-weight:600;color:var(--sub)}html.sh .bal b{font-size:24px;font-weight:800}
+html.sh .types{gap:8px}html.sh .types button{border:0;border-radius:999px;padding:8px 15px;background:#f2f2f4;color:#3a3a3c}
+html.sh .types button.on{background:var(--ink);color:#fff;font-weight:700}
+html.sh main a:not([class]){color:var(--brand);text-decoration:none;font-weight:600}html.sh main a:not([class]):hover{text-decoration:underline}
+html.sh nav a .n,html.sh nav .fold .n,html.sh .tabs a .n{background:#ff5a36}
+html.sh .tch:nth-child(4n+2) .sh-av{background:#3d8bfd}html.sh .tch:nth-child(4n+3) .sh-av{background:#ff9f1c}html.sh .tch:nth-child(4n+4) .sh-av{background:#8b5cf6}
 @media(max-width:800px){html.sh main{padding:18px 14px 40px}html.sh h1{font-size:25px}}
 `;
   var s=document.createElement('style');s.id='shealth-css';s.textContent=css;document.head.appendChild(s);
@@ -81,7 +90,13 @@ html.sh .jfill small{font-size:15px;font-weight:700;color:var(--ink)}html.sh .jf
       var fg=c.querySelector('.sh-ring .fg');requestAnimationFrame(function(){requestAnimationFrame(function(){fg.style.strokeDashoffset=C*(1-r)})});
     });
   }
-  var q=0;function run(){q=0;try{ring()}catch(e){console.warn('shealth',e)}}
+  function avatars(){
+    document.querySelectorAll('.tch').forEach(function(t){
+      if(t.querySelector('.sh-av'))return;var b=t.querySelector('b'),n=b?b.textContent.trim():'';
+      t.insertAdjacentHTML('afterbegin','<span class="sh-av">'+((/^\d+/.exec(n)||[n.charAt(0)||'·'])[0]).replace(/[<&]/g,'')+'</span>');
+    });
+  }
+  var q=0;function run(){q=0;try{ring();avatars()}catch(e){console.warn('shealth',e)}}
   function boot(){var m=document.querySelector('main');if(!m)return setTimeout(boot,100);
     new MutationObserver(function(){if(!q)q=requestAnimationFrame(run)}).observe(m,{childList:true,subtree:true});run()}
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot):boot();
