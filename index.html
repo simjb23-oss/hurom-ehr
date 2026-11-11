@@ -184,6 +184,7 @@ nav a{font-size:15px;padding:10px 12px}
 .hside .kpi .card{transition:border-color .15s,transform .25s cubic-bezier(.3,1.6,.5,1)}.hside .kpi .card:hover{transform:translateY(-3px) rotate(-.6deg)}
 .hside .card{border-radius:16px}
 @media(prefers-reduced-motion:reduce){.tch,.tch *,.hside .todo>.ck{animation:none!important}}
+.payfr{width:100%;height:calc(100vh - 170px);min-height:640px;border:1px solid var(--line);border-radius:14px;background:#fff}
 .hside{max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain}.hside::-webkit-scrollbar{width:6px}.hside::-webkit-scrollbar-thumb{background:#d8d2c4;border-radius:3px}
 @media(max-width:1000px){.hsplit .msgs{max-height:60vh}.hside{max-height:none;overflow:visible}}
 @media(max-width:1000px){.hsplit{grid-template-columns:1fr}.hside{position:static}}
@@ -327,7 +328,7 @@ const MENUS={
  hr:[['홈',[['home','홈'],['close','월 마감']]],
   ['사람',[['people','인원 명부'],['card','인사카드'],['onoff','입사·퇴사'],['move','인사발령'],['org','조직도'],['reorg','조직 개편'],['juice','신입 주스기'],['eval','평가'],['edu','교육'],['hire','채용']]],
   ['근태',[['promote','연차촉진 관리'],['otc','시간외근로 확정'],['otsum','시간외근로 현황'],['altsum','대체휴무 현황'],['reqs','근태신청 현황'],['flexm','유연근무제 관리'],['leave','근태 확정'],['status','근태 현황'],['work','출퇴근·52시간']]],
-  ['급여',[['pay','급여'],['welfare','복리후생'],['exp','경비'],['yearend','연말정산'],['lic','자격수당'],['cert','증명서신청 관리']]],
+  ['급여',[['pay','급여'],['pay/work','급여작업(대장→전표)'],['welfare','복리후생'],['exp','경비'],['yearend','연말정산'],['lic','자격수당'],['cert','증명서신청 관리']]],
   ['관리',[['auto','자동 처리'],['perm','권한 관리'],['forms','신청·접수'],['level','커리어레벨'],['ct','계약·수습'],['deputy','대신 승인'],['bulk','일괄 처리'],['voucher','전표'],['erp','ERP 연동'],['audit','열람 기록'],['rules','휴롬 규정'],['data','데이터 관리'],['plan','기획서'],['prd','PRD'],['link','자동화·연결']]]],
  emp:[['홈',[['home','홈']]],
   ['근태 신청',[['leave/new','근태·휴가'],['status','팀 근태 달력'],['work/me','출퇴근'],['work/flex','유연근무'],['work/ot','연장·휴일'],['cert','증명서']]],
@@ -823,6 +824,7 @@ V.pay=(tab)=>{
   if(r!=='emp')return head('급여명세서')+sec('확정된 급여','',tbl(['귀속월','대상','지급 합계','공제 합계','실지급'],st.pays.filter(x=>x.status==='확정').flatMap(x=>x.lines.map(l=>'<tr class="ck" data-go="#pay/'+x.ym+'"><td>'+x.ym+'</td><td>'+esc((person(l.no)||{}).name)+'</td><td class="right">'+won(l.gross)+'</td><td class="right">'+won(l.ded)+'</td><td class="right"><b>'+won(l.net)+'</b></td></tr>')),'확정된 급여가 없습니다'));
   return head('급여명세서','본인 것만 보입니다')+(rows.length?rows.slice().reverse().map(o=>slip(o.x,o.l)).join(''):sec('급여명세서','','<div class="empty">아직 확정된 급여가 없습니다. 인사가 급여를 확정하면 여기 나옵니다.</div>'))}
  if(r==='lead')return head('급여')+hrOnly();
+ if(tab==='work')return head('급여작업','급여대장 엑셀을 올리면 사업장별 전표 · 상조회 전표 · 급여기안 · 대조표를 만듭니다')+'<p class="tag" style="margin:-6px 0 10px">올린 엑셀은 이 PC 브라우저 안에서만 읽습니다. 서버로 보내지 않습니다. · <a href="payroll.html" target="_blank" rel="noopener">새 창으로 열기</a></p><iframe class="payfr" src="payroll.html" title="급여작업"></iframe>';
  const ym=(tab&&/^\d{4}-\d{2}$/.test(tab))?tab:today().slice(0,7);const run=st.pays.find(x=>x.ym===ym);
  const yms=[...new Set([today().slice(0,7)].concat(st.pays.map(x=>x.ym)))].sort().reverse();
  let b='<div class="tabs">'+yms.map(y=>'<a href="#pay/'+y+'" class="'+(y===ym?'on':'')+'">'+y+(st.pays.find(x=>x.ym===y&&x.status==='확정')?' ✓':'')+'</a>').join('')+'<a href="#pay/slip">명세서 모아 보기</a></div>';

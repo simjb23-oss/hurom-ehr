@@ -1,0 +1,1773 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>E-HR 급여작업 (급여대장 → 전표·기안)</title>
+<style id="ls-css">:root{
+  --bg:#f7f4ec; --surface:#fff; --ink:#1B2430; --muted:#5C6877; --faint:#8A95A3; --line:#DDE2E9; --line-soft:#EBEEF3;
+  --accent:#1f6b45; --accent-ink:#164f33; --accent-soft:#e8f2ec;
+  --ok:#2C7A57; --ok-soft:#E2F1E9; --warn:#8F5E06; --warn-soft:#FBF0D9; --err:#B03A2A; --err-soft:#FAE6E2;
+  --r:10px; color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font-family:Pretendard,'IBM Plex Sans KR','Malgun Gothic','맑은 고딕',sans-serif;font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;word-break:keep-all}
+button,input,select,textarea{font:inherit;color:inherit}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.app{display:grid;grid-template-columns:228px 1fr;min-height:100vh}
+/* 사이드바 */
+.side{background:var(--surface);border-right:1px solid var(--line);padding:22px 14px 16px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.brand{padding:0 8px 18px}
+.brand b{display:block;font-size:19px;letter-spacing:-.01em;color:var(--accent-ink)}
+.brand span{color:var(--muted);font-size:12.5px}
+.nav-group{margin:14px 8px 4px;font-size:12px;color:var(--faint)}
+.nav{display:flex;align-items:center;gap:9px;width:100%;border:0;background:none;padding:8px 10px;border-radius:8px;cursor:pointer;text-align:left;color:var(--ink)}
+.nav:hover{background:var(--bg)}
+.nav.on{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.nav svg{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.nav .dot{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--warn)}
+.side-foot{margin-top:auto;padding:12px 8px 0;border-top:1px solid var(--line-soft);font-size:12px;color:var(--muted)}
+/* 본문 */
+.main{min-width:0;padding:0 32px 60px}
+.top{display:flex;align-items:center;gap:12px;padding:18px 0 14px;position:sticky;top:0;background:var(--bg);z-index:5}
+.crumb{color:var(--muted)} .crumb b{color:var(--ink)}
+.top .sp{flex:1}
+h1{font-size:24px;letter-spacing:-.02em;margin:6px 0 4px;font-weight:700}
+h2{font-size:16px;margin:0 0 10px;font-weight:650;letter-spacing:-.01em}
+h3{font-size:14px;margin:0 0 8px;font-weight:650}
+.lead{color:var(--muted);margin:0 0 20px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;margin-bottom:16px}
+.panel.flat{padding:0;overflow:hidden}
+.panel-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line-soft);flex-wrap:wrap}
+.panel-head h2{margin:0} .panel-head .sp{flex:1}
+.hint{color:var(--muted);font-size:13px} .hint.s{font-size:12.5px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 13px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:#B9C2CE;background:#FAFBFC}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.pri:hover{background:var(--accent-ink)}
+.btn.sm{padding:4px 9px;font-size:12.5px;border-radius:7px}
+.btn.ghost{border-color:transparent;background:none;color:var(--muted)} .btn.ghost:hover{background:var(--bg);color:var(--ink)}
+.btn.danger:hover{border-color:var(--err);color:var(--err)}
+.btn:focus-visible,.nav:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 10px;font-size:12.5px;background:var(--bg);color:var(--muted);white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.warn{background:var(--warn-soft);color:var(--warn)} .chip.err{background:var(--err-soft);color:var(--err)} .chip.acc{background:var(--accent-soft);color:var(--accent-ink)}
+input[type=text],input[type=number],select,textarea{border:1px solid var(--line);border-radius:7px;padding:5px 8px;background:#fff;min-width:0}
+textarea{width:100%;resize:vertical;line-height:1.5}
+/* 올리기 */
+.drop{border:1.5px dashed #B7C2D1;border-radius:var(--r);background:var(--surface);padding:30px 24px;text-align:center;cursor:pointer;transition:background .15s,border-color .15s}
+.drop.over{background:var(--accent-soft);border-color:var(--accent)}
+.drop b{font-size:16px;display:block;margin-bottom:4px}
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px} .slots.two{grid-template-columns:1fr 1fr}
+.slot{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;min-height:86px}
+.slot.empty{border-style:dashed;background:none;color:var(--muted)}
+.slot .t{font-size:12.5px;color:var(--muted)} .slot .m{font-size:17px;font-weight:650;margin:1px 0}
+.slot .f{font-size:12px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 대조 띠 */
+.recon{width:100%;border-collapse:collapse}
+.recon th{font-weight:500;color:var(--muted);font-size:12.5px;text-align:right;padding:8px 14px;border-bottom:1px solid var(--line-soft)}
+.recon th:first-child,.recon td:first-child{text-align:left}
+.recon td{padding:10px 14px;border-bottom:1px solid var(--line-soft)}
+.recon tr:last-child td{border-bottom:0}
+.recon .eq{color:var(--faint);padding:0 2px}
+.todo{list-style:none;margin:0;padding:0}
+.todo li{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+.todo li:last-child{border-bottom:0}
+.todo .mk{flex:none;width:8px;height:8px;border-radius:50%;margin-top:7px;background:var(--warn)} .todo .mk.i{background:var(--accent)}
+.steps{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.step{display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;cursor:pointer;text-align:left}
+.step:hover{border-color:var(--accent)}
+.step i{flex:none;width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center;font-style:normal;font-weight:700}
+.step b{display:block} .step span{color:var(--muted);font-size:13px}
+/* 표 */
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tab{border:0;background:none;padding:7px 13px;border-radius:8px;cursor:pointer;color:var(--muted)}
+.tab.on{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.tbl-wrap{overflow:auto}
+table.grid{border-collapse:collapse;width:100%;font-size:13.5px}
+.grid th{position:sticky;top:0;background:#F7F8FA;font-weight:600;text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap;font-size:12.5px;color:var(--muted)}
+.grid td{padding:7px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+.grid tr:last-child td{border-bottom:0}
+.grid tr.new td{background:#FFFBF0} .grid tr.sum td{font-weight:650;background:#F7F8FA}
+.grid td.c,.grid th.c{text-align:center} .grid th.num{text-align:right}
+.grid .mono{font-variant-numeric:tabular-nums;color:var(--muted)}
+.foot{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--line-soft);background:#FAFBFC}
+details.more{border-top:1px solid var(--line-soft)} details.more>summary{cursor:pointer;padding:12px 18px;color:var(--accent-ink);font-weight:600;list-style-position:inside}
+/* 기안 미리보기 */
+.doc{max-width:940px}
+.doc table{border-collapse:collapse;width:100%;margin:6px 0 20px;font-size:13.5px}
+.doc th{background:#ECEFF3;font-weight:600;border:1px solid #C9D0DA;padding:6px 10px;text-align:center}
+.doc td{border:1px solid #C9D0DA;padding:6px 10px;vertical-align:middle}
+.doc td.c{text-align:center} .doc td.inc{background:#E4F0DC;text-align:center} .doc td.dec{background:#FBF0CC;text-align:center}
+.doc tr.b td{font-weight:650} .doc tr.sub td:not(.inc):not(.dec){background:#F1F3F6;font-weight:650} .doc .neg{color:var(--err)}
+.doc textarea{border-color:transparent;background:#FBFCFD;font-size:13px;min-height:42px} .doc textarea:hover{border-color:var(--line)}
+/* 설정 */
+.cards{display:grid;gap:10px}
+.card{border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;background:var(--surface)}
+.card.warn{border-color:#E9CF93;background:#FFFCF3}
+.card .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card .row+.row{margin-top:8px}
+.card b.nm{font-size:15px}
+.rule{display:grid;grid-template-columns:minmax(150px,220px) 1fr;gap:16px;padding:14px 18px;border-bottom:1px solid var(--line-soft)}
+.rule:last-child{border-bottom:0}
+.parts{display:grid;gap:6px}
+.part{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.part input.pct{width:72px;text-align:right} .part input.adj{width:58px;text-align:right}
+.bar{height:6px;border-radius:3px;background:var(--line-soft);overflow:hidden;width:120px} .bar>i{display:block;height:100%;background:var(--accent)}
+.order{display:flex;gap:2px}
+.order button{border:1px solid var(--line);background:#fff;width:24px;height:24px;border-radius:6px;cursor:pointer;line-height:1;padding:0;color:var(--muted)}
+.order button:hover{color:var(--ink);border-color:#B9C2CE}
+.field{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)} .field input{color:var(--ink);font-size:14px}
+.fields{display:flex;gap:12px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line-soft)}
+.hist td{padding:2px 4px} .hist input{width:104px;text-align:right;border-color:transparent;padding:3px 6px;font-variant-numeric:tabular-nums;font-size:13px}
+.hist input:hover{border-color:var(--line)} .hist input.adj{background:var(--warn-soft)} .hist td.cur input{background:#FFF7DD} .hist td.lab{padding:4px 10px;white-space:nowrap;position:sticky;left:0;background:#fff;z-index:1}
+.hist tr.sum td{background:#F7F8FA;font-weight:650} .hist tr.sum td.num{padding:5px 10px} .hist td.num,.hist th.num{white-space:nowrap} .hist td:last-child,.hist th:last-child{min-width:128px;padding-right:18px}
+.errbox{background:var(--err-soft);border:1px solid #E5B4AB;color:#7C2415;border-radius:var(--r);padding:12px 16px;margin-bottom:16px;white-space:pre-wrap}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#1B2430;color:#fff;padding:9px 16px;border-radius:999px;font-size:13.5px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
+.toast.on{opacity:1}
+.hide{display:none!important}
+@media (max-width:900px){.app{grid-template-columns:1fr}.side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:4px;padding:10px}.brand{padding:0 8px;width:100%}.nav-group,.side-foot{display:none}.nav{width:auto}.main{padding:0 14px 40px}.slots,.steps{grid-template-columns:1fr}.rule{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body data-version="v0.9 시연용" data-built="2026-11-11">
+<div id="app"></div><div id="toast" class="toast"></div>
+<script id="app-config" type="application/json">{"schema": 1, "stamp": "E-HR 시연 2026-11-11", "company": "휴롬엘에스", "owner": "피플&컬처팀", "defaults": {"account": "직원급여", "cost": "판관", "bonusAccount": "상여금", "sangjoAccount": "복리후생비/상조회비"}, "branches": [{"code": "A001", "name": "서울본사", "short": "서울", "taxOffice": "역삼세무서", "cityOffice": "강남구청", "centers": ["F&B사업1팀", "F&B사업2팀", "자산관리팀", "피플&컬처팀", "법무감사팀", "지식재산1팀", "해외영업1팀", "해외영업2팀", "해외영업3팀", "말레이시아 지사", "마케팅팀", "퍼포먼스마케팅팀", "미디어커머스팀", "상품전략1팀", "상품전략2팀", "운영기획팀", "글로벌전략1팀", "글로벌전략2팀", "글로벌전략3팀", "고객만족팀", "국내영업팀"], "centerOpts": {}}, {"code": "A002", "name": "김해지점", "short": "김해", "taxOffice": "역삼세무서", "cityOffice": "김해시청", "centers": ["재무팀", "해외영업1팀", "해외영업4팀", "상품디자인팀", "AS팀", "ESG경영팀", "물류팀", "미디어커머스팀", "AX팀", "커뮤니케이션디자인팀", "식품영양연구팀", "자산관리팀", "법무감사팀"], "centerOpts": {}}, {"code": "A003", "name": "안양지점", "short": "안양", "taxOffice": "역삼세무서", "cityOffice": "안양시청", "centers": ["F&B센터"], "centerOpts": {}}], "deptMap": [{"branch": "A001", "dept": "지식재산본부", "center": "지식재산1팀"}, {"branch": "A002", "dept": "법무본부", "center": "법무감사팀"}], "people": [{"id": "LS0096", "name": "직원1", "center": "물류팀"}, {"id": "LS0130", "name": "직원2", "center": "자산관리팀"}], "splits": [{"id": "LS0004", "name": "대표이사", "mode": "headcount", "adj": {"F&B사업1팀": 1, "자산관리팀": 1, "해외영업1팀": 1, "마케팅팀": 1, "퍼포먼스마케팅팀": 1, "미디어커머스팀": 1, "상품전략1팀": 1, "운영기획팀": 1}, "exclude": []}, {"id": "LS0088", "name": "겸직임원1", "mode": "ratio", "parts": [{"center": "피플&컬처팀", "pct": 50}, {"center": "자산관리팀", "pct": 50}]}, {"id": "LS0066", "name": "겸직임원2", "mode": "ratio", "parts": [{"center": "F&B사업1팀", "pct": 50}, {"center": "F&B사업2팀", "pct": 50}]}, {"id": "LS0090", "name": "겸직임원3", "mode": "ratio", "parts": [{"center": "해외영업1팀", "pct": 50}, {"center": "해외영업2팀", "pct": 25}, {"center": "해외영업3팀", "pct": 25}]}, {"id": "LS0089", "name": "겸직임원4", "mode": "ratio", "parts": [{"center": "마케팅팀", "pct": 25}, {"center": "퍼포먼스마케팅팀", "pct": 25}, {"center": "국내영업팀", "pct": 25}, {"center": "미디어커머스팀", "pct": 25}]}, {"id": "LS0102", "name": "겸직임원5", "mode": "ratio", "parts": [{"center": "상품전략1팀", "pct": 50}, {"center": "상품전략2팀", "pct": 50}]}, {"id": "LS0082", "name": "겸직임원6", "mode": "ratio", "parts": [{"center": "운영기획팀", "pct": 50}, {"center": "고객만족팀", "pct": 50}]}, {"id": "LS0034", "name": "겸직임원7", "mode": "ratio", "parts": [{"center": "물류팀", "pct": 50}, {"center": "ESG경영팀", "pct": 50}]}, {"id": "LS0009", "name": "겸직임원8", "mode": "ratio", "parts": [{"center": "재무팀", "pct": 34}, {"center": "ESG경영팀", "pct": 33}, {"center": "물류팀", "pct": 33}]}], "credits": [{"label": "근로소득세 공제({지점}) {세무서}", "cols": ["소득세"]}, {"label": "근로주민세 공제({지점}) {구청}", "cols": ["주민세"]}, {"label": "중도정산 소득세 공제({지점}) {세무서}", "cols": ["중도연말정산(소득세)"]}, {"label": "중도정산 주민세 공제({지점}) {구청}", "cols": ["중도연말정산(주민세)"]}, {"label": "연말정산 소득세 공제({지점}) {세무서}", "cols": ["연말정산(소득세)"]}, {"label": "연말정산 주민세 공제({지점}) {구청}", "cols": ["연말정산(주민세)"]}, {"label": "상조회비 공제({지점}) 상조회", "cols": ["상조회"]}, {"label": "학자금의무상환금액 공제({지점}) 국세청", "cols": ["학자금공제"]}, {"label": "건강보험 공제({지점}) 국민건강보험공단", "cols": ["건강보험", "장기요양보험"]}, {"label": "건강보험 정산보험료 공제({지점}) 국민건강보험공단", "cols": ["건강정산"]}, {"label": "국민연금 공제({지점}) 국민건강보험공단", "cols": ["국민연금"]}, {"label": "고용보험 공제({지점}) 국민건강보험공단", "cols": ["고용보험"]}, {"label": "기타공제({지점})", "cols": ["기타공제"], "check": true}, {"label": "미수료 교육비 공제액", "cols": ["교육비"], "account": "교육훈련비/기타", "check": true}], "manual": [{"type": "sangjo", "branch": "A001", "center": "해외영업1팀", "amount": 24000, "memo": "해외법인장 상조회비(12,000원×2)를 회사찬조금으로 처리함", "repeat": true}], "history": {}, "memoTexts": {}}</script>
+<script id="ls-read">/* 엑셀 읽기 (외부 라이브러리 없음) — .xls(BIFF8) · .xlsx · .csv 를 시트별 2차원 배열로.
+   ERP 급여대장(.xls)과 그 변환본(.xlsx)을 읽는 데 필요한 만큼만 구현. 수식 셀은 저장된 결과값을 읽는다. */
+(function (root) {
+  'use strict';
+
+  // ───────── 공통 ─────────
+  const td = (label) => { try { return new TextDecoder(label); } catch (e) { return null; } };
+  const DEC_UTF16 = td('utf-16le'), DEC_UTF8 = td('utf-8'), DEC_949 = td('euc-kr') || td('windows-949'), DEC_LATIN = td('windows-1252') || td('latin1');
+  const unescXml = s => String(s).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(+d)).replace(/&amp;/g, '&');
+  const colIndex = letters => { let n = 0; for (const ch of letters) n = n * 26 + (ch.charCodeAt(0) - 64); return n - 1; };
+  function setCell(rows, r, c, v) { if (!rows[r]) rows[r] = []; rows[r][c] = v; }
+  function finish(rows) { // 빈 줄은 [] 로, 각 줄 길이는 최대 열까지 null 채움(SheetJS defval:null 과 같은 모양)
+    let maxC = 0; for (const r of rows) if (r && r.length > maxC) maxC = r.length;
+    const out = [];
+    for (let i = 0; i < rows.length; i++) { const r = rows[i] || []; const o = new Array(maxC).fill(null); for (let c = 0; c < r.length; c++) if (r[c] !== undefined) o[c] = r[c]; out.push(o); }
+    return out;
+  }
+
+  // ───────── .xls — OLE2 복합 문서 ─────────
+  function cfbStream(buf, wantNames) {
+    const dv = new DataView(buf), u8 = new Uint8Array(buf);
+    if (dv.getUint32(0, true) !== 0xE011CFD0 || dv.getUint32(4, true) !== 0xE11AB1A1) throw new Error('엑셀 97-2003(.xls) 파일 형식이 아닙니다.');
+    const secShift = dv.getUint16(30, true), miniShift = dv.getUint16(32, true);
+    const SS = 1 << secShift, MS = 1 << miniShift;
+    const nFat = dv.getUint32(44, true), dirStart = dv.getUint32(48, true), miniCut = dv.getUint32(56, true);
+    const miniFatStart = dv.getUint32(60, true), nMiniFat = dv.getUint32(64, true), difatStart = dv.getUint32(68, true), nDifat = dv.getUint32(72, true);
+    const secOff = s => (s + 1) * SS;
+    // FAT 섹터 목록 (헤더 109개 + DIFAT 체인)
+    const fatSecs = [];
+    for (let i = 0; i < 109 && fatSecs.length < nFat; i++) { const s = dv.getUint32(76 + i * 4, true); if (s < 0xFFFFFFFE) fatSecs.push(s); }
+    let ds = difatStart;
+    for (let k = 0; k < nDifat && ds < 0xFFFFFFFE; k++) {
+      const base = secOff(ds); const per = SS / 4 - 1;
+      for (let i = 0; i < per && fatSecs.length < nFat; i++) { const s = dv.getUint32(base + i * 4, true); if (s < 0xFFFFFFFE) fatSecs.push(s); }
+      ds = dv.getUint32(base + per * 4, true);
+    }
+    const fat = new Uint32Array(fatSecs.length * (SS / 4));
+    fatSecs.forEach((s, i) => { for (let j = 0; j < SS / 4; j++) fat[i * (SS / 4) + j] = dv.getUint32(secOff(s) + j * 4, true); });
+    const chain = (start, table) => { const out = []; let s = start, guard = 0; while (s < 0xFFFFFFFE && guard++ < 1e7) { out.push(s); s = table[s]; if (s === undefined) break; } return out; };
+    const readChain = (start, size) => {
+      const secs = chain(start, fat); const out = new Uint8Array(size); let o = 0;
+      for (const s of secs) { if (o >= size) break; const n = Math.min(SS, size - o); out.set(u8.subarray(secOff(s), secOff(s) + n), o); o += n; }
+      return out;
+    };
+    // 디렉터리
+    const dirSecs = chain(dirStart, fat); const entries = [];
+    for (const s of dirSecs) for (let e = 0; e < SS / 128; e++) {
+      const p = secOff(s) + e * 128; const nameLen = dv.getUint16(p + 64, true); if (!nameLen) continue;
+      const name = DEC_UTF16.decode(u8.subarray(p, p + nameLen - 2));
+      entries.push({ name, type: u8[p + 66], start: dv.getUint32(p + 116, true), size: dv.getUint32(p + 120, true) });
+    }
+    const rootE = entries.find(e => e.type === 5);
+    const want = entries.find(e => e.type === 2 && wantNames.includes(e.name));
+    if (!want) throw new Error('파일 안에서 통합 문서(Workbook)를 찾지 못했습니다.');
+    if (want.size >= miniCut) return readChain(want.start, want.size);
+    // 미니 스트림
+    const miniStream = readChain(rootE.start, rootE.size);
+    const miniFat = new Uint32Array(nMiniFat * (SS / 4)); const mfs = chain(miniFatStart, fat);
+    mfs.forEach((s, i) => { for (let j = 0; j < SS / 4; j++) miniFat[i * (SS / 4) + j] = dv.getUint32(secOff(s) + j * 4, true); });
+    const secs = chain(want.start, miniFat); const out = new Uint8Array(want.size); let o = 0;
+    for (const s of secs) { if (o >= want.size) break; const n = Math.min(MS, want.size - o); out.set(miniStream.subarray(s * MS, s * MS + n), o); o += n; }
+    return out;
+  }
+
+  // ───────── .xls — BIFF8 레코드 ─────────
+  function readXls(buf) {
+    const wb = cfbStream(buf, ['Workbook', 'Book']);
+    const dv = new DataView(wb.buffer, wb.byteOffset, wb.byteLength);
+    const recs = []; // {type, start, len}
+    for (let p = 0; p + 4 <= wb.length;) { const type = dv.getUint16(p, true), len = dv.getUint16(p + 2, true); recs.push({ type, start: p + 4, len }); p += 4 + len; if (type === 0x0A && recs.length === 1) break; }
+    const rkNum = rk => { let v; if (rk & 0x02) v = rk >> 2; else { const hi = (rk & 0xFFFFFFFC) >>> 0; const b = new DataView(new ArrayBuffer(8)); b.setUint32(4, hi, true); b.setUint32(0, 0, true); v = b.getFloat64(0, true); } return (rk & 0x01) ? v / 100 : v; };
+    const rkFromDv = (d, p) => rkNum(d.getInt32(p, true));
+
+    // 유니코드 문자열 읽기 — SST 는 CONTINUE 로 쪼개질 수 있어 "레코드 묶음" 위에서 읽는다
+    function makeCursor(parts) { // parts: [{start,len}] in wb
+      const c = { i: 0, p: parts[0].start, end: parts[0].start + parts[0].len, parts };
+      c.remain = () => c.end - c.p;
+      c.next = () => { c.i++; if (c.i >= parts.length) return false; c.p = parts[c.i].start; c.end = c.p + parts[c.i].len; return true; };
+      c.u8 = () => { if (c.p >= c.end && !c.next()) throw new Error('xls 문자열 표가 끊겼습니다.'); return wb[c.p++]; };
+      c.u16 = () => c.u8() | (c.u8() << 8);
+      c.u32 = () => (c.u16() | (c.u16() << 16)) >>> 0;
+      c.skip = n => { while (n > 0) { if (c.p >= c.end && !c.next()) throw new Error('xls 문자열 표가 끊겼습니다.'); const k = Math.min(n, c.end - c.p); c.p += k; n -= k; } };
+      return c;
+    }
+    function readUniStr(c, cch) { // 플래그 이후부터. 레코드 경계마다 플래그 바이트가 다시 온다
+      let flags = c.u8(); const rich = flags & 0x08, ext = flags & 0x04;
+      const nRun = rich ? c.u16() : 0, nExt = ext ? c.u32() : 0;
+      let s = '', left = cch;
+      while (left > 0) {
+        if (c.p >= c.end) { if (!c.next()) throw new Error('xls 문자열 표가 끊겼습니다.'); flags = c.u8(); }
+        const wide = flags & 0x01; const avail = c.end - c.p; const n = Math.min(left, wide ? Math.floor(avail / 2) : avail);
+        if (n <= 0) { if (!c.next()) throw new Error('xls 문자열 표가 끊겼습니다.'); flags = c.u8(); continue; }
+        const bytes = wb.subarray(c.p, c.p + (wide ? n * 2 : n));
+        s += wide ? DEC_UTF16.decode(bytes) : (DEC_LATIN ? DEC_LATIN.decode(bytes) : String.fromCharCode(...bytes));
+        c.p += wide ? n * 2 : n; left -= n;
+      }
+      c.skip(nRun * 4 + nExt);
+      return s;
+    }
+    // 전역 부분: BOUNDSHEET, SST
+    const sheets = []; let sst = [];
+    for (let i = 0; i < recs.length; i++) {
+      const r = recs[i];
+      if (r.type === 0x85) { // BOUNDSHEET
+        const off = dv.getUint32(r.start, true), cch = wb[r.start + 6], flags = wb[r.start + 7];
+        const b = wb.subarray(r.start + 8, r.start + 8 + (flags & 1 ? cch * 2 : cch));
+        sheets.push({ name: flags & 1 ? DEC_UTF16.decode(b) : (DEC_LATIN ? DEC_LATIN.decode(b) : String.fromCharCode(...b)), off, hidden: wb[r.start + 4] & 3 });
+      } else if (r.type === 0xFC) { // SST (+CONTINUE)
+        const parts = [{ start: r.start, len: r.len }]; let j = i + 1;
+        while (j < recs.length && recs[j].type === 0x3C) { parts.push({ start: recs[j].start, len: recs[j].len }); j++; }
+        const c = makeCursor(parts); c.u32(); const unique = c.u32();
+        for (let k = 0; k < unique; k++) { const cch = c.u16(); sst.push(readUniStr(c, cch)); }
+      } else if (r.type === 0x0A) break; // 전역 EOF
+    }
+    // 시트별 셀
+    const out = [];
+    for (const sh of sheets) {
+      const rows = []; let last = null;
+      let k = recs.findIndex(r => r.start - 4 === sh.off); if (k < 0) continue;
+      for (; k < recs.length; k++) {
+        const r = recs[k], p = r.start, t = r.type;
+        if (t === 0x0A && k > 0 && recs[k].start - 4 !== sh.off) break;
+        if (t === 0xFD) { setCell(rows, dv.getUint16(p, true), dv.getUint16(p + 2, true), sst[dv.getUint32(p + 6, true)] ?? ''); last = null; }
+        else if (t === 0x203) { setCell(rows, dv.getUint16(p, true), dv.getUint16(p + 2, true), dv.getFloat64(p + 6, true)); last = null; }
+        else if (t === 0x27E) { setCell(rows, dv.getUint16(p, true), dv.getUint16(p + 2, true), rkFromDv(dv, p + 6)); last = null; }
+        else if (t === 0xBD) { const row = dv.getUint16(p, true), c0 = dv.getUint16(p + 2, true), n = (r.len - 6) / 6; for (let i = 0; i < n; i++) setCell(rows, row, c0 + i, rkFromDv(dv, p + 4 + i * 6 + 2)); last = null; }
+        else if (t === 0x06) { // FORMULA: 결과값
+          const row = dv.getUint16(p, true), col = dv.getUint16(p + 2, true);
+          if (dv.getUint16(p + 12, true) === 0xFFFF) { const kind = wb[p + 6]; if (kind === 0) last = { row, col }; else if (kind === 1) { setCell(rows, row, col, !!wb[p + 8]); last = null; } else if (kind === 3) { setCell(rows, row, col, ''); last = null; } else last = null; }
+          else { setCell(rows, row, col, dv.getFloat64(p + 6, true)); last = null; }
+        }
+        else if (t === 0x207 && last) { const cch = dv.getUint16(p, true); const c = makeCursor([{ start: p + 2, len: r.len - 2 }]); setCell(rows, last.row, last.col, readUniStr(c, cch)); last = null; }
+        else if (t === 0x205) { const row = dv.getUint16(p, true), col = dv.getUint16(p + 2, true); if (!wb[p + 7]) setCell(rows, row, col, !!wb[p + 6]); last = null; }
+        else if (t === 0x204) { const row = dv.getUint16(p, true), col = dv.getUint16(p + 2, true), cch = dv.getUint16(p + 6, true); const c = makeCursor([{ start: p + 8, len: r.len - 8 }]); setCell(rows, row, col, readUniStr(c, cch)); last = null; }
+        else if (t === 0x0A) break;
+      }
+      out.push({ name: sh.name, aoa: finish(rows) });
+    }
+    if (!out.length) throw new Error('xls 파일에서 시트를 찾지 못했습니다.');
+    return out;
+  }
+
+  // ───────── .xlsx — zip + XML ─────────
+  async function inflateRaw(u8) {
+    if (typeof DecompressionStream === 'undefined') throw new Error('이 브라우저는 .xlsx 압축 해제를 지원하지 않습니다. 크롬·엣지 최신 버전을 쓰거나 .xls 로 저장해 올리세요.');
+    const ds = new DecompressionStream('deflate-raw'); const w = ds.writable.getWriter(); w.write(u8); w.close();
+    const chunks = []; const rd = ds.readable.getReader(); for (;;) { const { done, value } = await rd.read(); if (done) break; chunks.push(value); }
+    const out = new Uint8Array(chunks.reduce((a, c) => a + c.length, 0)); let o = 0; for (const c of chunks) { out.set(c, o); o += c.length; } return out;
+  }
+  async function unzip(buf) {
+    const u8 = new Uint8Array(buf), dv = new DataView(buf);
+    let eocd = -1; for (let p = u8.length - 22; p >= Math.max(0, u8.length - 70000); p--) if (dv.getUint32(p, true) === 0x06054b50) { eocd = p; break; }
+    if (eocd < 0) throw new Error('.xlsx 파일 형식이 아닙니다(zip 끝을 찾지 못함).');
+    const n = dv.getUint16(eocd + 10, true), cdOff = dv.getUint32(eocd + 16, true);
+    const files = new Map(); let p = cdOff;
+    for (let i = 0; i < n; i++) {
+      if (dv.getUint32(p, true) !== 0x02014b50) break;
+      const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true), nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), lho = dv.getUint32(p + 42, true);
+      const name = DEC_UTF8.decode(u8.subarray(p + 46, p + 46 + nl));
+      files.set(name, { method, csize, lho }); p += 46 + nl + el + cl;
+    }
+    const get = async name => {
+      const f = files.get(name); if (!f) return null;
+      const q = f.lho; const nl = dv.getUint16(q + 26, true), el = dv.getUint16(q + 28, true); const data = u8.subarray(q + 30 + nl + el, q + 30 + nl + el + f.csize);
+      const raw = f.method === 0 ? data : await inflateRaw(data);
+      return DEC_UTF8.decode(raw);
+    };
+    return { get, names: [...files.keys()] };
+  }
+  function xmlText(frag) { let s = ''; const re = /<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g; let m; while ((m = re.exec(frag))) s += m[1]; return unescXml(s); }
+  async function readXlsx(buf) {
+    const z = await unzip(buf);
+    const wbx = await z.get('xl/workbook.xml'); if (!wbx) throw new Error('.xlsx 안에 통합 문서가 없습니다.');
+    const rels = await z.get('xl/_rels/workbook.xml.rels') || '';
+    const relMap = {}; { const re = /<Relationship\s[^>]*?Id="([^"]+)"[^>]*?Target="([^"]+)"/g; let m; while ((m = re.exec(rels))) relMap[m[1]] = m[2]; const re2 = /<Relationship\s[^>]*?Target="([^"]+)"[^>]*?Id="([^"]+)"/g; while ((m = re2.exec(rels))) relMap[m[2]] = relMap[m[2]] || m[1]; }
+    const sst = []; const ss = await z.get('xl/sharedStrings.xml'); if (ss) { const re = /<si>([\s\S]*?)<\/si>/g; let m; while ((m = re.exec(ss))) sst.push(xmlText(m[1])); }
+    const sheets = []; const re = /<sheet\s[^>]*?name="([^"]*)"[^>]*?r:id="([^"]+)"/g; let m;
+    while ((m = re.exec(wbx))) { let target = relMap[m[2]] || ''; if (target.startsWith('/')) target = target.slice(1); else if (!target.startsWith('xl/')) target = 'xl/' + target; sheets.push({ name: unescXml(m[1]), target }); }
+    const out = [];
+    for (const sh of sheets) {
+      const xml = await z.get(sh.target); if (xml == null) continue;
+      const rows = []; const cre = /<c\s+r="([A-Z]+)(\d+)"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g; let c;
+      while ((c = cre.exec(xml))) {
+        const col = colIndex(c[1]), row = +c[2] - 1, attrs = c[3], inner = c[4] || '';
+        const tm = /\bt="([^"]+)"/.exec(attrs); const t = tm ? tm[1] : 'n';
+        let v = null;
+        if (t === 'inlineStr') v = xmlText(inner);
+        else { const vm = /<v>([\s\S]*?)<\/v>/.exec(inner); if (vm) { const raw = unescXml(vm[1]); if (t === 's') v = sst[+raw] ?? ''; else if (t === 'str' || t === 'e') v = raw; else if (t === 'b') v = raw === '1'; else { const n = Number(raw); v = isFinite(n) ? n : raw; } } }
+        if (v !== null) setCell(rows, row, col, v);
+      }
+      out.push({ name: sh.name, aoa: finish(rows) });
+    }
+    if (!out.length) throw new Error('.xlsx 파일에서 시트를 찾지 못했습니다.');
+    return out;
+  }
+
+  // ───────── .csv ─────────
+  function readCsv(buf) {
+    const u8 = new Uint8Array(buf); let text;
+    if (u8[0] === 0xEF && u8[1] === 0xBB && u8[2] === 0xBF) text = DEC_UTF8.decode(u8.subarray(3));
+    else { try { text = new TextDecoder('utf-8', { fatal: true }).decode(u8); } catch (e) { text = DEC_949 ? DEC_949.decode(u8) : DEC_UTF8.decode(u8); } }
+    const rows = []; let row = [], field = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; } else field += ch; }
+      else if (ch === '"') q = true; else if (ch === ',') { row.push(field); field = ''; } else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(field); rows.push(row); row = []; field = ''; } else field += ch;
+    }
+    if (field !== '' || row.length) { row.push(field); rows.push(row); }
+    return [{ name: 'csv', aoa: finish(rows.map(r => r.map(v => { const n = Number(v); return v !== '' && isFinite(n) && /^-?\d+(\.\d+)?$/.test(v) ? n : v; }))) }];
+  }
+
+  // ───────── 진입점 ─────────
+  async function read(buf, fileName) {
+    const u8 = new Uint8Array(buf);
+    if (u8.length >= 8 && u8[0] === 0xD0 && u8[1] === 0xCF && u8[2] === 0x11 && u8[3] === 0xE0) return readXls(buf);
+    if (u8.length >= 4 && u8[0] === 0x50 && u8[1] === 0x4B) return readXlsx(buf);
+    if (/\.csv$/i.test(fileName || '')) return readCsv(buf);
+    const head = DEC_UTF8.decode(u8.subarray(0, 200)).toLowerCase();
+    if (head.includes('<html') || head.includes('<table')) throw new Error('이 파일은 엑셀이 아니라 HTML 표입니다. 엑셀에서 열어 .xlsx 로 다시 저장한 뒤 올리세요.');
+    throw new Error('읽을 수 없는 파일 형식입니다. ERP에서 내려받은 .xls 또는 .xlsx 파일을 올리세요.');
+  }
+  root.LSRead = { read, readXls, readXlsx, readCsv };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script id="ls-core">/* 휴롬엘에스 HR업무 지원 앱 — 계산 로직 (화면과 분리. 브라우저·node 양쪽에서 동작) */
+(function (root) {
+  'use strict';
+
+  // ───────── 공통 도우미 ─────────
+  const NUM = v => {
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    if (v == null) return 0;
+    const s = String(v).replace(/[,\s　]/g, '');
+    if (s === '' || s === '-') return 0;
+    const n = Number(s);
+    return isFinite(n) ? n : 0;
+  };
+  const normH = s => String(s == null ? '' : s).replace(/[\s　]+/g, '');          // 머리글 비교용(공백 제거)
+  const clean = s => String(s == null ? '' : s).replace(/[\s　]+/g, ' ').trim();  // 값(전각 공백 포함 정리)
+  const pad3 = n => String(n).padStart(3, '0');
+  const sum = (arr, f) => arr.reduce((a, x) => a + (f ? f(x) : x), 0);
+  const displayName = n => String(n || '').replace(/\d+$/, '');                        // 홍길동2 → 홍길동 (기안 문구용)
+  const ymLabel = ym => { const [y, m] = ym.split('-'); return `${y}년 ${Number(m)}월`; };
+  const ymShort = ym => { const [y, m] = ym.split('-'); return `${y.slice(2)}년 ${Number(m)}월`; };
+  const prevYm = ym => { let [y, m] = ym.split('-').map(Number); m -= 1; if (m === 0) { m = 12; y -= 1; } return `${y}-${String(m).padStart(2, '0')}`; };
+
+  function toDateStr(v) {
+    if (v == null || v === '') return '';
+    if (v instanceof Date) {
+      const d = new Date(v.getTime() + 12 * 3600 * 1000); // 시간대 오차 방지
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+    }
+    if (typeof v === 'number') { // 엑셀 날짜 일련번호
+      if (v < 20000 || v > 80000) return '';
+      const d = new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000);
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+    }
+    const s = clean(v);
+    const m = s.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+    if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+    const m2 = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+    if (m2) return `${m2[1]}-${m2[2]}-${m2[3]}`;
+    return '';
+  }
+  function toYm(v) {
+    if (v instanceof Date || typeof v === 'number') { const d = toDateStr(v); return d ? d.slice(0, 7) : ''; }
+    const s = clean(v);
+    const m = s.match(/^(\d{4})[-./년\s]*(\d{1,2})/);
+    return m ? `${m[1]}-${m[2].padStart(2, '0')}` : '';
+  }
+
+  // ───────── 1. 급여대장 읽기 ─────────
+  // aoa: 시트 전체를 2차원 배열로. 머리글 이름으로 열을 찾으므로 열이 늘거나 순서가 바뀌어도 된다.
+  const ID_COLS = ['귀속년월', '구분', '사번', '성명', '입사구분', '직위', '직책', '직종', '사업장코드', '사업장명', '원가구분',
+    '상위부서', '부서코드', '부서명', '입사일', '퇴사일', '급여형태'];
+
+  function parseLedger(aoa, fileName) {
+    const warnings = [];
+    let hi = -1;
+    for (let i = 0; i < Math.min(aoa.length, 30); i++) {
+      const h = (aoa[i] || []).map(normH);
+      if (h.includes('사번') && h.includes('성명')) { hi = i; break; }
+    }
+    if (hi < 0) throw new Error('급여대장 머리글(사번·성명)을 찾지 못했습니다. ERP에서 내려받은 급여대장 파일이 맞는지 확인하세요.');
+    const headers = (aoa[hi] || []).map(normH);
+    const col = name => headers.indexOf(name);
+    const need = ['사번', '성명', '사업장코드', '부서명', '지급계', '실지급계'];
+    const miss = need.filter(n => col(n) < 0);
+    if (miss.length) throw new Error('급여대장에 필요한 열이 없습니다: ' + miss.join(', '));
+
+    const iGross = col('지급계'), iDed = col('공제계'), iNet = col('실지급계');
+    let iPayStart = col('기본급');
+    if (iPayStart < 0) iPayStart = Math.max(...ID_COLS.map(col)) + 1;
+    const payCols = [], dedCols = [], extraCols = [];
+    headers.forEach((h, i) => {
+      if (!h) return;
+      if (i >= iPayStart && i < iGross) payCols.push(h);
+      else if (iDed >= 0 && i > iGross && i < iDed) dedCols.push(h);
+      else if (iDed < 0 && i > iGross && i < iNet) dedCols.push(h);
+      else if (i > iNet && h !== '비고') extraCols.push(h);
+    });
+    const numCols = [...payCols, '지급계', ...dedCols, '공제계', '실지급계', ...extraCols].filter(h => col(h) >= 0);
+
+    const people = []; let totals = null; const months = {}, kinds = {};
+    for (let r = hi + 1; r < aoa.length; r++) {
+      const row = aoa[r] || [];
+      const first = normH(row[0]);
+      if (first === '합계' || normH(row[col('성명')]) === '합계') {
+        totals = {}; numCols.forEach(h => { totals[h] = NUM(row[col(h)]); }); continue;
+      }
+      const id = clean(row[col('사번')]), name = clean(row[col('성명')]);
+      if (!id && !name) continue;
+      const g = n => (col(n) >= 0 ? clean(row[col(n)]) : '');
+      const v = {}; numCols.forEach(h => { v[h] = NUM(row[col(h)]); });
+      const ded = iDed >= 0 ? v['공제계'] : sum(dedCols, h => v[h]);
+      const ym = toYm(row[col('귀속년월')]); if (ym) months[ym] = (months[ym] || 0) + 1;
+      const kind = g('구분') || '급여'; kinds[kind] = (kinds[kind] || 0) + 1;
+      people.push({
+        id: id || name, name, kind, title: g('직책'), pos: g('직위'), jobType: g('직종'),
+        siteCode: g('사업장코드'), siteName: g('사업장명'), upper: g('상위부서'), deptCode: g('부서코드'), dept: g('부서명'),
+        joined: col('입사일') >= 0 ? toDateStr(row[col('입사일')]) : '', left: col('퇴사일') >= 0 ? toDateStr(row[col('퇴사일')]) : '',
+        payType: g('급여형태'), v, gross: v['지급계'], ded, net: v['실지급계'],
+      });
+    }
+    if (!people.length) throw new Error('급여대장에서 사람 줄을 찾지 못했습니다.');
+    const top = o => Object.keys(o).sort((a, b) => o[b] - o[a])[0] || '';
+    const month = top(months), kind = top(kinds);
+    if (!month) warnings.push('귀속년월을 읽지 못했습니다. 파일의 귀속년월 열을 확인하세요.');
+    if (Object.keys(months).length > 1) warnings.push('귀속년월이 여러 달 섞여 있습니다: ' + Object.keys(months).join(', '));
+    if (totals) {
+      const g = sum(people, p => p.gross), n = sum(people, p => p.net);
+      if (g !== totals['지급계'] || n !== totals['실지급계']) warnings.push(`사람별 합계가 대장의 합계 줄과 다릅니다 (지급계 ${g.toLocaleString()} / 합계 줄 ${totals['지급계'].toLocaleString()}).`);
+    }
+    people.forEach(p => { p.active = !(p.gross === 0 && p.ded === 0 && p.net === 0); });
+    return { fileName: fileName || '', month, kind, people, headers: headers.filter(Boolean), payCols, dedCols, extraCols, totals, warnings };
+  }
+
+  // ───────── 2. 활동센터 정하기 + 임원 배분 ─────────
+  function branchOf(cfg, p) {
+    let b = cfg.branches.find(x => x.code === p.siteCode);
+    return b || null;
+  }
+  // 한 사람이 전표의 어느 줄(활동센터)로 가는지: ① 임원 배분 ② 사람별 지정 ③ 부서 연결 ④ 대장의 부서명 그대로
+  function resolvePerson(cfg, p) {
+    const split = (cfg.splits || []).find(s => s.id === p.id) || (cfg.splits || []).find(s => !s.id && s.name === p.name);
+    if (split) return { via: 'split', split };
+    const pc = (cfg.people || []).find(s => s.id === p.id) || (cfg.people || []).find(s => !s.id && s.name === p.name);
+    if (pc && pc.center) return { via: 'person', center: pc.center };
+    const dm = (cfg.deptMap || []).find(d => d.dept === p.dept && (!d.branch || d.branch === p.siteCode));
+    if (dm && dm.center) return { via: 'deptMap', center: dm.center };
+    return { via: 'dept', center: p.dept || '(부서 없음)' };
+  }
+
+  // 금액을 가중치대로 나눔: 둘째부터 원 단위 버림, 끝전은 첫째로 (기존 엑셀과 같은 방식)
+  function allocate(amount, weights, mode) {
+    const n = weights.length; if (!n) return [];
+    const parts = new Array(n).fill(0);
+    if (mode === 'headcount') {
+      const total = sum(weights);
+      const per = total ? Math.trunc(amount / total) : 0;
+      for (let i = 0; i < n; i++) parts[i] = per * weights[i];
+    } else { // ratio: weights 는 퍼센트(소수 둘째 자리까지)
+      for (let i = 0; i < n; i++) parts[i] = Math.trunc(amount * Math.round(weights[i] * 100) / 10000);
+    }
+    let hold = weights.findIndex(w => w > 0); if (hold < 0) hold = 0;
+    let others = 0; for (let i = 0; i < n; i++) if (i !== hold) others += parts[i];
+    parts[hold] = amount - others;
+    return parts;
+  }
+
+  function buildAllocation(ledger, cfg) {
+    const warnings = [], notices = [];
+    const out = { branches: [], unknownSites: [], warnings, notices };
+    const byBranch = new Map();
+    cfg.branches.forEach(b => byBranch.set(b.code, { cfg: b, people: [], centers: new Map(), splits: [], order: [], newCenters: [] }));
+    const unknown = new Map();
+    for (const p of ledger.people) {
+      if (!p.active) continue;
+      const b = branchOf(cfg, p);
+      if (!b) { const k = p.siteCode || '(코드 없음)'; if (!unknown.has(k)) unknown.set(k, { code: k, name: p.upper || p.siteName, count: 0, gross: 0 }); const u = unknown.get(k); u.count++; u.gross += p.gross; continue; }
+      byBranch.get(b.code).people.push(p);
+    }
+    out.unknownSites = [...unknown.values()];
+    out.unknownSites.forEach(u => warnings.push(`대장에 설정에 없는 사업장(${u.code} ${u.name || ''})이 있습니다. ${u.count}명, ${u.gross.toLocaleString()}원이 전표에서 빠져 있습니다 — [조직·배분 설정]에서 사업장을 추가하세요.`));
+
+    for (const [code, B] of byBranch) {
+      const b = B.cfg;
+      const cen = name => { if (!B.centers.has(name)) B.centers.set(name, { name, pay: 0, sangjo: 0, count: 0, members: [], shares: [] }); return B.centers.get(name); };
+      const pending = [];
+      for (const p of B.people) {
+        const r = resolvePerson(cfg, p); p._res = r;
+        if (r.via === 'split') { pending.push({ p, split: r.split }); continue; }
+        const c = cen(r.center); c.pay += p.gross; c.sangjo += NUM(p.v['상조회']); c.count++; c.members.push(p);
+      }
+      const ordered = () => {
+        const names = [...B.centers.keys()];
+        const known = (b.centers || []).filter(n => B.centers.has(n));
+        const fresh = names.filter(n => !(b.centers || []).includes(n));
+        return [...known, ...fresh];
+      };
+      // 직원 수(임원 배분 대상 제외)는 여기서 확정
+      const headBase = new Map([...B.centers].map(([k, c]) => [k, c.count]));
+      for (const { p, split } of pending) {
+        let targets = [], weights = [], mode = split.mode === 'headcount' ? 'headcount' : 'ratio';
+        if (mode === 'headcount') {
+          const adj = split.adj || {}, ex = split.exclude || [];
+          const names = [...new Set([...(b.centers || []), ...headBase.keys(), ...Object.keys(adj)])];
+          for (const n of names) {
+            if (ex.includes(n)) continue;
+            const w = (headBase.get(n) || 0) + NUM(adj[n]);
+            if (w > 0) { targets.push(n); weights.push(w); }
+          }
+          if (!targets.length) { warnings.push(`${b.name} ${p.name}: 인원수 기준으로 나눌 부서가 없습니다. 급여가 '${p.dept}' 줄로 들어갑니다.`); targets = [p.dept]; weights = [1]; }
+        } else {
+          const parts = (split.parts || []).filter(x => x.center);
+          targets = parts.map(x => x.center); weights = parts.map(x => NUM(x.pct));
+          const tot = Math.round(sum(weights) * 100) / 100;
+          if (!targets.length) { warnings.push(`${b.name} ${p.name}: 배분 부서가 비어 있습니다. 급여가 '${p.dept}' 줄로 들어갑니다.`); targets = [p.dept]; weights = [100]; }
+          else if (tot !== 100) warnings.push(`${b.name} ${p.name}: 배분 비율 합계가 ${tot}%입니다 (100%가 아니면 남는 금액이 첫 부서 '${targets[0]}'로 들어갑니다).`);
+        }
+        const pay = allocate(p.gross, weights, mode), sj = allocate(NUM(p.v['상조회']), weights, mode);
+        const detail = targets.map((n, i) => ({ center: n, weight: weights[i], pay: pay[i], sangjo: sj[i] }));
+        detail.forEach(d => { const c = cen(d.center); c.pay += d.pay; c.sangjo += d.sangjo; c.shares.push({ from: p.name, pay: d.pay, sangjo: d.sangjo, weight: d.weight }); });
+        B.splits.push({ person: p, mode, detail });
+      }
+      B.order = ordered();
+      B.newCenters = B.order.filter(n => !(b.centers || []).includes(n));
+      B.idle = (b.centers || []).filter(n => !B.centers.has(n));
+      out.branches.push({ code, name: b.name, short: b.short || b.name, cfg: b, people: B.people, centers: B.order.map(n => B.centers.get(n)), newCenters: B.newCenters, idleCenters: B.idle, splits: B.splits });
+    }
+
+    // 설정에 남아 있지만 이번 대장에 없는 것들 (퇴사·조직 변경 흔적)
+    const act = new Map(ledger.people.filter(p => p.active).map(p => [p.id, p]));
+    (cfg.splits || []).forEach(s => { if (!act.has(s.id)) notices.push({ type: 'split-missing', id: s.id, name: s.name, text: `임원 배분에 등록된 ${s.name} 님이 이번 대장에 없습니다(또는 지급액 0원).` }); });
+    (cfg.people || []).forEach(s => { if (!act.has(s.id)) notices.push({ type: 'person-missing', id: s.id, name: s.name, text: `사람별 지정에 등록된 ${s.name} 님이 이번 대장에 없습니다(또는 지급액 0원).` }); });
+    const depts = new Set(ledger.people.filter(p => p.active).map(p => p.siteCode + '|' + p.dept));
+    (cfg.deptMap || []).forEach(d => { if (![...depts].some(k => k.endsWith('|' + d.dept) && (!d.branch || k.startsWith(d.branch + '|')))) notices.push({ type: 'dept-missing', dept: d.dept, text: `부서 연결에 등록된 '${d.dept}'가 이번 대장에 없습니다.` }); });
+    return out;
+  }
+
+  // ───────── 3. 급여전표 · 상조회비 전표 ─────────
+  function fillLabel(tpl, b) {
+    return String(tpl).replace(/\{지점\}/g, b.name).replace(/\{세무서\}/g, b.taxOffice || '').replace(/\{구청\}/g, b.cityOffice || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function buildVouchers(ledger, cfg, alloc) {
+    alloc = alloc || buildAllocation(ledger, cfg);
+    const D = cfg.defaults || {};
+    const isBonus = ledger.kind && ledger.kind !== '급여';
+    const kindLabel = ledger.kind || '급여';
+    const ym = ymLabel(ledger.month || '0000-00');
+    const owner = cfg.owner || '';
+    const warnings = [...alloc.warnings];
+    const covered = new Set(); (cfg.credits || []).forEach(c => (c.cols || []).forEach(x => covered.add(x)));
+    const res = { month: ledger.month, kind: kindLabel, isBonus, branches: [], sangjo: [], warnings, alloc };
+    let sjNo = 0;
+
+    for (const B of alloc.branches) {
+      const b = B.cfg, head = `${ym} ${kindLabel}(${b.name})`;
+      const lines = [];
+      const opt = n => (b.centerOpts && b.centerOpts[n]) || {};
+      // 차변: 활동센터별 급여
+      for (const c of B.centers) {
+        if (c.pay === 0) continue;
+        lines.push({ account: opt(c.name).account || (isBonus ? (D.bonusAccount || '상여금') : (D.account || '직원급여')), cost: opt(c.name).cost || D.cost || '판관', debit: c.pay, credit: null, memo: `${head} ${c.name}`, owner, center: c.name, isNew: B.newCenters.includes(c.name) });
+      }
+      // 대변: 예수금
+      const credits = [];
+      for (const cr of (cfg.credits || [])) {
+        const amt = sum(B.people, p => sum(cr.cols || [], h => NUM(p.v[h])));
+        if (amt === 0) continue;
+        credits.push({ account: cr.account || '예수금', cost: '', debit: null, credit: amt, memo: `${head} ${fillLabel(cr.label, b)}`, owner, center: '', flag: cr.check ? '적요·계정과목 확인' : '' });
+      }
+      for (const h of ledger.dedCols) {
+        if (covered.has(h)) continue;
+        const amt = sum(B.people, p => NUM(p.v[h]));
+        if (amt === 0) continue;
+        credits.push({ account: '예수금', cost: '', debit: null, credit: amt, memo: `${head} ${h} 공제(${b.name})`, owner, center: '', flag: '새 공제 항목 — 적요·계정과목 확인' });
+        warnings.push(`${b.name}: 대장에 새 공제 항목 '${h}'(${amt.toLocaleString()}원)이 있어 예수금 줄을 임시로 만들었습니다. 적요와 계정과목을 확인하세요.`);
+      }
+      credits.filter(c => c.flag && !c.flag.startsWith('새')).forEach(c => warnings.push(`${b.name}: '${c.memo}' ${c.credit.toLocaleString()}원 — 평소에 없던 공제입니다. 적요·계정과목을 확인하세요.`));
+      // 수기 행
+      const manual = (cfg.manual || []).filter(m => m.type === 'voucher' && m.branch === b.code && NUM(m.amount) !== 0 && (!m.month || m.month === ledger.month || m.repeat));
+      const manualLines = manual.map(m => ({ account: m.account || '예수금', cost: m.cost || '', debit: m.side === '차변' ? NUM(m.amount) : null, credit: m.side === '차변' ? null : NUM(m.amount), memo: `${head} ${m.memo || ''}`.trim(), owner, center: m.center || '', manual: true }));
+      const all = [...lines, ...credits, ...manualLines];
+      const debitSum = sum(all, l => l.debit || 0), creditSum = sum(all, l => l.credit || 0);
+      const accrued = debitSum - creditSum;
+      all.push({ account: '미지급비용', cost: '', debit: null, credit: accrued, memo: head, owner, center: '' });
+      all.forEach((l, i) => { l.no = pad3(i + 1); });
+      const netSum = sum(B.people, p => p.net), grossSum = sum(B.people, p => p.gross);
+      const manualNet = sum(manualLines, l => (l.credit || 0) - (l.debit || 0));
+      const checks = {
+        gross: grossSum, debit: sum(lines, l => l.debit), grossOk: grossSum === sum(lines, l => l.debit),
+        net: netSum, accrued, netOk: accrued + manualNet === netSum, manualNet,
+        heads: B.people.length,
+      };
+      if (!checks.grossOk) warnings.push(`${b.name}: 전표 차변 합계가 대장 지급계와 다릅니다.`);
+      if (!checks.netOk) warnings.push(`${b.name}: 미지급비용(${accrued.toLocaleString()})이 대장 실지급계(${netSum.toLocaleString()})와 맞지 않습니다. 공제 항목 연결을 확인하세요.`);
+
+      // 상조회비 전표 (회사 찬조분)
+      const sjHead = `${ym} ${kindLabel} 상조회비(${b.name})`;
+      const sjManual = (cfg.manual || []).filter(m => m.type === 'sangjo' && m.branch === b.code && NUM(m.amount) !== 0 && (!m.month || m.month === ledger.month || m.repeat));
+      const sjLines = []; const names = B.centers.map(c => c.name);
+      sjManual.forEach(m => { if (m.center && !names.includes(m.center)) names.push(m.center); });
+      let sjDeduct = 0, sjExtra = 0;
+      for (const n of names) {
+        const c = B.centers.find(x => x.name === n);
+        const base = c ? c.sangjo : 0, extra = sum(sjManual.filter(m => m.center === n), m => NUM(m.amount));
+        sjDeduct += base; sjExtra += extra;
+        if (base + extra === 0) continue;
+        sjLines.push({ account: D.sangjoAccount || '복리후생비/상조회비', cost: opt(n).cost || D.cost || '판관', debit: base + extra, credit: null, memo: `${sjHead} ${n}`, owner, center: n, extra, extraMemo: sjManual.filter(m => m.center === n).map(m => m.memo).join(' / ') });
+      }
+      if (sjLines.length) {
+        sjLines.push({ account: '예수금', cost: '', debit: sjDeduct, credit: null, memo: `${sjHead} 공제 상조회`, owner, center: '' });
+        sjLines.push({ account: '미지급비용', cost: '', debit: null, credit: sjDeduct * 2 + sjExtra, memo: `${sjHead} 상조회`, owner, center: '' });
+      }
+      sjLines.forEach(l => { l.no = pad3(++sjNo); l.branch = b.code; });
+      res.sangjo.push(...sjLines);
+      res.branches.push({ code: b.code, name: b.name, short: b.short || b.name, lines: all, checks, newCenters: B.newCenters, idleCenters: B.idleCenters, sangjoDeduct: sjDeduct, sangjoExtra: sjExtra, sangjoCompany: sjDeduct + sjExtra, sangjoManual: sjManual });
+    }
+    return res;
+  }
+
+  // ───────── 4. 집계 (사업장별 표 · 월별 표 공용) ─────────
+  const PAY_ROWS = [
+    { k: 'base', label: '기본급', cols: ['기본급'] },
+    { k: 'otFixed', label: '시간외근로수당(일반직)', cols: ['고정연장수당', '고정야간수당'] },
+    { k: 'position', label: '직책수당', cols: ['직책수당'] },
+    { k: 'skill', label: '기능수당', cols: ['기능수당'] },
+    { k: 'family', label: '가족수당', cols: ['가족수당'] },
+    { k: 'familyKid', label: '가족수당(6세이하자녀)', cols: ['가족수당(6세이하자녀)'] },
+    { k: 'parent', label: '노부모수당', cols: ['노부모수당'] },
+    { k: 'meal', label: '중식비', cols: ['중식비'], optional: true },
+    { k: 'otExtra', label: '시간외근로수당(기타)', cols: ['추가연장수당', '휴일근무수당'] },
+    { k: 'etcPay', label: '기타지급', cols: ['기타지급'] },
+    { k: 'bonus', label: '연 상여금', cols: ['상여금'], siteOptional: true },
+    { k: 'specialBonus', label: '특별상여금', siteLabel: 'SR 및 IB 수당', cols: ['특별상여금'] },
+    { k: 'invention', label: '직무발명보상금', cols: ['직무발명보상금'] },
+    { k: 'absence', label: '결근(무급)', cols: ['결근(무급)'] },
+    { k: 'expat', label: '주재수당', cols: ['주재수당'] },
+    { k: 'expatEdu', label: '주재수당(학자금)', cols: ['주재수당(학자금)'] },
+    { k: 'taxKeep', label: '세액보전액', siteLabel: '세액보존액', cols: ['세액보존액'] },
+    { k: 'cut', label: '감봉', cols: ['감봉'] },
+    { k: 'prevAdj', label: '전월정산', cols: ['전월정산'] },
+    { k: 'leave', label: '연차수당', cols: ['연차수당'] },
+  ];
+  const DED_ROWS = [
+    { k: 'incomeTax', label: '소득세', cols: ['소득세'] },
+    { k: 'localTax', label: '지방소득세', cols: ['주민세'] },
+    { k: 'pension', label: '국민연금', cols: ['국민연금'] },
+    { k: 'health', label: '건강보험', cols: ['건강보험', '장기요양보험'] },
+    { k: 'employ', label: '고용보험', cols: ['고용보험'] },
+    { k: 'yeTax', label: '정산 소득세', cols: ['연말정산(소득세)'] },
+    { k: 'yeLocal', label: '정산 지방소득세', cols: ['연말정산(주민세)'] },
+    { k: 'healthAdj', label: '정산건강보험', cols: ['건강정산'] },
+    { k: 'employAdj', label: '정산고용보험', cols: ['고용정산', '정산고용보험'] },
+    { k: 'midTax', label: '중도연말정산 소득세', cols: ['중도연말정산(소득세)'] },
+    { k: 'midLocal', label: '중도연말정산 지방소득세', cols: ['중도연말정산(주민세)'] },
+    { k: 'student', label: '학자금공제', cols: ['학자금공제'] },
+    { k: 'etcDed', label: '기타공제', cols: ['기타공제', '교육비'] },
+    { k: 'sangjo', label: '상조회', cols: ['상조회'] },
+  ];
+  // 사업장별 표의 줄 순서 (예시 엑셀과 같게)
+  const SITE_PAY_ORDER = ['base', 'otFixed', 'position', 'skill', 'family', 'familyKid', 'parent', 'otExtra', 'etcPay', 'invention', 'taxKeep', 'absence', 'specialBonus', 'expat', 'expatEdu', 'cut', 'prevAdj', 'leave'];
+  const SITE_DED_ORDER = ['incomeTax', 'localTax', 'yeTax', 'yeLocal', 'pension', 'health', 'employ', 'healthAdj', 'employAdj', 'midTax', 'midLocal', 'sangjo', 'student', 'etcDed'];
+  const rowDef = k => PAY_ROWS.find(r => r.k === k) || DED_ROWS.find(r => r.k === k);
+  const isPayKey = k => PAY_ROWS.some(r => r.k === k) || k.startsWith('xp:');
+  const isDedKey = k => DED_ROWS.some(r => r.k === k) || k.startsWith('xd:');
+  const keyLabel = (k, site) => { const d = rowDef(k); if (d) return (site && d.siteLabel) || d.label; return k.slice(3); };
+
+  // 사람 목록 → { key: 합계 }. 어느 줄에도 속하지 않는 대장 열은 xp:열이름 / xd:열이름 으로 따로 모은다(소계가 대장과 맞도록).
+  function aggregate(ledger, people) {
+    const out = {};
+    const add = (k, v) => { if (v) out[k] = (out[k] || 0) + v; };
+    const payMap = {}, dedMap = {};
+    PAY_ROWS.forEach(r => r.cols.forEach(c => { payMap[c] = r.k; }));
+    DED_ROWS.forEach(r => r.cols.forEach(c => { dedMap[c] = r.k; }));
+    for (const p of people) {
+      for (const h of ledger.payCols) add(payMap[h] || ('xp:' + h), NUM(p.v[h]));
+      for (const h of ledger.dedCols) add(dedMap[h] || ('xd:' + h), NUM(p.v[h]));
+    }
+    return out;
+  }
+  const paySum = o => sum(Object.keys(o).filter(isPayKey), k => o[k]);
+  const dedSum = o => sum(Object.keys(o).filter(isDedKey), k => o[k]);
+  function mergeAgg(a, b) { const o = Object.assign({}, a); Object.keys(b).forEach(k => { o[k] = (o[k] || 0) + b[k]; }); return o; }
+
+  // ───────── 5. 급여기안 자료 ─────────
+  function buildMemo(cur, prev, extras, cfg, vouchers) {
+    extras = extras || [];
+    const warnings = [];
+    const branches = cfg.branches;
+    const actOf = (led, code) => led ? led.people.filter(p => p.active && p.siteCode === code) : [];
+    // 1) 세전금액
+    const pre = branches.map(b => {
+      const c = actOf(cur, b.code), p = actOf(prev, b.code);
+      return { code: b.code, name: b.name, short: b.short || b.name, prevHeads: prev ? p.length : null, prevAmt: prev ? sum(p, x => x.gross) : null, curHeads: c.length, curAmt: sum(c, x => x.gross) };
+    });
+    const preTotal = { prevHeads: prev ? sum(pre, x => x.prevHeads) : null, prevAmt: prev ? sum(pre, x => x.prevAmt) : null, curHeads: sum(pre, x => x.curHeads), curAmt: sum(pre, x => x.curAmt) };
+    // 2) 세후금액
+    const post = branches.map(b => {
+      const c = actOf(cur, b.code); const vb = vouchers && vouchers.branches.find(x => x.code === b.code);
+      const deduct = sum(c, x => NUM(x.v['상조회'])); const extra = vb ? vb.sangjoExtra : 0;
+      return { code: b.code, short: b.short || b.name, net: sum(c, x => x.net), sangjo: deduct, company: deduct + extra, extra, extraMemo: vb ? vb.sangjoManual.map(m => `(${b.short || b.name}) ${m.memo || ''}`).join('\n') : '' };
+    });
+    // 3) 전월대비 증감사유 (세전 지급계 기준)
+    let reasons = null, personDiff = [];
+    if (prev) {
+      const pm = new Map(prev.people.map(p => [p.id, p])), cm = new Map(cur.people.map(p => [p.id, p]));
+      const ids = [...new Set([...prev.people.map(p => p.id), ...cur.people.map(p => p.id)])];
+      const firstOfPrev = (prev.month || prevYm(cur.month)) + '-01';
+      const groups = { hire: [], incEtc: [], leave: [], decEtc: [] };
+      for (const id of ids) {
+        const a = pm.get(id), c = cm.get(id);
+        const pg = a ? a.gross : 0, cg = c ? c.gross : 0, diff = cg - pg;
+        const ref = c || a;
+        const row = { id, name: ref.name, dept: (c && c.dept) || (a && a.dept) || '', siteCode: ref.siteCode, joined: (c && c.joined) || (a && a.joined) || '', left: (c && c.left) || (a && a.left) || '', prev: pg, cur: cg, diff, a, c };
+        personDiff.push(row);
+        if (diff === 0) continue;
+        const isHire = row.joined && row.joined >= firstOfPrev;
+        const isLeave = (row.left && row.left >= firstOfPrev) || (!c && a) || (c && !c.active && a && a.active && row.left);
+        if (diff > 0) (isHire ? groups.hire : groups.incEtc).push(row);
+        else (isLeave ? groups.leave : groups.decEtc).push(row);
+      }
+      const md = d => d ? `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}` : '';
+      const hint = row => { // 가장 크게 움직인 지급 항목으로 사유 초안
+        if (!row.a || !row.c) return '';
+        if (row.prev === 0 && row.cur > 0) return '복직 등으로 급여 발생';
+        if (row.cur === 0 && row.prev > 0) return '휴직 등으로 급여 미발생';
+        const cols = [...new Set([...cur.payCols, ...prev.payCols])];
+        const ds = cols.map(h => ({ h, d: NUM(row.c.v[h]) - NUM(row.a.v[h]) })).filter(x => x.d !== 0).sort((x, y) => Math.abs(y.d) - Math.abs(x.d));
+        if (!ds.length) return '';
+        const top = ds.slice(0, 2).map(x => `${x.h} ${x.d > 0 ? '+' : ''}${x.d.toLocaleString()}`).join(', ');
+        return `${top} (사유 입력)`;
+      };
+      const txt = {
+        hire: groups.hire.map(r => `- ${r.dept} ${displayName(r.name)} (${md(r.joined)} 입사)`).join('\n'),
+        incEtc: groups.incEtc.map(r => `- ${r.dept} ${displayName(r.name)}: ${hint(r)}`).join('\n'),
+        leave: groups.leave.map(r => `- ${r.dept} ${displayName(r.name)} (${r.left ? md(r.left) + ' 퇴사' : '이번 대장에 없음 · 퇴사일 확인'})`).join('\n'),
+        decEtc: groups.decEtc.map(r => `- ${r.dept} ${displayName(r.name)}: ${hint(r)}`).join('\n'),
+      };
+      const amt = k => sum(groups[k], r => r.diff);
+      reasons = { groups, amounts: { hire: amt('hire'), incEtc: amt('incEtc'), leave: amt('leave'), decEtc: amt('decEtc') }, draft: txt };
+      reasons.inc = reasons.amounts.hire + reasons.amounts.incEtc; reasons.dec = reasons.amounts.leave + reasons.amounts.decEtc;
+      reasons.total = reasons.inc + reasons.dec;
+      reasons.ok = reasons.total === preTotal.curAmt - preTotal.prevAmt;
+      if (!reasons.ok) warnings.push('증감사유 합계가 전월 대비 증감액과 다릅니다(설정에 없는 사업장 인원이 있는지 확인).');
+    }
+    // 4) 사업장별
+    const siteAgg = branches.map(b => aggregate(cur, actOf(cur, b.code)));
+    const allAgg = siteAgg.reduce(mergeAgg, {});
+    const xp = Object.keys(allAgg).filter(k => k.startsWith('xp:')), xd = Object.keys(allAgg).filter(k => k.startsWith('xd:'));
+    const sitePayKeys = [...SITE_PAY_ORDER, ...(allAgg.bonus ? ['bonus'] : []), ...(allAgg.meal ? ['meal'] : []), ...xp];
+    const siteDedKeys = [...SITE_DED_ORDER, ...xd];
+    if (xp.length || xd.length) warnings.push('대장에 표에 없던 항목이 있어 사업장별 표에 줄을 추가했습니다: ' + [...xp, ...xd].map(k => k.slice(3)).join(', '));
+    const site = { payKeys: sitePayKeys, dedKeys: siteDedKeys, cols: siteAgg, heads: pre.map(x => x.curHeads) };
+    // 5) 월별: 이번 달 값 (급여 + 같은 달 추가 대장)
+    let monthAgg = aggregate(cur, cur.people.filter(p => p.active));
+    for (const ex of extras) monthAgg = mergeAgg(monthAgg, aggregate(ex, ex.people.filter(p => p.active)));
+    monthAgg.heads = preTotal.curHeads;
+    return { month: cur.month, prevMonth: prev ? prev.month : prevYm(cur.month), pre, preTotal, post, reasons, personDiff, site, monthAgg, warnings, hasPrev: !!prev, extras: extras.map(e => ({ kind: e.kind, fileName: e.fileName, gross: sum(e.people, p => p.gross) })) };
+  }
+
+  // 요약 문장: "당월 지급총액 약 9.25억. 전월대비 약 1,560만원(1.7%) 증가"
+  function summaryLine(preTotal) {
+    const eok = (preTotal.curAmt / 1e8);
+    let s = `- 당월 지급총액 약 ${eok.toFixed(2)}억.`;
+    if (preTotal.prevAmt != null && preTotal.prevAmt !== 0) {
+      const d = preTotal.curAmt - preTotal.prevAmt;
+      const man = Math.round(Math.abs(d) / 100000) * 10; // 10만원 단위로 반올림한 만원
+      const pct = Math.abs(d) / preTotal.prevAmt * 100;
+      s += d === 0 ? ' 전월과 동일' : ` 전월대비 약 ${man.toLocaleString()}만원(${pct.toFixed(1)}%) ${d > 0 ? '증가' : '감소'}`;
+    }
+    return s;
+  }
+
+  // 월별 이력 값 읽기 (auto + 수기 가감)
+  function histValue(history, ym, k) {
+    const h = history && history[ym]; if (!h) return null;
+    const a = (h.auto && h.auto[k]) || 0, j = (h.adj && h.adj[k]) || 0;
+    let x = 0; if (h.extra) for (const kind of Object.keys(h.extra)) x += (h.extra[kind] && h.extra[kind][k]) || 0;   // 상여·성과급 대장분
+    return a + j + x;
+  }
+  function histKeys(history, year) {
+    const keys = new Set();
+    for (let m = 1; m <= 12; m++) { const h = history && history[`${year}-${String(m).padStart(2, '0')}`]; if (!h) continue; Object.keys(h.auto || {}).forEach(k => keys.add(k)); Object.keys(h.adj || {}).forEach(k => keys.add(k)); Object.keys(h.extra || {}).forEach(kind => Object.keys(h.extra[kind] || {}).forEach(k => keys.add(k))); }
+    return keys;
+  }
+  // 월별 표의 줄 구성: 기본 줄 + 그 해에 값이 있는 선택 줄
+  function monthlyLayout(history, year) {
+    const used = histKeys(history, year);
+    const nz = k => { for (let m = 1; m <= 12; m++) { if (histValue(history, `${year}-${String(m).padStart(2, '0')}`, k)) return true; } return false; };
+    const pay = PAY_ROWS.filter(r => !r.optional || nz(r.k)).map(r => r.k).concat([...used].filter(k => k.startsWith('xp:') && nz(k)));
+    const ded = DED_ROWS.map(r => r.k).concat([...used].filter(k => k.startsWith('xd:') && nz(k)));
+    return { pay, ded };
+  }
+  function monthColumn(history, ym, layout) {
+    if (!history || !history[ym]) return null;
+    const v = k => histValue(history, ym, k) || 0;
+    const pay = sum(layout.pay, v), ded = sum(layout.ded, v);
+    return { heads: v('heads'), v, pay, ded, net: pay - ded };
+  }
+
+  // 이번 달 집계를 이력에 얹은 사본 (화면·엑셀용)
+  function withCurrent(history, ym, monthAgg) {
+    const h = Object.assign({}, history || {});
+    if (ym && monthAgg) h[ym] = { auto: monthAgg, adj: (history && history[ym] && history[ym].adj) || {}, src: '대장' };
+    return h;
+  }
+
+  root.LSCore = {
+    NUM, clean, normH, sum, pad3, displayName, ymLabel, ymShort, prevYm, toDateStr,
+    parseLedger, resolvePerson, allocate, buildAllocation, buildVouchers,
+    PAY_ROWS, DED_ROWS, SITE_PAY_ORDER, SITE_DED_ORDER, keyLabel, isPayKey, isDedKey, aggregate, paySum, dedSum, mergeAgg,
+    buildMemo, summaryLine, histValue, monthlyLayout, monthColumn, withCurrent,
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script id="ls-xlsxw">/* 서식 있는 .xlsx 를 라이브러리 없이 만드는 작은 작성기 (값·글꼴·채우기·테두리·병합·열 너비·틀 고정) */
+(function (root) {
+  'use strict';
+  const esc = s => String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const colName = n => { let s = ''; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+  const ref = (r, c) => colName(c) + r;
+
+  function Sheet(name, opt) { this.name = name; this.opt = opt || {}; this.rows = new Map(); this.merges = []; this.heights = {}; this.maxC = 1; this.maxR = 1; }
+  Sheet.prototype.set = function (r, c, v, style) {
+    if (!this.rows.has(r)) this.rows.set(r, new Map());
+    this.rows.get(r).set(c, { v, s: style || null });
+    if (c > this.maxC) this.maxC = c; if (r > this.maxR) this.maxR = r; return this;
+  };
+  // 범위 전체에 같은 서식(병합 셀 테두리용), 값은 첫 칸에만
+  Sheet.prototype.range = function (r1, c1, r2, c2, v, style, merge) {
+    for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) this.set(r, c, (r === r1 && c === c1) ? v : null, style);
+    if (merge !== false && (r1 !== r2 || c1 !== c2)) this.merges.push(ref(r1, c1) + ':' + ref(r2, c2)); return this;
+  };
+  Sheet.prototype.height = function (r, h) { this.heights[r] = h; return this; };
+
+  function Book() { this.sheets = []; }
+  Book.prototype.sheet = function (name, opt) { const s = new Sheet(String(name).replace(/[\\\/\?\*\[\]:]/g, ' ').slice(0, 31), opt); this.sheets.push(s); return s; };
+
+  const BASE_FONT = { name: '맑은 고딕', sz: 10 };
+  function buildStyles(book) {
+    const fonts = [], fills = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>'], borders = ['<border><left/><right/><top/><bottom/><diagonal/></border>'];
+    const numFmts = [], xfs = [], idx = new Map();
+    const reg = (arr, xml) => { let i = arr.indexOf(xml); if (i < 0) { arr.push(xml); i = arr.length - 1; } return i; };
+    const fontXml = s => `<font>${s.b ? '<b/>' : ''}<sz val="${s.sz || BASE_FONT.sz}"/>${s.color ? `<color rgb="FF${s.color}"/>` : '<color rgb="FF000000"/>'}<name val="${esc(s.font || BASE_FONT.name)}"/><family val="3"/><charset val="129"/></font>`;
+    reg(fonts, fontXml({}));
+    const side = (tag, st) => st ? `<${tag} style="${st}"><color rgb="FF000000"/></${tag}>` : `<${tag}/>`;
+    const BUILTIN = { 'General': 0, '0': 1, '0.00': 2, '#,##0': 3, '#,##0.00': 4, '0%': 9, '0.00%': 10, '@': 49 };
+    const styleId = s => {
+      if (!s) return 0;
+      const key = JSON.stringify(s); if (idx.has(key)) return idx.get(key);
+      const f = reg(fonts, fontXml(s));
+      const fl = s.fill ? reg(fills, `<fill><patternFill patternType="solid"><fgColor rgb="FF${s.fill}"/><bgColor indexed="64"/></patternFill></fill>`) : 0;
+      let bd = 0;
+      if (s.bd) { const b = typeof s.bd === 'string' ? { l: s.bd, r: s.bd, t: s.bd, b: s.bd } : s.bd; bd = reg(borders, `<border>${side('left', b.l)}${side('right', b.r)}${side('top', b.t)}${side('bottom', b.b)}<diagonal/></border>`); }
+      let nf = 0;
+      if (s.nf) { if (s.nf in BUILTIN) nf = BUILTIN[s.nf]; else { let i = numFmts.indexOf(s.nf); if (i < 0) { numFmts.push(s.nf); i = numFmts.length - 1; } nf = 164 + i; } }
+      const al = (s.h || s.v || s.wrap) ? `<alignment${s.h ? ` horizontal="${s.h}"` : ''} vertical="${s.v || 'center'}"${s.wrap ? ' wrapText="1"' : ''}/>` : '<alignment vertical="center"/>';
+      xfs.push(`<xf numFmtId="${nf}" fontId="${f}" fillId="${fl}" borderId="${bd}" xfId="0"${nf ? ' applyNumberFormat="1"' : ''} applyFont="1"${fl ? ' applyFill="1"' : ''}${bd ? ' applyBorder="1"' : ''} applyAlignment="1">${al}</xf>`);
+      const id = xfs.length; idx.set(key, id); return id;   // 0 번은 기본
+    };
+    return {
+      styleId,
+      xml: () => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">`
+        + (numFmts.length ? `<numFmts count="${numFmts.length}">${numFmts.map((f, i) => `<numFmt numFmtId="${164 + i}" formatCode="${esc(f)}"/>`).join('')}</numFmts>` : '')
+        + `<fonts count="${fonts.length}">${fonts.join('')}</fonts><fills count="${fills.length}">${fills.join('')}</fills><borders count="${borders.length}">${borders.join('')}</borders>`
+        + `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>`
+        + `<cellXfs count="${xfs.length + 1}"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center"/></xf>${xfs.join('')}</cellXfs>`
+        + `<cellStyles count="1"><cellStyle name="표준" xfId="0" builtinId="0"/></cellStyles></styleSheet>`,
+    };
+  }
+
+  function sheetXml(sh, st, sst) {
+    const o = sh.opt, out = [];
+    out.push('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">');
+    if (o.fitWidth) out.push('<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
+    out.push(`<dimension ref="A1:${ref(sh.maxR, sh.maxC)}"/>`);
+    let view = `<sheetView workbookViewId="0"${o.gridLines === false ? ' showGridLines="0"' : ''}${o.zoom ? ` zoomScale="${o.zoom}"` : ''}${o.active ? ' tabSelected="1"' : ''}>`;
+    if (o.freeze) { const [fr, fc] = o.freeze; view += `<pane${fc > 1 ? ` xSplit="${fc - 1}"` : ''}${fr > 1 ? ` ySplit="${fr - 1}"` : ''} topLeftCell="${ref(fr, fc)}" activePane="${fr > 1 && fc > 1 ? 'bottomRight' : (fr > 1 ? 'bottomLeft' : 'topRight')}" state="frozen"/>`; }
+    out.push(`<sheetViews>${view}</sheetView></sheetViews>`);
+    out.push(`<sheetFormatPr defaultRowHeight="${o.rowHeight || 18}" customHeight="1"${o.defaultColWidth ? ` defaultColWidth="${o.defaultColWidth}"` : ''}/>`);
+    if (o.cols && o.cols.length) out.push('<cols>' + o.cols.map(c => `<col min="${c.min}" max="${c.max || c.min}" width="${c.w}" customWidth="1"/>`).join('') + '</cols>');
+    out.push('<sheetData>');
+    const rs = [...new Set([...sh.rows.keys(), ...Object.keys(sh.heights).map(Number)])].sort((a, b) => a - b);
+    for (const r of rs) {
+      const h = sh.heights[r];
+      out.push(`<row r="${r}"${h ? ` ht="${h}" customHeight="1"` : ''}>`);
+      const row = sh.rows.get(r);
+      if (row) for (const c of [...row.keys()].sort((a, b) => a - b)) {
+        const cell = row.get(c), s = st.styleId(cell.s), sa = s ? ` s="${s}"` : '', v = cell.v;
+        if (v == null || v === '') { if (s) out.push(`<c r="${ref(r, c)}"${sa}/>`); }
+        else if (typeof v === 'number' && isFinite(v)) out.push(`<c r="${ref(r, c)}"${sa}><v>${v}</v></c>`);
+        else { const str = String(v); let i = sst.map.get(str); if (i == null) { i = sst.list.length; sst.list.push(str); sst.map.set(str, i); } sst.count++; out.push(`<c r="${ref(r, c)}"${sa} t="s"><v>${i}</v></c>`); }
+      }
+      out.push('</row>');
+    }
+    out.push('</sheetData>');
+    if (sh.merges.length) out.push(`<mergeCells count="${sh.merges.length}">${sh.merges.map(m => `<mergeCell ref="${m}"/>`).join('')}</mergeCells>`);
+    out.push('<pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>');
+    if (o.fitWidth || o.landscape) out.push(`<pageSetup paperSize="9"${o.landscape ? ' orientation="landscape"' : ' orientation="portrait"'}${o.fitWidth ? ' fitToWidth="1" fitToHeight="0"' : ''}/>`);
+    out.push('</worksheet>');
+    return out.join('');
+  }
+
+  // ── zip ──
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = u8 => { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  async function deflate(u8) {
+    if (typeof CompressionStream === 'undefined') return null;
+    try {
+      const cs = new CompressionStream('deflate-raw'); const w = cs.writable.getWriter(); w.write(u8); w.close();
+      const chunks = []; const rd = cs.readable.getReader();
+      for (;;) { const { done, value } = await rd.read(); if (done) break; chunks.push(value); }
+      const out = new Uint8Array(chunks.reduce((a, c) => a + c.length, 0)); let o = 0; for (const c of chunks) { out.set(c, o); o += c.length; } return out;
+    } catch (e) { return null; }
+  }
+  async function zip(files) {
+    const enc = new TextEncoder(), parts = [], central = []; let offset = 0;
+    for (const f of files) {
+      const name = enc.encode(f.name), data = typeof f.data === 'string' ? enc.encode(f.data) : f.data, crc = crc32(data);
+      let body = await deflate(data), method = 8; if (!body || body.length >= data.length) { body = data; method = 0; }
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, method, true); lh.setUint16(10, 0, true); lh.setUint16(12, 0x21, true);
+      lh.setUint32(14, crc, true); lh.setUint32(18, body.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+      parts.push(new Uint8Array(lh.buffer), name, body);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, method, true); ch.setUint16(12, 0, true); ch.setUint16(14, 0x21, true);
+      ch.setUint32(16, crc, true); ch.setUint32(20, body.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true); ch.setUint32(42, offset, true);
+      central.push(new Uint8Array(ch.buffer), name);
+      offset += 30 + name.length + body.length;
+    }
+    const csize = central.reduce((a, c) => a + c.length, 0);
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, csize, true); end.setUint32(16, offset, true);
+    const all = [...parts, ...central, new Uint8Array(end.buffer)];
+    const out = new Uint8Array(all.reduce((a, c) => a + c.length, 0)); let o = 0; for (const c of all) { out.set(c, o); o += c.length; }
+    return out;
+  }
+
+  Book.prototype.bytes = async function () {
+    const st = buildStyles(this), sst = { list: [], map: new Map(), count: 0 };
+    const sheets = this.sheets.map(s => sheetXml(s, st, sst));
+    const files = [];
+    files.push({ name: '[Content_Types].xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>` });
+    files.push({ name: '_rels/.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>` });
+    files.push({ name: 'xl/workbook.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView xWindow="0" yWindow="0" windowWidth="28800" windowHeight="15000"/></bookViews><sheets>${this.sheets.map((s, i) => `<sheet name="${esc(s.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets></workbook>` });
+    files.push({ name: 'xl/_rels/workbook.xml.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId${sheets.length + 2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/></Relationships>` });
+    files.push({ name: 'xl/styles.xml', data: st.xml() });
+    files.push({ name: 'xl/sharedStrings.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${sst.count}" uniqueCount="${sst.list.length}">${sst.list.map(s => `<si><t xml:space="preserve">${esc(s)}</t></si>`).join('')}</sst>` });
+    sheets.forEach((x, i) => files.push({ name: `xl/worksheets/sheet${i + 1}.xml`, data: x }));
+    return zip(files);
+  };
+
+  root.XW = { book: () => new Book(), colName, ref };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script id="ls-sheets">/* 엑셀 내려받기용 시트 구성 — 급여전표 통합문서 · 급여기안 통합문서 (9월 예시 엑셀과 같은 배치) */
+(function (root) {
+  'use strict';
+  const C = root.LSCore, XW = root.XW;
+  const GRAY = 'D9D9D9', GREEN = 'C6E0B4', GOLD = 'FFE699', BLUE = 'B4C6E7', BLUE2 = '8EA9DB', CUR = 'FFF2CC', YEL = 'FFFFCC';
+  const NF = '#,##0_);[Red]\\(#,##0\\)', NF0 = '#,##0', PCT = '0.0%';
+  const T = 'thin';
+  const S = {
+    title: { b: 1, sz: 15 }, h: { b: 1 }, unit: { h: 'right' },
+    th: { b: 1, fill: GRAY, bd: T, h: 'center' },
+    lab: { bd: T, h: 'center' }, labB: { b: 1, bd: T, h: 'center' }, labL: { bd: T, h: 'left' },
+    num: { bd: T, nf: NF }, numB: { b: 1, bd: T, nf: NF }, cnt: { bd: T, nf: NF, h: 'center' }, cntB: { b: 1, bd: T, nf: NF, h: 'center' },
+    pct: { bd: T, nf: PCT, h: 'center' }, pctB: { b: 1, bd: T, nf: PCT, h: 'center' },
+    note: { bd: T, h: 'left', wrap: 1 }, noteC: { bd: T, h: 'center', wrap: 1 },
+    sub: { b: 1, fill: GRAY, bd: T, h: 'center' }, subNum: { b: 1, fill: GRAY, bd: T, nf: NF },
+  };
+  const yy = ym => ym.slice(2, 4), mm = ym => Number(ym.slice(5, 7));
+
+  // ───────── 급여전표 통합문서 ─────────
+  function voucherBook(v, cfg) {
+    const wb = XW.book();
+    const HEAD = ['행번호', '계정과목', '비용구분', '차변금액', '대변금액', '적요', '귀속부서', '활동센터'];
+    const cols = [{ min: 1, w: 2 }, { min: 2, w: 8 }, { min: 3, w: 20 }, { min: 4, w: 9.5 }, { min: 5, max: 6, w: 15 }, { min: 7, w: 64 }, { min: 8, w: 14 }, { min: 9, w: 22 }];
+    const put = (ws, lines) => {
+      HEAD.forEach((h, i) => ws.set(2, 2 + i, h, S.th));
+      lines.forEach((l, i) => {
+        const r = 3 + i;
+        ws.set(r, 2, l.no, { bd: T, h: 'center', nf: '@' }); ws.set(r, 3, l.account, { bd: T }); ws.set(r, 4, l.cost || null, { bd: T, h: 'center' });
+        ws.set(r, 5, l.debit, { bd: T, nf: NF0 }); ws.set(r, 6, l.credit, { bd: T, nf: NF0 });
+        ws.set(r, 7, l.memo, { bd: T }); ws.set(r, 8, l.owner || null, { bd: T }); ws.set(r, 9, l.center || null, { bd: T });
+      });
+    };
+    v.branches.forEach((b, i) => { const ws = wb.sheet(`${b.short}급여전표`, { cols, active: i === 0 }); put(ws, b.lines); });
+    if (v.sangjo.length) put(wb.sheet('상조회전표', { cols }), v.sangjo);
+    // 검산
+    const ws = wb.sheet('검산', { cols: [{ min: 1, w: 2 }, { min: 2, w: 12 }, { min: 3, max: 8, w: 16 }] });
+    ws.set(1, 2, `◈ ${cfg.company} ${C.ymLabel(v.month)} ${v.kind} 전표 검산 (대장 합계와 대조)`, S.title); ws.height(1, 25);
+    ['사업장', '인원', '대장 지급계', '전표 차변(급여)', '대장 실지급계', '전표 미지급비용', '일치'].forEach((h, i) => ws.set(3, 2 + i, h, S.th));
+    v.branches.forEach((b, i) => {
+      const r = 4 + i, k = b.checks;
+      ws.set(r, 2, b.name, S.lab); ws.set(r, 3, k.heads, S.cnt); ws.set(r, 4, k.gross, S.num); ws.set(r, 5, k.debit, S.num); ws.set(r, 6, k.net, S.num); ws.set(r, 7, k.accrued, S.num); ws.set(r, 8, (k.grossOk && k.netOk) ? '일치' : '확인 필요', S.lab);
+    });
+    return wb;
+  }
+
+  // ───────── 급여기안 통합문서 ─────────
+  function memoBook(memo, ctx) {
+    // ctx: { cfg, cur, prev, texts:{hire,incEtc,leave,decEtc}, postNote, history }
+    const { cfg, cur, prev } = ctx, wb = XW.book();
+    const ym = memo.month, Y = ym.slice(0, 4), nb = cfg.branches.length;
+    sheetMemo(wb, memo, ctx);
+    sheetSite(wb, memo, ctx);
+    sheetMonthly(wb, ctx.history, Y, ym, `${Y}년 월별`, `◈ ${cfg.company} '${yy(ym)}년 월별 급여내역`);
+    sheetLedger(wb, cur, cfg, ym);
+    if (prev) sheetDiff(wb, memo, cur, prev, cfg, ym);
+    for (const py of [String(Number(Y) - 1), String(Number(Y) - 2)]) {
+      const has = Object.keys(ctx.history || {}).some(k => k.startsWith(py + '-'));
+      if (has) sheetMonthly(wb, ctx.history, py, null, `(참고) ${py}년 월별 급여내역`, `◈ ${cfg.company} '${py.slice(2)}년 월별 급여내역`);
+    }
+    return wb;
+  }
+
+  function sheetMemo(wb, memo, ctx) {
+    const { cfg } = ctx, ym = memo.month, nb = cfg.branches.length;
+    const ws = wb.sheet('기안서', { active: true, fitWidth: true, cols: [{ min: 1, max: 2, w: 1.7 }, { min: 3, w: 9.2 }, { min: 4, max: 8, w: 12.6 }, { min: 9, max: 10, w: 12.6 }, { min: 11, w: 12.6 }, { min: 12, w: 36 }] });
+    let r = 1;
+    ws.set(r, 1, `◈ ${cfg.company} ${C.ymLabel(ym)}분 급여 지출 기안서 자료`, S.title); ws.height(r, 25.15);
+    // 1. 세전금액
+    r = 3; ws.set(r, 2, '1. 세전금액', S.h);
+    r = 4; ws.set(r, 3, C.summaryLine(memo.preTotal), S.h);
+    r = 5;
+    ws.range(r, 3, r + 1, 3, '구분', S.th); ws.range(r, 4, r, 5, `전월 (${C.ymShort(memo.prevMonth)})`, S.th); ws.range(r, 6, r, 7, `당월 (${C.ymShort(ym)})`, S.th); ws.range(r, 8, r, 10, '증감', S.th);
+    ['인원', '금액', '인원', '금액', '인원', '금액', '증감율'].forEach((h, i) => ws.set(r + 1, 4 + i, h, S.th));
+    r = 7;
+    const line = (label, x, bold) => {
+      const hp = x.prevHeads != null;
+      ws.set(r, 3, label, bold ? S.labB : S.lab);
+      ws.set(r, 4, hp ? x.prevHeads : '-', bold ? S.cntB : S.cnt); ws.set(r, 5, hp ? x.prevAmt : '-', bold ? S.numB : S.num);
+      ws.set(r, 6, x.curHeads, bold ? S.cntB : S.cnt); ws.set(r, 7, x.curAmt, bold ? S.numB : S.num);
+      ws.set(r, 8, hp ? x.curHeads - x.prevHeads : '-', bold ? S.cntB : S.cnt); ws.set(r, 9, hp ? x.curAmt - x.prevAmt : '-', bold ? S.numB : S.num);
+      ws.set(r, 10, hp && x.prevAmt ? (x.curAmt - x.prevAmt) / x.prevAmt : '-', bold ? S.pctB : S.pct); r++;
+    };
+    memo.pre.forEach(x => line(x.name, x, false)); line('합계', memo.preTotal, true);
+    // 2. 세후금액
+    r++; ws.set(r, 2, '2. 세후금액', S.h); r++;
+    const c0 = 5, cT = c0 + nb, cN1 = cT + 1, cN2 = Math.max(11, cN1);
+    ws.range(r, 3, r + 1, 4, '구분', S.th); ws.range(r, c0, r, cN2, `${C.ymShort(ym)} 세부내역`, S.th);
+    memo.post.forEach((p, i) => ws.set(r + 1, c0 + i, p.short, S.th)); ws.set(r + 1, cT, '총합', S.th); ws.range(r + 1, cN1, r + 1, cN2, '비고', S.th);
+    r += 2;
+    const R = { h: 'right', bd: T, nf: '#,##0_ ' }, RB = { b: 1, h: 'right', bd: T, nf: '#,##0_ ' };
+    const noteAll = (ctx.postNote != null ? ctx.postNote : memo.post.map(p => p.extraMemo).filter(Boolean).join('\n'));
+    const postRow = (label, f, note) => {
+      ws.range(r, 3, r, 4, label, S.lab); let tot = 0;
+      memo.post.forEach((p, i) => { const v = f(p); tot += v; ws.set(r, c0 + i, v, R); });
+      ws.set(r, cT, tot, RB); ws.range(r, cN1, r, cN2, note || null, S.noteC); ws.height(r, 26.45); r++;
+    };
+    postRow('급여 실지급액(세후)', p => p.net); postRow('상조회(직원급여공제분)', p => p.sangjo); postRow('상조회(회사찬조금)', p => p.company, noteAll); postRow('합계', p => p.net + p.sangjo + p.company);
+    // 3. 전월대비 급여 증감사유
+    r++; ws.set(r, 2, '3. 전월대비 급여 증감사유', S.h); r++;
+    ws.set(r, 3, '증감구분', S.th); ws.range(r, 4, r, 6, '사유', S.th); ws.set(r, 7, '금액', S.th); ws.range(r, 8, r, 12, '비고', S.th); r++;
+    const rs = memo.reasons;
+    if (!rs) { ws.range(r, 3, r, 12, '전월 급여대장을 함께 올리면 증감사유가 채워집니다.', S.lab); return; }
+    const tx = Object.assign({}, rs.draft, ctx.texts || {});
+    const hgt = t => Math.max(18, 15.2 * String(t || '').split('\n').length + 8);
+    ws.range(r, 3, r, 6, '합계', S.labB); ws.set(r, 7, rs.total, S.numB); ws.range(r, 8, r, 12, null, S.note); r++;
+    const group = (label, fill, total, items) => {
+      const r0 = r;
+      ws.range(r, 4, r, 6, '소계', S.sub); ws.set(r, 7, total, S.subNum); ws.range(r, 8, r, 12, null, Object.assign({}, S.note, { fill: GRAY })); r++;
+      items.forEach(([reason, amt, text]) => { ws.range(r, 4, r, 6, reason, S.labL); ws.set(r, 7, amt, S.num); ws.range(r, 8, r, 12, text || null, S.note); ws.height(r, hgt(text)); r++; });
+      ws.range(r0, 3, r - 1, 3, label, { bd: T, h: 'center', fill });
+    };
+    group('증가', GREEN, rs.inc, [['최근 2개월 신규입사에 따른 인건비 증가', rs.amounts.hire, tx.hire], ['기타', rs.amounts.incEtc, tx.incEtc]]);
+    group('감소', GOLD, rs.dec, [['최근 2개월 퇴사자에 따른 인건비 감소', rs.amounts.leave, tx.leave], ['기타', rs.amounts.decEtc, tx.decEtc]]);
+  }
+
+  function sheetSite(wb, memo, ctx) {
+    const { cfg } = ctx, ym = memo.month, nb = cfg.branches.length, cT = 4 + nb;
+    const ws = wb.sheet('사업장별', { cols: [{ min: 1, w: 1.7 }, { min: 2, w: 4.2 }, { min: 3, w: 22 }, { min: 4, max: cT, w: 15.7 }] });
+    ws.set(1, 2, `◈ ${cfg.company} '${yy(ym)}년 ${mm(ym)}월분 사업장별 급여 상세내역`, S.title); ws.height(1, 25.15);
+    ws.set(2, cT, '[단위 : 원,명]', S.unit);
+    ws.range(3, 2, 4, 3, '구분', S.th); ws.range(3, 4, 3, cT, '급여 상세내역', S.th);
+    memo.post.forEach((p, i) => ws.set(4, 4 + i, p.short, S.th)); ws.set(4, cT, '총합', S.th);
+    let r = 5;
+    const TOT = { bd: T, nf: NF, fill: YEL }, TOTB = { b: 1, bd: T, nf: NF, fill: YEL };
+    ws.range(r, 2, r, 3, '지급인원', S.labB); memo.site.heads.forEach((h, i) => ws.set(r, 4 + i, h, S.num)); ws.set(r, cT, C.sum(memo.site.heads), TOT); r++;
+    const block = (label, keys) => {
+      const r0 = r;
+      keys.forEach(k => { ws.set(r, 3, C.keyLabel(k, true), S.lab); let t = 0; memo.site.cols.forEach((c, i) => { const v = c[k] || 0; t += v; ws.set(r, 4 + i, v, S.num); }); ws.set(r, cT, t, TOT); r++; });
+      ws.range(r0, 2, r - 1, 2, label, { b: 1, bd: T, h: 'center', wrap: 1 });
+      ws.range(r, 2, r, 3, '소 계', S.sub); let t = 0;
+      memo.site.cols.forEach((c, i) => { const v = C.sum(keys, k => c[k] || 0); t += v; ws.set(r, 4 + i, v, S.subNum); }); ws.set(r, cT, t, S.subNum); r++;
+    };
+    block('지급', memo.site.payKeys); block('공제', memo.site.dedKeys);
+    ws.range(r, 2, r, 3, '실지급액', S.sub); let t = 0;
+    memo.site.cols.forEach((c, i) => { const v = C.paySum(c) - C.dedSum(c); t += v; ws.set(r, 4 + i, v, S.subNum); }); ws.set(r, cT, t, S.subNum);
+  }
+
+  function sheetMonthly(wb, history, year, curYm, sheetName, title) {
+    const lay = C.monthlyLayout(history, year);
+    const ws = wb.sheet(sheetName, { freeze: [4, 4], cols: [{ min: 1, w: 1.7 }, { min: 2, w: 4.2 }, { min: 3, w: 22 }, { min: 4, max: 16, w: 15.7 }, { min: 17, w: 14 }] });
+    ws.set(1, 2, title, S.title); ws.height(1, 25.15);
+    ws.set(2, curYm ? 17 : 16, '[단위 : 원,명]', S.unit);
+    ws.range(3, 2, 3, 3, '구분', S.th);
+    const months = []; for (let m = 1; m <= 12; m++) months.push(`${year}-${String(m).padStart(2, '0')}`);
+    months.forEach((k, i) => ws.set(3, 4 + i, `${year.slice(2)}.${k.slice(5)}`, S.th));
+    ws.set(3, 16, `${year.slice(2)}년 연계`, S.th); if (curYm) ws.set(3, 17, '전월 대비 증감율', S.th);
+    const colsData = months.map(k => C.monthColumn(history, k, lay));
+    const curIdx = curYm ? months.indexOf(curYm) : -1, prvIdx = curIdx > 0 && colsData[curIdx - 1] ? curIdx - 1 : -1;
+    const prevDec = curIdx === 0 ? (() => { const py = String(Number(year) - 1); const l2 = C.monthlyLayout(history, py); return C.monthColumn(history, `${py}-12`, l2); })() : null;
+    const st = (base, i) => (i === curIdx ? Object.assign({}, base, { fill: CUR }) : base);
+    const rate = (get, r) => {
+      if (!curYm || curIdx < 0 || !colsData[curIdx]) return;
+      const p = prvIdx >= 0 ? get(colsData[prvIdx]) : (prevDec ? get(prevDec) : null), c = get(colsData[curIdx]);
+      ws.set(r, 17, p ? (c - p) / Math.abs(p) : null, S.pct);
+    };
+    const putRow = (r, get, numStyle, total) => {
+      let acc = 0, n = 0;
+      colsData.forEach((d, i) => { if (!d) { ws.set(r, 4 + i, null, st(numStyle, i)); return; } const v = get(d); acc += v; n++; ws.set(r, 4 + i, v, st(numStyle, i)); });
+      ws.set(r, 16, n ? (total === 'avg' ? Math.round(acc / n * 10) / 10 : acc) : null, total === 'avg' ? Object.assign({}, numStyle, { nf: '#,##0.0' }) : numStyle);
+      rate(get, r);
+    };
+    let r = 4;
+    ws.range(r, 2, r, 3, '지급인원', S.labB); putRow(r, d => d.heads, S.num, 'avg'); r++;
+    const block = (label, keys, subGet) => {
+      const r0 = r;
+      keys.forEach(k => { ws.set(r, 3, C.keyLabel(k), S.lab); putRow(r, d => d.v(k), S.num); r++; });
+      ws.range(r0, 2, r - 1, 2, label, { b: 1, bd: T, h: 'center', wrap: 1 });
+      ws.range(r, 2, r, 3, '소 계', S.sub); putRow(r, subGet, S.subNum); r++;
+    };
+    block('지급', lay.pay, d => d.pay); block('공제', lay.ded, d => d.ded);
+    ws.range(r, 2, r, 3, '실지급액', S.sub); putRow(r, d => d.net, S.subNum);
+  }
+
+  const LEDGER_ID = [['귀속년월', p => p._ym], ['구분', p => p.kind], ['사번', p => p.id], ['성명', p => p.name], ['직책', p => p.title], ['직종', p => p.jobType], ['상위부서', p => p.upper], ['부서명', p => p.dept], ['입사일', p => p.joined], ['퇴사일', p => p.left]];
+  function sheetLedger(wb, cur, cfg, ym) {
+    const numCols = [...cur.payCols, '지급계', ...cur.dedCols, ...(cur.headers.includes('공제계') ? ['공제계'] : []), '실지급계', ...cur.extraCols];
+    const nId = LEDGER_ID.length;
+    const ws = wb.sheet('개인별 급여대장', { freeze: [5, nId + 1], zoom: 100, cols: [{ min: 1, w: 8.4 }, { min: 2, w: 5 }, { min: 3, w: 14 }, { min: 4, w: 8.2 }, { min: 5, max: 6, w: 7.5 }, { min: 7, w: 9 }, { min: 8, w: 18 }, { min: 9, max: 10, w: 11 }, { min: nId + 1, max: nId + numCols.length, w: 12.5 }] });
+    ws.set(1, 4, `◈ ${cfg.company} '${yy(ym)}년 ${mm(ym)}월분 개인별 급여대장`, S.title); ws.height(1, 25.15); ws.height(2, 10);
+    LEDGER_ID.forEach(([h], i) => ws.set(4, 1 + i, h, { b: 1, bd: T, h: 'center', fill: i < 3 ? GRAY : GOLD }));
+    numCols.forEach((h, i) => ws.set(4, nId + 1 + i, h, { b: 1, bd: T, h: 'center', fill: BLUE }));
+    const people = cur.people.filter(p => p.active); const tot = numCols.map(() => 0);
+    const NFA = '_-* #,##0_-;\\-* #,##0_-;_-* "-"_-;_-@_-';
+    people.forEach((p, i) => {
+      const r = 5 + i; p._ym = cur.month;
+      LEDGER_ID.forEach(([, f], j) => ws.set(r, 1 + j, f(p) || null, { bd: T, h: 'center' }));
+      numCols.forEach((h, j) => { const v = h === '공제계' ? p.ded : C.NUM(p.v[h]); tot[j] += v; ws.set(r, nId + 1 + j, v, { bd: T, nf: NFA }); });
+    });
+    numCols.forEach((h, j) => ws.set(3, nId + 1 + j, tot[j], { nf: NF0, h: 'center' }));
+  }
+
+  function sheetDiff(wb, memo, cur, prev, cfg, ym) {
+    const pay = [...cur.payCols]; prev.payCols.forEach(h => { if (!pay.includes(h)) pay.push(h); });
+    const ded = [...cur.dedCols]; prev.dedCols.forEach(h => { if (!ded.includes(h)) ded.push(h); });
+    const val = (p, h) => (p ? C.NUM(p.v[h]) : 0);
+    const items = [
+      ...pay.map(h => [h, p => val(p, h)]), ['지급총액', p => (p ? p.gross : 0)],
+      ...ded.map(h => [h, p => val(p, h)]), ['공제총액', p => (p ? p.ded : 0)],
+      ['비과세총액', p => val(p, '비과세총액')], ['과세대상금액', p => (p ? p.gross - val(p, '비과세총액') : 0)],
+    ];
+    const c0 = 10;
+    const ws = wb.sheet('개인별 전월대비 증감내역', { freeze: [6, c0], zoom: 85, cols: [{ min: 1, w: 1.7 }, { min: 2, w: 5 }, { min: 3, w: 14 }, { min: 4, w: 8.5 }, { min: 5, w: 18 }, { min: 6, w: 7.5 }, { min: 7, w: 9 }, { min: 8, max: 9, w: 11 }, { min: c0, max: c0 + items.length * 4 - 1, w: 11.5 }] });
+    ws.set(1, 1, `◈ ${cfg.company} '${yy(ym)}년 ${mm(ym)}월분 인건비 전월대비 증감내역`, S.title); ws.height(1, 25.15); ws.height(2, 10);
+    const H1 = { b: 1, bd: T, h: 'center', fill: GOLD }, H2 = { b: 1, bd: T, h: 'center', fill: BLUE2 };
+    ws.range(4, 2, 4, 9, '기본정보', H1);
+    ['순번', '사번', '성명', '부서', '직책', '사업장', '입사일', '퇴사일'].forEach((h, i) => ws.set(5, 2 + i, h, H1));
+    items.forEach(([h], i) => { const c = c0 + i * 4; ws.range(4, c, 4, c + 3, h, H2); [`기간1(${mm(prev.month)}월)`, `기간2(${mm(ym)}월)`, '증감', '증감율'].forEach((s, j) => ws.set(5, c + j, s, H2)); });
+    const bn = code => { const b = cfg.branches.find(x => x.code === code); return b ? b.name : code; };
+    const grp = d => (d.prev !== 0 ? 0 : (d.cur !== 0 ? 1 : 2));
+    const rows = memo.personDiff.slice().sort((x, y) => grp(x) - grp(y) || String(x.id).localeCompare(String(y.id)));
+    const NFA = '_-* #,##0_-;\\-* #,##0_-;_-* "-"_-;_-@_-', tot = items.map(() => [0, 0, 0]);
+    rows.forEach((d, i) => {
+      const r = 6 + i, ref = d.c || d.a, cs = { bd: T, h: 'center' };
+      [i + 1, d.id, d.name, d.dept, ref.title, bn(d.siteCode), d.joined, d.left].forEach((v, j) => ws.set(r, 2 + j, v || null, cs));
+      items.forEach(([, f], k) => {
+        const a = f(d.a), b = f(d.c), df = b - a, c = c0 + k * 4; tot[k][0] += a; tot[k][1] += b; tot[k][2] += df;
+        ws.set(r, c, a, { bd: T, nf: NFA }); ws.set(r, c + 1, b, { bd: T, nf: NFA }); ws.set(r, c + 2, df, { bd: T, nf: NFA }); ws.set(r, c + 3, a ? df / Math.abs(a) : null, { bd: T, nf: PCT, h: 'center' });
+      });
+    });
+    items.forEach((_, k) => { const c = c0 + k * 4; [0, 1, 2].forEach(j => ws.set(3, c + j, tot[k][j], { nf: NFA })); });
+  }
+
+  root.LSSheets = { voucherBook, memoBook };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script id="ls-ui">/* 휴롬엘에스 급여작업 지원 앱 — 화면 (셸 + 업무 모듈). 새 업무는 registerModule() 로 붙인다. */
+(function () {
+  'use strict';
+  const C = window.LSCore, SH = window.LSSheets;
+  const VERSION = document.body.dataset.version || 'v0.1', BUILT = document.body.dataset.built || '';
+  const TITLE = '휴롬엘에스 급여작업 지원 앱';
+    const $ = (s, el) => (el || document).querySelector(s);
+  const h = s => String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const won = n => (n == null || n === '' ? '' : Number(n).toLocaleString('ko-KR'));
+  const sortObj = o => { const r = {}; Object.keys(o || {}).sort().forEach(k => { if (o[k]) r[k] = o[k]; }); return r; };
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const ICON = {
+    home: '<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
+    voucher: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+    memo: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/>',
+    org: '<rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M6 16v-4h12v4"/>',
+    history: '<path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-7"/>',
+  };
+
+  // ───────── 설정 불러오기·저장 ─────────
+  const EMBED = JSON.parse(document.getElementById('app-config').textContent);
+  const baseStamp = EMBED.savedAt || EMBED.stamp || '';
+  function normalizeCfg(cfg) {
+    ['branches', 'deptMap', 'people', 'splits', 'credits', 'manual'].forEach(k => { if (!Array.isArray(cfg[k])) cfg[k] = []; });
+    cfg.history = cfg.history || {}; cfg.memoTexts = cfg.memoTexts || {}; cfg.defaults = cfg.defaults || {};
+    cfg.branches.forEach(b => { b.centers = b.centers || []; b.centerOpts = b.centerOpts || {}; });
+    return cfg;
+  }
+  const state = {
+    cfg: null, dirty: false, loaded: [], cur: null, prev: null, alloc: null, v: null, memo: null,
+    view: 'home', vtab: 0, mtab: 'doc', otab: 'people', obranch: 0, histYear: null, error: '', fileErrors: [], copyHeader: false, histNote: false, onlyRules: false,
+  };
+  // 설정은 앱 파일(app-config) 안에만 둔다. 화면에서 바꾼 내용은 [설정 넣어 앱 파일 저장] 전까지 이 창에만 있고, PC 브라우저 저장소에는 남기지 않는다.
+  state.cfg = normalizeCfg(clone(EMBED));
+  const texts = () => state.cfg.memoTexts;
+  function changed() { state.dirty = true; recalc(); render(); }
+
+  // ───────── 대장 올리기 ─────────
+  async function readAoa(buf, name) { // 자체 엑셀 읽기(LSRead): 외부 라이브러리·인터넷 불필요
+    const sheets = await window.LSRead.read(buf, name);
+    const hit = sheets.find(s => s.aoa.slice(0, 30).some(r => { const x = (r || []).map(C.normH); return x.includes('사번') && x.includes('성명'); }));
+    return (hit || sheets[0]).aoa;
+  }
+  async function addFiles(files) {
+    state.fileErrors = [];
+    for (const f of files) {
+      try {
+        const led = C.parseLedger(await readAoa(await f.arrayBuffer(), f.name), f.name);
+        if (led.kind !== '급여') state.loaded = [];                       // 상여·성과급 대장은 혼자서 전표만 만든다
+        else state.loaded = state.loaded.filter(x => x.kind === '급여' && x.month !== led.month);
+        state.loaded.push(led);
+      } catch (e) { state.fileErrors.push(`${f.name}: ${e.message}`); }
+    }
+    assignRoles(); recalc(); render();
+  }
+  function assignRoles() {
+    const byMonth = (a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0);
+    const pays = state.loaded.filter(l => l.kind === '급여').sort(byMonth);
+    state.cur = state.prev = null;
+    if (pays.length) {
+      state.cur = pays[pays.length - 1];
+      const older = pays.filter(l => l.month < state.cur.month); state.prev = older.length ? older[older.length - 1] : null;
+    } else if (state.loaded.length) state.cur = state.loaded.slice().sort(byMonth).pop();
+  }
+  function syncRuleBranches() { // 규칙에 그 사람의 현재 사업장을 적어 둔다(부서 이름 변경 때 범위를 정하려고)
+    const m = new Map(state.cur.people.map(p => [p.id, p]));
+    [...state.cfg.splits, ...state.cfg.people].forEach(r => { const p = m.get(r.id); if (p && r.branch !== p.siteCode) r.branch = p.siteCode; });
+  }
+  function recalc() {
+    state.error = ''; state.alloc = state.v = state.memo = null; state.histNote = false;
+    if (!state.cur) return;
+    try {
+      syncRuleBranches();
+      state.alloc = C.buildAllocation(state.cur, state.cfg);
+      state.v = C.buildVouchers(state.cur, state.cfg, state.alloc);
+      state.memo = state.cur.kind === '급여' ? C.buildMemo(state.cur, state.prev, [], state.cfg, state.v) : null;
+      if (state.cur.kind === '급여' && state.cur.month) {
+        const H = state.cfg.history, old = H[state.cur.month], auto = state.memo.monthAgg;
+        if (!old || JSON.stringify(sortObj(old.auto)) !== JSON.stringify(sortObj(auto))) { H[state.cur.month] = { auto: sortObj(auto), adj: (old && old.adj) || {}, extra: (old && old.extra) || {}, src: '대장' }; state.dirty = true; state.histNote = true; }
+      } else if (state.cur.month) {                                       // 상여·성과급: 그 달 이력의 extra[구분]에 따로 쌓아 월별 표에 합산
+        const H = state.cfg.history, agg = sortObj(C.aggregate(state.cur, state.cur.people.filter(p => p.active)));
+        H[state.cur.month] = H[state.cur.month] || { auto: {}, adj: {}, extra: {} }; const hh = H[state.cur.month]; hh.extra = hh.extra || {};
+        if (JSON.stringify(hh.extra[state.cur.kind] || {}) !== JSON.stringify(agg)) { hh.extra[state.cur.kind] = agg; state.dirty = true; state.histNote = true; }
+      }
+    } catch (e) {
+      state.error = '계산 중 오류가 났습니다: ' + e.message + '\n' + String(e.stack || '').split('\n').slice(1, 4).join('\n');
+    }
+  }
+
+  // ───────── 내려받기·복사 ─────────
+  function download(data, name, mime) {
+    const blob = data instanceof Blob ? data : new Blob([data], { type: mime || 'application/octet-stream' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  }
+  const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  let toastTimer = null;
+  function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2200); }
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch (e) {
+      const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+      let ok = false; try { ok = document.execCommand('copy'); } catch (e2) { ok = false; } ta.remove(); return ok;
+    }
+  }
+  const VHEAD = ['행번호', '계정과목', '비용구분', '차변금액', '대변금액', '적요', '귀속부서', '활동센터'];
+  const tsv = (lines, header) => { const rows = lines.map(l => [l.no, l.account, l.cost || '', l.debit == null ? '' : l.debit, l.credit == null ? '' : l.credit, l.memo, l.owner || '', l.center || ''].join('\t')); if (header) rows.unshift(VHEAD.join('\t')); return rows.join('\r\n'); };
+
+  function buildAppFile() { // 지금 설정을 넣은 앱 파일(HTML) 전체를 다시 조립
+    const cfg = clone(state.cfg); const d = new Date(), p = n => String(n).padStart(2, '0');
+    cfg.savedAt = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    const json = JSON.stringify(cfg).replace(/</g, '\\u003c');
+    const end = '</scr' + 'ipt>';
+    const js = id => `<script id="${id}">${document.getElementById(id).textContent}${end}`;
+    const page = `<!doctype html>\n<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${TITLE} ${VERSION}</title>\n`
+      + `<style id="ls-css">${document.getElementById('ls-css').textContent}</style></head>\n`
+      + `<body data-version="${VERSION}" data-built="${BUILT}">\n<div id="app"></div><div id="toast" class="toast"></div>\n<script id="app-config" type="application/json">${json}${end}\n`
+      + ['ls-read', 'ls-core', 'ls-xlsxw', 'ls-sheets', 'ls-ui'].map(js).join('\n') + '\n</body></html>\n';
+    return { page, stamp: cfg.savedAt };
+  }
+
+  // ───────── 설정 바꾸기 (조직·배분) ─────────
+  const branchByCode = code => state.cfg.branches.find(b => b.code === code);
+  const allocBranch = code => (state.alloc ? state.alloc.branches.find(b => b.code === code) : null);
+  function centerNames(code) { // 그 사업장에서 고를 수 있는 활동센터
+    const b = branchByCode(code), ab = allocBranch(code); const s = new Set(b ? b.centers : []);
+    if (ab) ab.centers.forEach(c => s.add(c.name));
+    state.cfg.splits.filter(x => x.branch === code).forEach(x => (x.parts || []).forEach(p => p.center && s.add(p.center)));
+    return [...s];
+  }
+  function renameCenter(code, from, to) {
+    to = C.clean(to); if (!to || to === from) return false;
+    const b = branchByCode(code); if (!b) return false;
+    const i = b.centers.indexOf(from), j = b.centers.indexOf(to);
+    if (i >= 0 && j >= 0) b.centers.splice(i, 1); else if (i >= 0) b.centers[i] = to; else if (j < 0) b.centers.push(to);
+    if (b.centerOpts[from]) { b.centerOpts[to] = b.centerOpts[from]; delete b.centerOpts[from]; }
+    state.cfg.deptMap.forEach(d => { if ((!d.branch || d.branch === code) && d.center === from) d.center = to; });
+    state.cfg.deptMap = state.cfg.deptMap.filter(d => !(d.dept === d.center && (!d.branch || d.branch === code)));
+    state.cfg.people.forEach(p => { if (p.branch === code && p.center === from) p.center = to; });
+    state.cfg.splits.forEach(s => {
+      if (s.branch !== code) return;
+      (s.parts || []).forEach(p => { if (p.center === from) p.center = to; });
+      if (s.adj && from in s.adj) { s.adj[to] = (s.adj[to] || 0) + s.adj[from]; delete s.adj[from]; }
+      if (s.exclude) s.exclude = s.exclude.map(x => (x === from ? to : x));
+    });
+    state.cfg.manual.forEach(m => { if (m.branch === code && m.center === from) m.center = to; });
+    return true;
+  }
+  function personOf(id) { return state.cur ? state.cur.people.find(p => p.id === id) : null; }
+
+  const ACT = {
+    go: d => { state.view = d.v; window.scrollTo(0, 0); render(); },
+    pick: () => $('#file').click(),
+    dropLedger: d => { const led = state.loaded[Number(d.i)]; state.loaded = state.loaded.filter(x => x !== led); assignRoles(); recalc(); render(); },
+    vtab: d => { state.vtab = Number(d.i); render(); },
+    mtab: d => { state.mtab = d.k; render(); },
+    otab: d => { state.otab = d.k; render(); },
+    obranch: d => { state.obranch = Number(d.i); render(); },
+    copy: async d => {
+      const lines = d.k === 'sangjo' ? state.v.sangjo : state.v.branches[Number(d.i)].lines;
+      const ok = await copyText(tsv(lines, state.copyHeader));
+      toast(ok ? `${lines.length}줄을 복사했습니다. ERP에 붙여넣으세요.` : '복사하지 못했습니다. 표를 직접 선택해 복사하세요.');
+    },
+    dlVoucher: async () => { const bytes = await SH.voucherBook(state.v, state.cfg).bytes(); download(bytes, `${state.cfg.company} ${state.v.kind}전표 ${state.cur.month}.xlsx`, XLSX_MIME); toast('급여전표 엑셀을 내려받았습니다.'); },
+    dlMemo: async () => {
+      const ym = state.cur.month, t = texts()[ym] || {};
+      const bytes = await SH.memoBook(state.memo, { cfg: state.cfg, cur: state.cur, prev: state.prev, texts: t, postNote: t.post != null ? t.post : null, history: C.withCurrent(state.cfg.history, state.cur.kind === '급여' ? ym : null, null) }).bytes();
+      download(bytes, `${state.cfg.company} ${C.ymLabel(ym)}분 급여 지출 기안서 자료.xlsx`, XLSX_MIME); toast('급여기안 엑셀을 내려받았습니다.');
+    },
+    resetTexts: () => { delete texts()[state.cur.month]; changed(); },
+    saveApp: () => { const f = buildAppFile(); download(new Blob([f.page], { type: 'text/html;charset=utf-8' }), `${TITLE} ${VERSION} (설정 ${f.stamp.replace(':', '').replace(' ', ' ')}).html`); state.dirty = false; state.savedNow = f.stamp; render(); toast('설정을 넣은 앱 파일을 내려받았습니다. 다음부터는 이 파일을 여세요.'); },
+    exportCfg: () => download(new Blob([JSON.stringify(state.cfg, null, 1)], { type: 'application/json' }), `휴롬엘에스 HR앱 설정 ${new Date().toISOString().slice(0, 10)}.json`),
+    importCfg: () => $('#cfgfile').click(),
+    discardLocal: () => { state.cfg = normalizeCfg(clone(EMBED)); state.dirty = false; recalc(); render(); toast('앱 파일에 들어 있던 설정으로 되돌렸습니다.'); },
+    // 전표 줄
+    acceptCenter: d => { const b = branchByCode(d.b); if (!b.centers.includes(d.n)) b.centers.push(d.n); changed(); },
+    acceptAll: d => { const ab = allocBranch(d.b), b = branchByCode(d.b); ab.newCenters.forEach(n => { if (!b.centers.includes(n)) b.centers.push(n); }); changed(); },
+    moveCenter: d => { const b = branchByCode(d.b), i = b.centers.indexOf(d.n), j = i + Number(d.dir); if (i < 0 || j < 0 || j >= b.centers.length) return; b.centers.splice(j, 0, b.centers.splice(i, 1)[0]); changed(); },
+    delCenter: d => { const b = branchByCode(d.b); b.centers = b.centers.filter(n => n !== d.n); changed(); },
+    addCenter: d => { const el = $('#newCenter'); const n = C.clean(el.value); if (!n) return; const b = branchByCode(d.b); if (!b.centers.includes(n)) b.centers.push(n); changed(); },
+    addBranch: d => { const u = state.alloc.unknownSites.find(x => x.code === d.code); state.cfg.branches.push({ code: d.code, name: (u && u.name) || d.code, short: ((u && u.name) || d.code).replace(/(본사|지점)$/, ''), taxOffice: '', cityOffice: '', centers: [], centerOpts: {} }); changed(); },
+    delDeptMap: d => { state.cfg.deptMap.splice(Number(d.i), 1); changed(); },
+    // 임원·겸직 배분
+    addSplit: d => { const p = personOf(d.id); if (!p || state.cfg.splits.some(s => s.id === p.id)) return; const r = C.resolvePerson(state.cfg, p); state.cfg.people = state.cfg.people.filter(x => x.id !== p.id); state.cfg.splits.push({ id: p.id, name: p.name, branch: p.siteCode, mode: 'ratio', parts: [{ center: r.center || p.dept, pct: 100 }] }); state.otab = 'splits'; changed(); },
+    delSplit: d => { state.cfg.splits = state.cfg.splits.filter(s => s.id !== d.id); changed(); },
+    addPart: d => { const s = state.cfg.splits.find(x => x.id === d.id); s.parts = s.parts || []; s.parts.push({ center: '', pct: 0 }); changed(); },
+    delPart: d => { const s = state.cfg.splits.find(x => x.id === d.id); s.parts.splice(Number(d.i), 1); changed(); },
+    evenParts: d => { const s = state.cfg.splits.find(x => x.id === d.id); const n = s.parts.length; if (!n) return; const each = Math.floor(10000 / n) / 100; s.parts.forEach((p, i) => { p.pct = i === 0 ? Math.round((100 - each * (n - 1)) * 100) / 100 : each; }); changed(); },
+    clearAdj: d => { const s = state.cfg.splits.find(x => x.id === d.id); s.adj = {}; changed(); },
+    delPerson: d => { state.cfg.people = state.cfg.people.filter(p => p.id !== d.id); changed(); },
+    // 수기 행
+    addManual: d => { state.cfg.manual.push(d.k === 'sangjo' ? { type: 'sangjo', branch: state.cfg.branches[0].code, center: '', amount: 0, memo: '', repeat: true } : { type: 'voucher', branch: state.cfg.branches[0].code, account: '예수금', side: '대변', amount: 0, memo: '', repeat: false, month: state.cur ? state.cur.month : '' }); changed(); },
+    delManual: d => { state.cfg.manual.splice(Number(d.i), 1); changed(); },
+    histYear: d => { state.histYear = d.y; render(); },
+    clearHistAdj: d => { const H = state.cfg.history[d.ym]; if (H) H.adj = {}; changed(); },
+  };
+  const CHG = {
+    copyHeader: (d, v, el) => { state.copyHeader = el.checked; },
+    text: (d, v) => { const ym = state.cur.month, T = texts(); T[ym] = T[ym] || {}; T[ym][d.k] = v; state.dirty = true; render(); },
+    branchField: (d, v) => { branchByCode(d.b)[d.k] = C.clean(v); changed(); },
+    cfgField: (d, v) => { state.cfg[d.k] = C.clean(v); changed(); },
+    renameCenter: (d, v, el) => {
+      if (!renameCenter(d.b, d.n, v)) { el.value = d.n; return; }
+      // 대장에는 아직 예전 부서명으로 나오는 경우: 그 부서를 새 이름의 줄로 잇는다
+      const to = C.clean(v);
+      if (state.cur && state.cur.people.some(p => p.active && p.siteCode === d.b && p.dept === d.n) && !state.cfg.deptMap.some(x => x.dept === d.n && x.branch === d.b)) state.cfg.deptMap.push({ branch: d.b, dept: d.n, center: to });
+      changed();
+    },
+    centerCost: (d, v) => { const b = branchByCode(d.b); b.centerOpts[d.n] = b.centerOpts[d.n] || {}; b.centerOpts[d.n][d.k] = C.clean(v); if (!b.centerOpts[d.n][d.k]) delete b.centerOpts[d.n][d.k]; changed(); },
+    newIs: (d, v) => { // 새 부서 처리: rename:기존줄 / merge:기존줄
+      if (!v) return; const [kind, target] = [v.slice(0, v.indexOf(':')), v.slice(v.indexOf(':') + 1)];
+      if (kind === 'rename') renameCenter(d.b, target, d.n);
+      else if (kind === 'merge') { state.cfg.deptMap = state.cfg.deptMap.filter(x => !(x.dept === d.n && x.branch === d.b)); state.cfg.deptMap.push({ branch: d.b, dept: d.n, center: target }); }
+      changed();
+    },
+    personCenter: (d, v) => {
+      const p = personOf(d.id); if (!p) return;
+      state.cfg.people = state.cfg.people.filter(x => x.id !== p.id);
+      if (v === '__split') { ACT.addSplit({ id: p.id }); return; }
+      if (v && v !== '__dept') state.cfg.people.push({ id: p.id, name: p.name, branch: p.siteCode, center: v });
+      changed();
+    },
+    splitMode: (d, v) => { const s = state.cfg.splits.find(x => x.id === d.id); s.mode = v; if (v === 'headcount') { s.adj = s.adj || {}; s.exclude = s.exclude || []; } else if (!s.parts || !s.parts.length) { const p = personOf(s.id); s.parts = [{ center: p ? p.dept : '', pct: 100 }]; } changed(); },
+    partCenter: (d, v) => { state.cfg.splits.find(x => x.id === d.id).parts[Number(d.i)].center = v; changed(); },
+    partPct: (d, v) => { state.cfg.splits.find(x => x.id === d.id).parts[Number(d.i)].pct = Math.round(C.NUM(v) * 100) / 100; changed(); },
+    adj: (d, v) => { const s = state.cfg.splits.find(x => x.id === d.id); s.adj = s.adj || {}; const n = Math.round(C.NUM(v)); if (n) s.adj[d.n] = n; else delete s.adj[d.n]; changed(); },
+    exclude: (d, v, el) => { const s = state.cfg.splits.find(x => x.id === d.id); s.exclude = (s.exclude || []).filter(x => x !== d.n); if (!el.checked) s.exclude.push(d.n); changed(); },
+    manual: (d, v, el) => { const m = state.cfg.manual[Number(d.i)]; if (d.k === 'amount') m.amount = C.NUM(v); else if (d.k === 'repeat') { m.repeat = el.checked; if (!m.repeat && state.cur) m.month = state.cur.month; } else m[d.k] = d.k === 'memo' ? v : C.clean(v); changed(); },
+    creditLabel: (d, v) => { state.cfg.credits[Number(d.i)].label = v.trim(); changed(); },
+    deptMapCenter: (d, v) => { state.cfg.deptMap[Number(d.i)].center = v; changed(); },
+    hist: (d, v, el) => { const H = state.cfg.history; H[d.ym] = H[d.ym] || { auto: {}, adj: {} }; const hh = H[d.ym]; hh.adj = hh.adj || {}; let a = (hh.auto && hh.auto[d.k]) || 0; if (hh.extra) for (const kind of Object.keys(hh.extra)) a += (hh.extra[kind] && hh.extra[kind][d.k]) || 0; const j = C.NUM(v) - a; if (j) hh.adj[d.k] = j; else delete hh.adj[d.k]; changed(); },
+    onlyRules: (d, v, el) => { state.onlyRules = el.checked; render(); },
+  };
+
+  // ───────── 화면: 홈 ─────────
+  function todoItems() {
+    const s = state, out = [];
+    s.fileErrors.forEach(t => out.push({ t, lv: 'w' }));
+    if (!s.cur) return out;
+    [...s.cur.warnings, ...(s.prev ? s.prev.warnings.map(t => '전월 대장: ' + t) : [])].forEach(t => out.push({ t, lv: 'w' }));
+    if (s.v) s.v.warnings.forEach(t => out.push({ t, lv: 'w' }));
+    if (s.memo) s.memo.warnings.forEach(t => out.push({ t, lv: 'w' }));
+    if (s.alloc) {
+      s.alloc.branches.forEach(b => { if (b.newCenters.length) out.push({ t: `${b.name}에 전표 줄 목록에 없던 부서가 있습니다: ${b.newCenters.join(', ')}. 일단 맨 아래 줄로 넣었습니다.`, lv: 'w', go: 'org', label: '조직·배분에서 정리' }); });
+      s.alloc.notices.forEach(n => out.push({ t: n.text, lv: 'i', go: 'org', label: '규칙 정리' }));
+    }
+    if (s.prev && s.prev.month !== C.prevYm(s.cur.month)) out.push({ t: `전월 대장이 ${C.ymLabel(s.prev.month)}분입니다. 바로 앞 달(${C.ymLabel(C.prevYm(s.cur.month))})이 아닙니다.`, lv: 'w' });
+    if (!s.prev && s.cur.kind === '급여') out.push({ t: '전월 급여대장을 함께 올리면 기안서의 전월 대비 표와 증감사유가 채워집니다.', lv: 'i' });
+    if (s.cur.kind !== '급여') out.push({ t: `구분이 '${s.cur.kind}'인 대장입니다. 전표의 계정과목을 '${(s.cfg.defaults.bonusAccount || '상여금')}'으로, 적요를 '${s.cur.kind}'로 만들었습니다(상여 전표는 예시로 검증하지 않은 초안).`, lv: 'w' });
+    if (s.histNote) out.push({ t: `${C.ymLabel(s.cur.month)} ${s.cur.kind === '급여' ? '값' : s.cur.kind + ' 값(월별 표에 급여와 합산)'}이 월별 이력에 들어갔습니다. 기안까지 마치면 오른쪽 위 [설정 넣어 앱 파일 저장]으로 저장하고, 그 파일을 담당자끼리 공유해 쓰세요.`, lv: 'i' });
+    return out;
+  }
+  function viewHome() {
+    const s = state, d = new Date();
+    let html = `<h1>${s.cur ? C.ymLabel(s.cur.month) + (s.cur.kind === '급여' ? '' : ' ' + h(s.cur.kind)) + ' 작업' : '이번 달 작업'}</h1>
+      <p class="lead">입사·퇴사·부서 이동은 대장에 적힌 부서를 그대로 따라갑니다.</p>`;
+    html += `<div class="drop" id="drop" data-act="pick" tabindex="0" role="button"><b>급여대장 파일을 여기에 놓거나 눌러서 고르세요</b>
+      <span class="hint">당월과 전월 파일을 한꺼번에 올려도 됩니다(귀속년월으로 나눔). 상여·성과급 대장은 하나만 올리면 그 전표가 나옵니다. (.xls · .xlsx)</span></div>`;
+    const slot = (title, led, emptyText) => led ? `<div class="slot"><div class="t">${title}</div><div class="m">${C.ymLabel(led.month)} ${h(led.kind)}</div>
+        <div class="hint s">지급 ${led.people.filter(p => p.active).length}명 (대장 ${led.people.length}줄) · 지급계 ${won(C.sum(led.people, p => p.gross))}</div>
+        <div class="f">${h(led.fileName)} <button class="btn sm ghost" data-act="dropLedger" data-i="${s.loaded.indexOf(led)}">빼기</button></div></div>`
+      : `<div class="slot empty"><div class="t">${title}</div><div class="hint s" style="margin-top:6px">${emptyText}</div></div>`;
+    const isBonus = s.cur && s.cur.kind !== '급여';
+    html += `<div class="slots two">${slot(isBonus ? s.cur.kind + ' 대장' : '당월 대장', s.cur, '아직 올리지 않았습니다.')}${isBonus ? `<div class="slot empty"><div class="t">전월 대장</div><div class="hint s" style="margin-top:6px">상여·성과급 대장은 전표만 만듭니다. 급여 대장을 올리면 다시 급여 마감으로 돌아갑니다.</div></div>` : slot('전월 대장', s.prev, '기안서의 전월 대비 표와 증감사유에 씁니다.')}</div>`;
+    if (s.error) html += `<div class="errbox" style="margin-top:16px">${h(s.error)}</div>`;
+    const todos = todoItems();
+    if (s.v) {
+      html += `<div class="panel flat" style="margin-top:20px"><div class="panel-head"><h2>대장과 전표가 맞는지</h2><span class="sp"></span>${s.v.branches.every(b => b.checks.grossOk && b.checks.netOk) ? '<span class="chip ok">모두 일치</span>' : '<span class="chip err">맞지 않는 곳이 있습니다</span>'}</div>
+        <table class="recon"><tr><th>사업장</th><th>지급 인원</th><th>대장 지급계 = 전표 차변</th><th>대장 실지급계 = 전표 미지급비용</th><th>상조회 공제</th></tr>`
+        + s.v.branches.map(b => { const k = b.checks; return `<tr><td><b>${h(b.name)}</b></td><td class="num">${k.heads}명</td>
+          <td class="num">${won(k.gross)} <span class="eq">${k.grossOk ? '=' : '≠'}</span> ${won(k.debit)}</td>
+          <td class="num">${won(k.net)} <span class="eq">${k.netOk ? '=' : '≠'}</span> ${won(k.accrued + k.manualNet)}</td><td class="num">${won(b.sangjoDeduct)}</td></tr>`; }).join('')
+        + `<tr><td><b>합계</b></td><td class="num">${C.sum(s.v.branches, b => b.checks.heads)}명</td><td class="num"><b>${won(C.sum(s.v.branches, b => b.checks.gross))}</b></td><td class="num"><b>${won(C.sum(s.v.branches, b => b.checks.net))}</b></td><td class="num">${won(C.sum(s.v.branches, b => b.sangjoDeduct))}</td></tr></table></div>`;
+    }
+    if (s.cur || todos.length) {
+      html += `<div class="panel"><h2>확인할 것</h2>` + (todos.length ? `<ul class="todo">${todos.map(t => `<li><span class="mk ${t.lv === 'i' ? 'i' : ''}"></span><span>${h(t.t)} ${t.go ? `<button class="btn sm" data-act="go" data-v="${t.go}">${t.label}</button>` : ''}</span></li>`).join('')}</ul>` : `<p class="hint" style="margin:0">확인할 것이 없습니다.</p>`) + `</div>`;
+    }
+    if (s.v) html += `<div class="steps"><button class="step" data-act="go" data-v="voucher"><i>1</i><span><b>급여전표</b><span>사업장별 전표와 상조회비 전표를 ERP에 붙여넣기</span></span></button>
+      ${s.memo ? `<button class="step" data-act="go" data-v="memo"><i>2</i><span><b>급여기안</b><span>기안서 자료 엑셀 내려받기${s.prev ? '' : ' (전월 대장을 올리면 증감사유까지)'}</span></span></button>` : ''}</div>`;
+    return html;
+  }
+
+  // ───────── 화면: 급여전표 ─────────
+  const needLedger = name => `<h1>${name}</h1><div class="panel"><p class="hint" style="margin:0 0 12px">먼저 급여대장을 올려 주세요.</p><button class="btn pri" data-act="go" data-v="home">대장 등록으로 가기</button></div>`;
+  function linesTable(lines) {
+    return `<div class="tbl-wrap"><table class="grid"><tr>${VHEAD.map((x, i) => `<th class="${i === 3 || i === 4 ? 'num' : ''}">${x}</th>`).join('')}</tr>`
+      + lines.map(l => `<tr class="${l.isNew || l.flag ? 'new' : ''}"><td class="mono">${l.no}</td><td>${h(l.account)}</td><td>${h(l.cost || '')}</td><td class="num">${won(l.debit)}</td><td class="num">${won(l.credit)}</td>
+        <td>${h(l.memo)} ${l.isNew ? '<span class="chip warn">목록에 없던 부서</span>' : ''}${l.flag ? `<span class="chip warn">${h(l.flag)}</span>` : ''}${l.manual ? '<span class="chip acc">수기 행</span>' : ''}${l.extra ? `<span class="chip acc" title="${h(l.extraMemo)}">수기 ${won(l.extra)} 포함</span>` : ''}</td><td>${h(l.owner || '')}</td><td>${h(l.center || '')}</td></tr>`).join('')
+      + `<tr class="sum"><td colspan="3">합계</td><td class="num">${won(C.sum(lines, l => l.debit || 0))}</td><td class="num">${won(C.sum(lines, l => l.credit || 0))}</td><td colspan="3"></td></tr></table></div>`;
+  }
+  function viewVoucher() {
+    const s = state; if (!s.v) return needLedger('급여전표');
+    const nb = s.v.branches.length; if (s.vtab > nb) s.vtab = 0;
+    const isSj = s.vtab === nb && s.v.sangjo.length;
+    let html = `<h1>${C.ymLabel(s.cur.month)} ${h(s.v.kind)}전표</h1><p class="lead">표를 복사해 ERP 전표 입력 화면에 그대로 붙여넣으세요. 금액이 0원인 줄은 빼고 행번호를 다시 매겼습니다.</p>`;
+    html += `<div class="panel flat"><div class="panel-head"><div class="tabs">${s.v.branches.map((b, i) => `<button class="tab ${s.vtab === i ? 'on' : ''}" data-act="vtab" data-i="${i}">${h(b.name)}</button>`).join('')}${s.v.sangjo.length ? `<button class="tab ${isSj ? 'on' : ''}" data-act="vtab" data-i="${nb}">상조회비</button>` : ''}</div><span class="sp"></span>
+      <label class="hint s"><input type="checkbox" data-chg="copyHeader" ${s.copyHeader ? 'checked' : ''}> 머리글도 복사</label>
+      <button class="btn pri" data-act="copy" ${isSj ? 'data-k="sangjo"' : `data-i="${s.vtab}"`}>ERP 붙여넣기용 복사</button><button class="btn" data-act="dlVoucher">전표 엑셀 내려받기</button></div>`;
+    if (isSj) {
+      html += linesTable(s.v.sangjo) + `<div class="foot"><span class="hint">세 사업장을 이어서 행번호를 매겼습니다(예시 엑셀과 같은 방식). 회사 찬조분 = 직원 공제액 + 수기 추가분.</span></div>`;
+    } else {
+      const b = s.v.branches[s.vtab], k = b.checks, ab = s.alloc.branches[s.vtab];
+      html += linesTable(b.lines) + `<div class="foot"><span class="chip ${k.grossOk ? 'ok' : 'err'}">차변 ${won(k.debit)} ${k.grossOk ? '=' : '≠'} 대장 지급계</span><span class="chip ${k.netOk ? 'ok' : 'err'}">미지급비용 ${won(k.accrued)} ${k.netOk ? '=' : '≠'} 대장 실지급계${k.manualNet ? ' − 수기 행' : ''}</span><span class="hint">지급 ${k.heads}명</span></div>`;
+      html += `<details class="more"><summary>부서별로 어떻게 모였는지 보기</summary><div class="tbl-wrap"><table class="grid"><tr><th>활동센터</th><th class="num">직원 수</th><th class="num">직원 급여</th><th class="num">임원·겸직 배분</th><th>배분 받은 사람</th><th class="num">합계</th></tr>`
+        + ab.centers.map(c => { const sh = C.sum(c.shares, x => x.pay); return `<tr><td>${h(c.name)}</td><td class="num">${c.count}</td><td class="num">${won(c.pay - sh)}</td><td class="num">${sh ? won(sh) : ''}</td><td class="hint s">${h(c.shares.map(x => C.displayName(x.from)).join(', '))}</td><td class="num">${won(c.pay)}</td></tr>`; }).join('')
+        + `</table></div></details>`;
+    }
+    html += `</div>`;
+    return html;
+  }
+
+  // ───────── 화면: 급여기안 ─────────
+  function viewMemo() {
+    const s = state; if (!s.memo) return s.cur ? `<h1>급여기안</h1><div class="panel"><p class="hint" style="margin:0 0 12px">${h(s.cur.kind)} 대장으로는 전표만 만듭니다. 급여기안은 급여 대장을 올렸을 때 나옵니다.</p><button class="btn pri" data-act="go" data-v="home">대장 등록으로 가기</button></div>` : needLedger('급여기안');
+    const m = s.memo, ym = s.cur.month, nb = s.cfg.branches.length;
+    let html = `<h1>${C.ymLabel(ym)}분 급여기안 자료</h1><p class="lead">기안에 첨부하는 엑셀을 예시와 같은 시트 구성으로 만듭니다. 증감사유의 비고는 초안이니 사유를 고쳐 쓴 뒤 내려받으세요.</p>`;
+    html += `<div class="panel flat"><div class="panel-head"><div class="tabs">${[['doc', '기안서'], ['site', '사업장별'], ['month', '월별']].map(([k, t]) => `<button class="tab ${s.mtab === k ? 'on' : ''}" data-act="mtab" data-k="${k}">${t}</button>`).join('')}</div><span class="sp"></span>
+      <span class="hint s">시트: 기안서 · 사업장별 · 월별 · 개인별 급여대장${s.prev ? ' · 개인별 전월대비 증감내역' : ''} · 참고(지난 2년)</span><button class="btn pri" data-act="dlMemo">기안 엑셀 내려받기</button></div><div style="padding:18px 20px">`;
+    if (s.mtab === 'doc') {
+      const tx = Object.assign({}, m.reasons ? m.reasons.draft : {}, texts()[ym] || {});
+      const neg = n => (n < 0 ? `<span class="neg">(${won(-n)})</span>` : won(n));
+      const dash = v => (v == null ? '-' : v);
+      html += `<div class="doc"><h3>1. 세전금액</h3><div class="hint" style="margin-bottom:4px"><b>${h(C.summaryLine(m.preTotal))}</b></div>
+        <table><tr><th rowspan="2">구분</th><th colspan="2">전월 (${C.ymShort(m.prevMonth)})</th><th colspan="2">당월 (${C.ymShort(ym)})</th><th colspan="3">증감</th></tr><tr><th>인원</th><th>금액</th><th>인원</th><th>금액</th><th>인원</th><th>금액</th><th>증감율</th></tr>`
+        + [...m.pre.map(x => [x.name, x, '']), ['합계', m.preTotal, 'b']].map(([n, x, cls]) => { const hp = x.prevHeads != null; return `<tr class="${cls}"><td class="c">${h(n)}</td><td class="c">${dash(x.prevHeads)}</td><td class="num">${hp ? won(x.prevAmt) : '-'}</td><td class="c">${x.curHeads}</td><td class="num">${won(x.curAmt)}</td><td class="c">${hp ? x.curHeads - x.prevHeads : '-'}</td><td class="num">${hp ? neg(x.curAmt - x.prevAmt) : '-'}</td><td class="c">${hp && x.prevAmt ? ((x.curAmt - x.prevAmt) / x.prevAmt * 100).toFixed(1) + '%' : '-'}</td></tr>`; }).join('') + `</table>`;
+      const postNote = (texts()[ym] && texts()[ym].post != null) ? texts()[ym].post : m.post.map(p => p.extraMemo).filter(Boolean).join('\n');
+      const prow = (label, f, note) => `<tr><td class="c">${label}</td>${m.post.map(p => `<td class="num">${won(f(p))}</td>`).join('')}<td class="num"><b>${won(C.sum(m.post, f))}</b></td><td>${note || ''}</td></tr>`;
+      html += `<h3>2. 세후금액</h3><table><tr><th>구분</th>${m.post.map(p => `<th>${h(p.short)}</th>`).join('')}<th>총합</th><th style="width:34%">비고</th></tr>`
+        + prow('급여 실지급액(세후)', p => p.net) + prow('상조회(직원급여공제분)', p => p.sangjo) + prow('상조회(회사찬조금)', p => p.company, `<textarea rows="2" data-chg="text" data-k="post">${h(postNote)}</textarea>`) + prow('합계', p => p.net + p.sangjo + p.company) + `</table>`;
+      html += `<h3>3. 전월대비 급여 증감사유</h3>`;
+      if (!m.reasons) html += `<div class="card warn">전월 급여대장을 함께 올리면 증감사유 표가 채워집니다. <button class="btn sm" data-act="go" data-v="home">대장 등록으로 가기</button></div>`;
+      else {
+        const r = m.reasons, rows = n => Math.max(2, String(n || '').split('\n').length);
+        const ta = k => `<textarea rows="${rows(tx[k])}" data-chg="text" data-k="${k}">${h(tx[k] || '')}</textarea>`;
+        html += `<table><tr><th style="width:9%">증감구분</th><th style="width:27%">사유</th><th style="width:13%">금액</th><th>비고 (고쳐 쓸 수 있습니다)</th></tr>
+          <tr class="b"><td class="c" colspan="2">합계</td><td class="num">${neg(r.total)}</td><td>${r.ok ? '<span class="chip ok">전월 대비 증감액과 일치</span>' : '<span class="chip err">증감액과 다릅니다</span>'}</td></tr>
+          <tr class="sub"><td class="inc" rowspan="3">증가</td><td>소계</td><td class="num">${neg(r.inc)}</td><td></td></tr>
+          <tr><td>최근 2개월 신규입사에 따른 인건비 증가</td><td class="num">${neg(r.amounts.hire)}</td><td>${ta('hire')}</td></tr>
+          <tr><td>기타</td><td class="num">${neg(r.amounts.incEtc)}</td><td>${ta('incEtc')}</td></tr>
+          <tr class="sub"><td class="dec" rowspan="3">감소</td><td>소계</td><td class="num">${neg(r.dec)}</td><td></td></tr>
+          <tr><td>최근 2개월 퇴사자에 따른 인건비 감소</td><td class="num">${neg(r.amounts.leave)}</td><td>${ta('leave')}</td></tr>
+          <tr><td>기타</td><td class="num">${neg(r.amounts.decEtc)}</td><td>${ta('decEtc')}</td></tr></table>
+          <button class="btn sm" data-act="resetTexts">비고를 자동 초안으로 되돌리기</button> <span class="hint s">고친 비고는 [설정 넣어 앱 파일 저장]을 하면 앱 파일에 함께 저장됩니다.</span>`;
+      }
+      html += `</div>`;
+    } else if (s.mtab === 'site') {
+      const row = (k, cls) => `<tr class="${cls || ''}"><td>${h(C.keyLabel(k, true))}</td>${m.site.cols.map(c => `<td class="num">${won(c[k] || 0)}</td>`).join('')}<td class="num">${won(C.sum(m.site.cols, c => c[k] || 0))}</td></tr>`;
+      const sub = (label, f) => `<tr class="sum"><td>${label}</td>${m.site.cols.map(c => `<td class="num">${won(f(c))}</td>`).join('')}<td class="num">${won(C.sum(m.site.cols, f))}</td></tr>`;
+      html += `<div class="tbl-wrap" style="max-width:820px"><table class="grid"><tr><th>구분</th>${m.post.map(p => `<th class="num">${h(p.short)}</th>`).join('')}<th class="num">총합</th></tr>
+        <tr><td>지급인원</td>${m.site.heads.map(x => `<td class="num">${x}</td>`).join('')}<td class="num">${C.sum(m.site.heads)}</td></tr>`
+        + m.site.payKeys.map(k => row(k)).join('') + sub('지급 소계', c => C.sum(m.site.payKeys, k => c[k] || 0)) + m.site.dedKeys.map(k => row(k)).join('') + sub('공제 소계', c => C.sum(m.site.dedKeys, k => c[k] || 0)) + sub('실지급액', c => C.paySum(c) - C.dedSum(c)) + `</table></div>`;
+    } else {
+      html += `<p class="hint" style="margin-top:0">월별 표는 [월별 이력]에 쌓인 값으로 만듭니다. 상여가 있는 달은 상여 대장을 (전표를 만들 때) 올려 두면 그 달 열에 합산됩니다. <button class="btn sm" data-act="go" data-v="history">월별 이력 열기</button></p>` + histTable(ym.slice(0, 4), ym, false);
+    }
+    html += `</div></div>`;
+    return html;
+  }
+
+  // ───────── 화면: 조직·배분 ─────────
+  const opts = (list, sel, extra) => (extra || '') + list.map(n => `<option value="${h(n)}" ${n === sel ? 'selected' : ''}>${h(n)}</option>`).join('');
+  function viewOrg() {
+    const s = state, cfg = s.cfg;
+    let html = `<h1>조직·배분 설정</h1><p class="lead">대장의 부서명이 곧 전표 줄(활동센터)입니다. 여기에는 그 규칙에서 벗어나는 것만 적습니다. 입사·퇴사·부서 이동은 대장을 올리면 따라오고, 새 부서나 이름이 바뀐 부서는 아래에서 한 번만 정리하면 됩니다.</p>`;
+    const tabs = [['people', '변동사항 · 인원 배치'], ['lines', '사업장별 활동센터'], ['splits', '임원 · 겸직 배분'], ['manual', '수기 행 · 예수금 줄']];
+    html += `<div class="tabs" style="margin-bottom:12px">${tabs.map(([k, t]) => `<button class="tab ${s.otab === k ? 'on' : ''}" data-act="otab" data-k="${k}">${t}</button>`).join('')}</div>`;
+    if (s.otab === 'people') html += orgPeople();
+    else if (s.otab === 'lines') html += orgLines();
+    else if (s.otab === 'splits') html += orgSplits();
+    else html += orgManual();
+    return html;
+  }
+  function orgPeople() {
+    const s = state, cfg = s.cfg; let html = '';
+    if (!s.alloc) return `<div class="panel"><p class="hint" style="margin:0 0 12px">급여대장을 올리면 이번 달에 달라진 부서를 찾아 주고, 사람을 검색해 다른 줄로 옮길 수 있습니다.</p><button class="btn pri" data-act="go" data-v="home">대장 등록으로 가기</button></div>` + rulesOnly();
+    // 달라진 것
+    const cards = [];
+    s.alloc.unknownSites.forEach(u => cards.push(`<div class="card warn"><div class="row"><b class="nm">새 사업장 ${h(u.code)} ${h(u.name || '')}</b><span class="chip warn">${u.count}명 · 전표에서 빠져 있음</span><span style="flex:1"></span><button class="btn pri sm" data-act="addBranch" data-code="${h(u.code)}">사업장으로 추가</button></div></div>`));
+    s.alloc.branches.forEach(b => b.newCenters.forEach(n => {
+      const c = b.centers.find(x => x.name === n), known = b.cfg.centers, idle = known.filter(k => { const kc = b.centers.find(x => x.name === k); return !kc || kc.count === 0; });
+      const who = c.members.slice(0, 6).map(p => C.displayName(p.name)).join(', ') + (c.members.length > 6 ? ' 외' : '');
+      cards.push(`<div class="card warn"><div class="row"><b class="nm">${h(n)}</b><span class="chip">${h(b.name)}</span><span class="chip warn">전표 줄 목록에 없던 부서</span><span class="hint s">직원 ${c.count}명${who ? ' (' + h(who) + ')' : ''}${c.shares.length ? ' · 임원 배분 받음' : ''}</span></div>
+        <div class="row"><button class="btn pri sm" data-act="acceptCenter" data-b="${b.code}" data-n="${h(n)}">새 줄로 추가</button>
+        ${idle.length ? `<select data-chg="newIs" data-b="${b.code}" data-n="${h(n)}"><option value="">이름만 바뀐 부서라면 예전 이름 고르기 (이번 달 직원 0명인 줄)</option>${idle.map(x => `<option value="rename:${h(x)}">${h(x)} → ${h(n)}</option>`).join('')}</select>` : ''}
+        ${known.length ? `<select data-chg="newIs" data-b="${b.code}" data-n="${h(n)}"><option value="">기존 줄에 합치기</option>${known.map(x => `<option value="merge:${h(x)}">${h(x)} 줄에 합치기</option>`).join('')}</select>` : ''}
+        ${c.count === 1 ? `<button class="btn sm" data-act="addSplit" data-id="${h(c.members[0].id)}">본부장·겸직이면 여러 부서로 나누기</button>` : ''}</div></div>`);
+    }));
+    s.alloc.notices.forEach(n => cards.push(`<div class="card"><div class="row"><span>${h(n.text)}</span><span style="flex:1"></span>${n.type === 'split-missing' ? `<button class="btn sm danger" data-act="delSplit" data-id="${h(n.id)}">배분 규칙 지우기</button>` : n.type === 'person-missing' ? `<button class="btn sm danger" data-act="delPerson" data-id="${h(n.id)}">지정 지우기</button>` : `<button class="btn sm danger" data-act="delDeptMap" data-i="${cfg.deptMap.findIndex(d => d.dept === n.dept)}">연결 지우기</button>`}</div></div>`));
+    html += `<div class="panel"><h2>이번 대장의 변동사항</h2>${cards.length ? `<div class="cards">${cards.join('')}</div>` : `<p class="hint" style="margin:0">새 부서나 정리할 규칙이 없습니다. 모든 사람이 전표 줄에 들어갔습니다.</p>`}</div>`;
+    // 사람 목록
+    const VIA = { dept: '대장 부서 그대로', deptMap: '부서 연결', person: '사람별 지정', split: '임원·겸직 배분' };
+    const rows = [];
+    s.alloc.branches.forEach(b => b.people.forEach(p => {
+      const r = p._res; if (s.onlyRules && r.via === 'dept') return;
+      const names = centerNames(b.code);
+      const sel = r.via === 'split' ? `<span class="chip acc">여러 부서로 나눔</span> <button class="btn sm ghost" data-act="otab" data-k="splits">배분 보기</button>`
+        : `<select data-chg="personCenter" data-id="${h(p.id)}"><option value="__dept" ${r.via !== 'person' ? 'selected' : ''}>${(() => { const dm = state.cfg.deptMap.find(x => x.dept === p.dept && (!x.branch || x.branch === p.siteCode)); return dm ? '부서 연결대로 (' + h(dm.center) + ')' : '대장 부서 그대로 (' + h(p.dept) + ')'; })()}</option>${names.filter(n => n !== p.dept || r.via === 'person').map(n => `<option value="${h(n)}" ${r.via === 'person' && r.center === n ? 'selected' : ''}>${h(n)}</option>`).join('')}<option value="__split">여러 부서로 나누기…</option></select>`;
+      rows.push(`<tr data-q="${h((p.name + ' ' + p.dept + ' ' + b.name + ' ' + p.title).toLowerCase())}"><td><b>${h(p.name)}</b></td><td>${h(b.short)}</td><td>${h(p.dept)}</td><td>${h(p.title)}</td><td>${sel}</td><td><span class="chip ${r.via === 'dept' ? '' : 'acc'}">${VIA[r.via]}</span></td></tr>`);
+    }));
+    html += `<div class="panel flat"><div class="panel-head"><h2>사람 찾아서 옮기기</h2><span class="sp"></span><label class="hint s"><input type="checkbox" data-chg="onlyRules" ${s.onlyRules ? 'checked' : ''}> 예외만 보기</label><input type="text" id="pq" placeholder="이름·부서로 찾기" style="width:200px"></div>
+      <div class="tbl-wrap" style="max-height:520px"><table class="grid" id="ptbl"><tr><th>성명</th><th>사업장</th><th>대장 부서</th><th>직책</th><th>전표 줄(활동센터)</th><th>정해진 방식</th></tr>${rows.join('') || '<tr><td colspan="6" class="hint">해당하는 사람이 없습니다.</td></tr>'}</table></div>
+      <div class="foot"><span class="hint">ERP에서 부서를 옮기면 다음 대장부터 저절로 따라갑니다. 대장의 부서와 전표 줄이 달라야 하는 사람만 여기서 바꾸세요.</span></div></div>`;
+    return html;
+  }
+  function rulesOnly() {
+    const cfg = state.cfg;
+    return `<div class="panel flat"><div class="panel-head"><h2>지금 저장된 예외</h2></div><div class="tbl-wrap"><table class="grid"><tr><th>대상</th><th>규칙</th></tr>`
+      + cfg.people.map(p => `<tr><td>${h(p.name)}</td><td>${h(p.center)} 줄로 보냄</td></tr>`).join('')
+      + cfg.deptMap.map(d => `<tr><td>부서 ${h(d.dept)}</td><td>${h(d.center)} 줄에 합침</td></tr>`).join('')
+      + cfg.splits.map(x => `<tr><td>${h(x.name)}</td><td>${x.mode === 'headcount' ? '사업장 전체에 인원수 비례' : h((x.parts || []).map(p => `${p.center} ${p.pct}%`).join(' · '))}</td></tr>`).join('') + `</table></div></div>`;
+  }
+  function orgLines() {
+    const s = state, cfg = s.cfg; if (s.obranch >= cfg.branches.length) s.obranch = 0;
+    const b = cfg.branches[s.obranch], ab = allocBranch(b.code);
+    let html = `<div class="panel flat"><div class="panel-head"><div class="tabs">${cfg.branches.map((x, i) => `<button class="tab ${s.obranch === i ? 'on' : ''}" data-act="obranch" data-i="${i}">${h(x.name)}</button>`).join('')}</div><span class="sp"></span><span class="hint s">대장의 사업장코드 ${h(b.code)}</span></div>
+      <div class="fields">${[['name', '사업장 이름 (적요에 들어감)'], ['short', '짧은 이름 (기안 표·시트 이름)'], ['taxOffice', '세무서'], ['cityOffice', '시·구청']].map(([k, t]) => `<label class="field">${t}<input type="text" value="${h(b[k] || '')}" data-chg="branchField" data-b="${b.code}" data-k="${k}"></label>`).join('')}</div>`;
+    const rows = b.centers.map((n, i) => {
+      const c = ab && ab.centers.find(x => x.name === n), o = b.centerOpts[n] || {};
+      return `<tr><td><div class="order"><button data-act="moveCenter" data-b="${b.code}" data-n="${h(n)}" data-dir="-1" title="위로" ${i === 0 ? 'disabled' : ''}>↑</button><button data-act="moveCenter" data-b="${b.code}" data-n="${h(n)}" data-dir="1" title="아래로" ${i === b.centers.length - 1 ? 'disabled' : ''}>↓</button></div></td>
+        <td class="mono">${C.pad3(i + 1)}</td><td><input type="text" value="${h(n)}" data-chg="renameCenter" data-b="${b.code}" data-n="${h(n)}" style="width:220px"></td>
+        <td class="num">${c ? c.count + '명' : ''}</td><td class="num">${c ? won(c.pay) : (ab ? '<span class="chip">이번 달 금액 없음</span>' : '')}</td>
+        <td><input type="text" value="${h(o.account || '')}" placeholder="${h(cfg.defaults.account || '직원급여')}" data-chg="centerCost" data-b="${b.code}" data-n="${h(n)}" data-k="account" style="width:130px"></td>
+        <td><input type="text" value="${h(o.cost || '')}" placeholder="${h(cfg.defaults.cost || '판관')}" data-chg="centerCost" data-b="${b.code}" data-n="${h(n)}" data-k="cost" style="width:70px"></td>
+        <td><button class="btn sm ghost danger" data-act="delCenter" data-b="${b.code}" data-n="${h(n)}">목록에서 빼기</button></td></tr>`;
+    }).join('');
+    const fresh = ab ? ab.newCenters : [];
+    html += `<div class="tbl-wrap"><table class="grid"><tr><th></th><th>줄 순서</th><th>활동센터 (이름을 고치면 관련 규칙도 함께 바뀝니다)</th><th class="num">직원 수</th><th class="num">이번 달 급여</th><th>계정과목</th><th>비용구분</th><th></th></tr>${rows}
+      ${fresh.map(n => `<tr class="new"><td></td><td class="mono">새 부서</td><td><b>${h(n)}</b></td><td class="num">${ab.centers.find(x => x.name === n).count}명</td><td class="num">${won(ab.centers.find(x => x.name === n).pay)}</td><td colspan="2" class="hint s">지금은 맨 아래 줄로 들어갑니다</td><td><button class="btn sm pri" data-act="acceptCenter" data-b="${b.code}" data-n="${h(n)}">목록에 추가</button></td></tr>`).join('')}</table></div>
+      <div class="foot"><input type="text" id="newCenter" placeholder="새 활동센터 이름" style="width:220px"><button class="btn" data-act="addCenter" data-b="${b.code}">줄 추가</button><span class="hint">금액이 0원인 줄은 전표에서 자동으로 빠지므로, 안 쓰는 줄을 남겨 두어도 괜찮습니다.</span></div></div>`;
+    // 부서 연결
+    html += `<div class="panel flat"><div class="panel-head"><h2>부서 연결</h2><span class="hint s">대장의 부서 이름과 다른 전표 줄에 합치는 부서</span></div><div class="tbl-wrap"><table class="grid"><tr><th>사업장</th><th>대장 부서</th><th>합칠 전표 줄</th><th></th></tr>`
+      + (cfg.deptMap.map((d, i) => `<tr><td>${h((branchByCode(d.branch) || {}).name || '전체')}</td><td>${h(d.dept)}</td><td><select data-chg="deptMapCenter" data-i="${i}">${opts(centerNames(d.branch || b.code).includes(d.center) ? centerNames(d.branch || b.code) : [d.center, ...centerNames(d.branch || b.code)], d.center)}</select></td><td><button class="btn sm ghost danger" data-act="delDeptMap" data-i="${i}">연결 지우기</button></td></tr>`).join('') || `<tr><td colspan="4" class="hint">연결된 부서가 없습니다.</td></tr>`) + `</table></div>
+      <div class="foot"><span class="hint">새 연결은 [변동사항 · 인원 배치]에서 새 부서 카드의 “기존 줄에 합치기”로 만듭니다.</span></div></div>`;
+    return html;
+  }
+  function orgSplits() {
+    const s = state, cfg = s.cfg;
+    let html = `<div class="panel flat"><div class="panel-head"><h2>임원 · 겸직 배분</h2><span class="hint s">한 사람의 급여·상조회비를 여러 부서 줄로 나눕니다. 둘째 부서부터 원 단위를 버리고 끝전은 첫 부서로 갑니다.</span></div>`;
+    if (!cfg.splits.length) html += `<div style="padding:16px 18px" class="hint">등록된 배분이 없습니다.</div>`;
+    cfg.splits.forEach(sp => {
+      const p = personOf(sp.id), code = sp.branch || (p && p.siteCode) || cfg.branches[0].code, b = branchByCode(code), ab = allocBranch(code);
+      const det = ab && (ab.splits.find(x => x.person.id === sp.id) || {}).detail;
+      let body = '';
+      if (sp.mode === 'headcount') {
+        const adj = sp.adj || {}, ex = sp.exclude || [];
+        const names = [...new Set([...(b ? b.centers : []), ...(ab ? ab.centers.map(c => c.name) : []), ...Object.keys(adj)])];
+        const base = n => { const c = ab && ab.centers.find(x => x.name === n); return c ? c.count : 0; };
+        const tot = C.sum(names.filter(n => !ex.includes(n)), n => Math.max(0, base(n) + (adj[n] || 0)));
+        body = `<div class="hint s" style="margin-bottom:8px">${h(b ? b.name : '')}의 모든 전표 줄에 직원 수 비율로 나눕니다(새 부서가 생기면 자동 포함). 합계 ${tot}명 기준.${Object.keys(adj).length ? ` <b>보정 ${Object.keys(adj).length}곳</b>은 기존 엑셀 결과와 맞추려고 넣은 값입니다. <button class="btn sm" data-act="clearAdj" data-id="${h(sp.id)}">보정 모두 지우고 실제 인원만 쓰기</button>` : ''}</div>
+          <div class="tbl-wrap" style="max-height:340px"><table class="grid"><tr><th>포함</th><th>활동센터</th><th class="num">직원 수</th><th class="num">보정(±)</th><th class="num">배분 기준</th><th>비율</th></tr>`
+          + names.map(n => { const on = !ex.includes(n), w = on ? Math.max(0, base(n) + (adj[n] || 0)) : 0; return `<tr><td class="c"><input type="checkbox" data-chg="exclude" data-id="${h(sp.id)}" data-n="${h(n)}" ${on ? 'checked' : ''}></td><td>${h(n)}</td><td class="num">${ab ? base(n) : '-'}</td><td class="num"><input type="text" class="adj" value="${adj[n] || ''}" placeholder="0" data-chg="adj" data-id="${h(sp.id)}" data-n="${h(n)}" style="width:56px;text-align:right"></td><td class="num">${w}</td><td><div class="bar"><i style="width:${tot ? (w / tot * 100).toFixed(1) : 0}%"></i></div></td></tr>`; }).join('') + `</table></div>`;
+      } else {
+        const names = centerNames(code), tot = Math.round(C.sum(sp.parts || [], x => C.NUM(x.pct)) * 100) / 100;
+        body = `<div class="parts">` + (sp.parts || []).map((x, i) => `<div class="part"><select data-chg="partCenter" data-id="${h(sp.id)}" data-i="${i}" style="width:220px"><option value="">부서 고르기</option>${opts(names.includes(x.center) || !x.center ? names : [x.center, ...names], x.center)}</select>
+            <input type="text" class="pct" value="${x.pct}" data-chg="partPct" data-id="${h(sp.id)}" data-i="${i}"> %<div class="bar"><i style="width:${Math.min(100, C.NUM(x.pct))}%"></i></div>${i === 0 ? '<span class="hint s">끝전 받는 부서</span>' : ''}<span style="flex:1"></span><button class="btn sm ghost danger" data-act="delPart" data-id="${h(sp.id)}" data-i="${i}">빼기</button></div>`).join('')
+          + `</div><div class="row" style="display:flex;gap:8px;align-items:center;margin-top:10px"><button class="btn sm" data-act="addPart" data-id="${h(sp.id)}">부서 추가</button><button class="btn sm" data-act="evenParts" data-id="${h(sp.id)}">똑같이 나누기</button><span class="chip ${tot === 100 ? 'ok' : 'warn'}">합계 ${tot}%</span></div>`;
+      }
+      html += `<div class="rule"><div><b style="font-size:15px">${h(sp.name)}</b><div class="hint s">${p ? `${h(p.title || '직책 없음')} · 대장 부서 ${h(p.dept)} · ${h(b ? b.name : '')}` : (s.cur ? '<span class="chip warn">이번 대장에 없음</span>' : h(b ? b.name : ''))}</div>
+        <div style="margin-top:10px"><select data-chg="splitMode" data-id="${h(sp.id)}"><option value="ratio" ${sp.mode !== 'headcount' ? 'selected' : ''}>부서별 비율 지정</option><option value="headcount" ${sp.mode === 'headcount' ? 'selected' : ''}>사업장 전체에 인원수 비례</option></select></div>
+        <div style="margin-top:8px"><button class="btn sm ghost danger" data-act="delSplit" data-id="${h(sp.id)}">배분 없애기</button></div></div><div>${body}</div></div>`;
+    });
+    html += `<div class="foot"><span class="hint">새로 나눌 사람은 [변동사항 · 인원 배치]에서 그 사람의 전표 줄을 “여러 부서로 나누기…”로 바꾸면 여기에 생깁니다.</span></div></div>`;
+    return html;
+  }
+  function orgManual() {
+    const s = state, cfg = s.cfg;
+    const brSel = (i, m) => `<select data-chg="manual" data-i="${i}" data-k="branch">${cfg.branches.map(b => `<option value="${b.code}" ${m.branch === b.code ? 'selected' : ''}>${h(b.name)}</option>`).join('')}</select>`;
+    const sj = cfg.manual.map((m, i) => [m, i]).filter(([m]) => m.type === 'sangjo'), vo = cfg.manual.map((m, i) => [m, i]).filter(([m]) => m.type === 'voucher');
+    let html = `<div class="panel flat"><div class="panel-head"><h2>상조회비 회사 찬조 추가분</h2><span class="hint s">급여에서 공제하지 않지만 회사가 상조회에 내는 금액. 상조회비 전표와 기안서 “회사찬조금”에 더해집니다.</span></div>
+      <div class="tbl-wrap"><table class="grid"><tr><th>사업장</th><th>활동센터</th><th class="num">금액</th><th>사유 (기안서 비고에 표시)</th><th>매월</th><th></th></tr>`
+      + (sj.map(([m, i]) => `<tr><td>${brSel(i, m)}</td><td><select data-chg="manual" data-i="${i}" data-k="center"><option value="">고르기</option>${opts(centerNames(m.branch).includes(m.center) || !m.center ? centerNames(m.branch) : [m.center, ...centerNames(m.branch)], m.center)}</select></td><td class="num"><input type="text" value="${won(m.amount)}" data-chg="manual" data-i="${i}" data-k="amount" style="width:110px;text-align:right"></td><td><input type="text" value="${h(m.memo || '')}" data-chg="manual" data-i="${i}" data-k="memo" style="width:100%;min-width:260px"></td><td class="c"><input type="checkbox" data-chg="manual" data-i="${i}" data-k="repeat" ${m.repeat ? 'checked' : ''}></td><td><button class="btn sm ghost danger" data-act="delManual" data-i="${i}">지우기</button></td></tr>`).join('') || `<tr><td colspan="6" class="hint">없습니다.</td></tr>`)
+      + `</table></div><div class="foot"><button class="btn" data-act="addManual" data-k="sangjo">추가분 넣기</button></div></div>`;
+    html += `<div class="panel flat"><div class="panel-head"><h2>급여전표 수기 행</h2><span class="hint s">대장에 없는 줄(세액보전액, 휴가지원사업 부담금 등). 넣은 만큼 미지급비용이 달라집니다.</span></div>
+      <div class="tbl-wrap"><table class="grid"><tr><th>사업장</th><th>차·대</th><th>계정과목</th><th class="num">금액</th><th>적요 (앞에 “○월 급여(사업장)”이 붙습니다)</th><th>매월</th><th></th></tr>`
+      + (vo.map(([m, i]) => `<tr><td>${brSel(i, m)}</td><td><select data-chg="manual" data-i="${i}" data-k="side"><option ${m.side !== '차변' ? 'selected' : ''}>대변</option><option ${m.side === '차변' ? 'selected' : ''}>차변</option></select></td><td><input type="text" value="${h(m.account || '')}" data-chg="manual" data-i="${i}" data-k="account" style="width:130px"></td><td class="num"><input type="text" value="${won(m.amount)}" data-chg="manual" data-i="${i}" data-k="amount" style="width:110px;text-align:right"></td><td><input type="text" value="${h(m.memo || '')}" data-chg="manual" data-i="${i}" data-k="memo" style="width:100%;min-width:260px"></td><td class="c"><input type="checkbox" data-chg="manual" data-i="${i}" data-k="repeat" ${m.repeat ? 'checked' : ''}></td><td><button class="btn sm ghost danger" data-act="delManual" data-i="${i}">지우기</button></td></tr>`).join('') || `<tr><td colspan="7" class="hint">없습니다. 매월 체크를 끄면 지금 올린 달에만 들어갑니다.</td></tr>`)
+      + `</table></div><div class="foot"><button class="btn" data-act="addManual" data-k="voucher">수기 행 넣기</button></div></div>`;
+    html += `<div class="panel flat"><div class="panel-head"><h2>예수금 줄</h2><span class="hint s">대장의 공제 열 → 전표 대변 줄. {지점} {세무서} {구청}은 사업장 정보로 바뀝니다. 금액 0원인 줄은 빠집니다.</span></div>
+      <div class="tbl-wrap"><table class="grid"><tr><th>순서</th><th>계정과목</th><th>적요</th><th>대장의 공제 열</th></tr>`
+      + cfg.credits.map((c, i) => `<tr><td class="mono">${i + 1}</td><td>${h(c.account || '예수금')}</td><td><input type="text" value="${h(c.label)}" data-chg="creditLabel" data-i="${i}" style="width:100%;min-width:320px"></td><td class="hint s">${h((c.cols || []).join(' + '))}${c.check ? ' <span class="chip warn">생기면 확인 알림</span>' : ''}</td></tr>`).join('')
+      + `</table></div><div class="foot"><label class="field">귀속부서<input type="text" value="${h(cfg.owner || '')}" data-chg="cfgField" data-k="owner" style="width:160px"></label><span class="hint">대장에 새 공제 열이 생기면 예수금 줄을 임시로 만들고 알려 드립니다.</span></div></div>`;
+    return html;
+  }
+
+  // ───────── 화면: 월별 이력 ─────────
+  function histTable(year, curYm, editable) {
+    const H = state.cfg.history, lay = C.monthlyLayout(H, year);
+    const months = []; for (let m = 1; m <= 12; m++) months.push(`${year}-${String(m).padStart(2, '0')}`);
+    const cols = months.map(k => C.monthColumn(H, k, lay));
+    const cell = (ym, k, v, i) => {
+      if (!editable) return `<td class="num ${ym === curYm ? 'cur' : ''}" style="padding:4px 10px">${cols[i] ? won(v) : ''}</td>`;
+      const adj = H[ym] && H[ym].adj && H[ym].adj[k];
+      return `<td class="${ym === curYm ? 'cur' : ''}"><input type="text" class="${adj ? 'adj' : ''}" value="${cols[i] ? won(v) : ''}" data-chg="hist" data-ym="${ym}" data-k="${h(k)}" ${adj ? `title="대장 값 ${won(v - adj)}에 수기 ${adj > 0 ? '+' : ''}${won(adj)}"` : ''}></td>`;
+    };
+    const row = (label, k) => `<tr><td class="lab">${h(label)}</td>${months.map((ym, i) => cell(ym, k, cols[i] ? (k === 'heads' ? cols[i].heads : cols[i].v(k)) : 0, i)).join('')}<td class="num" style="padding:4px 10px">${k === 'heads' ? (cols.filter(Boolean).length ? (C.sum(cols.filter(Boolean), c => c.heads) / cols.filter(Boolean).length).toFixed(1) : '') : won(C.sum(cols.filter(Boolean), c => c.v(k)))}</td></tr>`;
+    const sub = (label, f) => `<tr class="sum"><td class="lab" style="background:#F7F8FA">${label}</td>${cols.map(c => `<td class="num">${c ? won(f(c)) : ''}</td>`).join('')}<td class="num">${won(C.sum(cols.filter(Boolean), f))}</td></tr>`;
+    return `<div class="tbl-wrap"><table class="grid hist"><tr><th>구분</th>${months.map(ym => `<th class="num">${year.slice(2)}.${ym.slice(5)}${ym === curYm ? ' (당월)' : ''}</th>`).join('')}<th class="num">연계</th></tr>`
+      + row('지급인원', 'heads') + lay.pay.map(k => row(C.keyLabel(k), k)).join('') + sub('지급 소계', c => c.pay) + lay.ded.map(k => row(C.keyLabel(k), k)).join('') + sub('공제 소계', c => c.ded) + sub('실지급액', c => c.net) + `</table></div>`;
+  }
+  function viewHistory() {
+    const s = state, H = s.cfg.history;
+    const years = [...new Set([...Object.keys(H).map(k => k.slice(0, 4)), String(new Date().getFullYear()), ...(s.cur ? [s.cur.month.slice(0, 4)] : [])])].sort();
+    if (!s.histYear || !years.includes(s.histYear)) s.histYear = s.cur ? s.cur.month.slice(0, 4) : years[years.length - 1];
+    const adjMonths = Object.keys(H).filter(k => k.startsWith(s.histYear) && H[k].adj && Object.keys(H[k].adj).length);
+    return `<h1>월별 이력</h1><p class="lead">기안 엑셀의 월별 표와 지난 해 참고 시트는 여기 쌓인 값으로 만듭니다. 급여대장을 올리면 그 달 값이 자동으로 들어가고, 해가 바뀌면 새 해 표가 시작되며 지난 해는 참고 시트로 넘어갑니다.</p>
+      <div class="panel flat"><div class="panel-head"><div class="tabs">${years.map(y => `<button class="tab ${s.histYear === y ? 'on' : ''}" data-act="histYear" data-y="${y}">${y}년</button>`).join('')}</div><span class="sp"></span><span class="hint s">칸을 고치면 대장 값과의 차이를 수기 가감으로 기억합니다(노란 칸).</span></div>
+      ${histTable(s.histYear, s.cur && s.cur.kind === '급여' ? s.cur.month : null, true)}
+      ${adjMonths.length ? `<div class="foot"><span class="hint">수기 가감이 있는 달:</span>${adjMonths.map(k => `<button class="btn sm" data-act="clearHistAdj" data-ym="${k}">${k} 가감 지우기</button>`).join('')}</div>` : ''}</div>`;
+  }
+
+  // ───────── 셸 ─────────
+  const MODULES = [];
+  function registerModule(m) { MODULES.push(m); }
+  registerModule({ id: 'home', group: '', title: '대장 등록', icon: 'home', render: viewHome });
+  registerModule({ id: 'voucher', group: '급여 마감', title: '급여전표', icon: 'voucher', render: viewVoucher });
+  registerModule({ id: 'memo', group: '급여 마감', title: '급여기안', icon: 'memo', render: viewMemo });
+  registerModule({ id: 'org', group: '설정', title: '조직·배분', icon: 'org', render: viewOrg, dot: () => !!(state.alloc && (state.alloc.branches.some(b => b.newCenters.length) || state.alloc.unknownSites.length)) });
+  registerModule({ id: 'history', group: '설정', title: '월별 이력', icon: 'history', render: viewHistory });
+
+  function render() {
+    const s = state, mod = MODULES.find(m => m.id === s.view) || MODULES[0];
+    const keep = document.activeElement && document.activeElement.id === 'pq' ? document.activeElement.value : null;
+    let nav = '', lastGroup = null;
+    MODULES.forEach(m => { if (m.group !== lastGroup) { if (m.group) nav += `<div class="nav-group">${h(m.group)}</div>`; lastGroup = m.group; } nav += `<button class="nav ${m.id === mod.id ? 'on' : ''}" data-act="go" data-v="${m.id}"><svg viewBox="0 0 24 24">${ICON[m.icon] || ''}</svg>${h(m.title)}${m.dot && m.dot() ? '<span class="dot" title="확인할 것이 있습니다"></span>' : ''}</button>`; });
+    const saved = s.savedNow || EMBED.savedAt || '';
+    let body = '';
+    try { body = mod.render(); } catch (e) { body = `<div class="errbox">화면을 그리는 중 오류가 났습니다: ${h(e.message)}\n${h(String(e.stack || '').split('\n').slice(1, 4).join('\n'))}</div>`; }
+    $('#app').innerHTML = `<div class="app"><aside class="side"><div class="brand"><b>Hurom LS</b><span>급여작업 지원 앱</span></div>${nav}
+      <div class="side-foot">${VERSION} · 최종수정 ${h(BUILT)}<br>설정 저장 ${saved ? h(saved) : '기본값(초안)'}<br><button class="btn sm ghost" data-act="exportCfg" style="padding-left:0">설정 내보내기</button><button class="btn sm ghost" data-act="importCfg">불러오기</button></div></aside>
+      <main class="main"><div class="top"><span class="crumb">${mod.group ? h(mod.group) + ' / ' : ''}<b>${h(mod.title)}</b></span>${s.cur ? `<span class="chip acc">${C.ymLabel(s.cur.month)} ${h(s.cur.kind)}</span>` : ''}<span class="sp"></span>
+      ${s.dirty ? `<span class="chip warn" title="저장하지 않고 창을 닫으면 사라집니다.">저장하지 않은 변경이 있습니다</span><button class="btn sm ghost" data-act="discardLocal">변경 취소</button>` : ''}<button class="btn ${s.dirty ? 'pri' : ''}" data-act="saveApp">설정 넣어 앱 파일 저장</button></div>
+      ${s.error && mod.id !== 'home' ? `<div class="errbox">${h(s.error)}</div>` : ''}<div id="view">${body}</div></main></div>
+      <input type="file" id="file" class="hide" multiple accept=".xls,.xlsx,.xlsm,.csv"><input type="file" id="cfgfile" class="hide" accept=".json">`;
+    if (keep != null) { const q = $('#pq'); if (q) { q.value = keep; filterPeople(); } }
+  }
+  function filterPeople() { const q = ($('#pq').value || '').trim().toLowerCase(); document.querySelectorAll('#ptbl tr[data-q]').forEach(tr => tr.classList.toggle('hide', !!q && !tr.dataset.q.includes(q))); }
+
+  document.addEventListener('click', ev => {
+    const el = ev.target.closest('[data-act]'); if (!el || el.disabled) return;
+    const f = ACT[el.dataset.act]; if (!f) return;
+    try { const r = f(el.dataset, el); if (r && r.catch) r.catch(e => { state.error = '오류: ' + e.message; render(); }); } catch (e) { state.error = '오류: ' + e.message; render(); }
+  });
+  document.addEventListener('change', ev => {
+    const t = ev.target;
+    if (t.id === 'file') { if (t.files.length) addFiles([...t.files]); return; }
+    if (t.id === 'cfgfile') { const f = t.files[0]; if (!f) return; f.text().then(txt => { try { const c = JSON.parse(txt); if (!c.branches) throw new Error('설정 파일이 아닙니다.'); state.cfg = normalizeCfg(c); changed(); toast('설정을 불러왔습니다.'); } catch (e) { toast('불러오지 못했습니다: ' + e.message); } }); return; }
+    const el = t.closest('[data-chg]'); if (!el) return;
+    const f = CHG[el.dataset.chg]; if (!f) return;
+    try { f(el.dataset, el.value, el); } catch (e) { state.error = '오류: ' + e.message; render(); }
+  });
+  document.addEventListener('input', ev => { if (ev.target.id === 'pq') filterPeople(); });
+  document.addEventListener('keydown', ev => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.id === 'drop') { ev.preventDefault(); $('#file').click(); } if (ev.key === 'Enter' && ev.target.id === 'newCenter') { const b = document.querySelector('[data-act="addCenter"]'); if (b) b.click(); } });
+  ['dragenter', 'dragover'].forEach(n => window.addEventListener(n, ev => { ev.preventDefault(); const d = $('#drop'); if (d) d.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(n => window.addEventListener(n, ev => { ev.preventDefault(); const d = $('#drop'); if (d) d.classList.remove('over'); }));
+  window.addEventListener('drop', ev => { const fs = ev.dataTransfer && ev.dataTransfer.files; if (fs && fs.length) { state.view = 'home'; addFiles([...fs]); } });
+
+  window.addEventListener('beforeunload', ev => { if (state.dirty) { ev.preventDefault(); ev.returnValue = ''; } });
+  window.LSApp = { state, registerModule, render, recalc, addFiles, buildAppFile, version: VERSION };
+  render();
+})();
+</script>
+</body></html>
