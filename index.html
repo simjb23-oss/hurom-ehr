@@ -341,7 +341,7 @@ const MENUS={ /* 메뉴 정리(곽두팔 2026-11-12 준보 「사용 친화적�
  lead:[['홈',[['home','홈']]],
   ['승인함',[['leave/approve','휴가'],['work/ot','연장근로'],['work/flex','유연근무'],['exp','경비'],['juice','주스기']]],
   ['우리 팀',[['status','근태 현황'],['work/all','52시간'],['org','조직도']]],
-  ['팀원 관리',[['eval','팀원 평가'],['level','레벨업 추천'],['ct','계약·수습'],['forms/offjt','OFF-JT'],['deputy','대신 승인']]],
+  ['팀원 관리',[['eval','팀원 평가'],['level','레벨업 추천'],['ct','계약·수습'],['forms/iljt','일학습병행제'],['deputy','대신 승인']]],
   ['규정',[['rules','휴롬 규정']]]]};
 function curGroup(cur){const hash=(location.hash||'#dash').slice(1),M=MENUS[st.role]||MENUS.hr;const rr=r=>r.replace('{me}',st.me||'');
  let g=M.find(([,its])=>its.some(([r])=>rr(r)===hash))||M.find(([,its])=>its.some(([r])=>r.split('/')[0]===cur));
@@ -1404,7 +1404,6 @@ const AUTO=[
  ['pt','휴가샵 포인트','전체 공지 대신 포인트를 안 쓴 사람에게만 11월에 알림','#auto/pt'],
  ['offjt','일학습병행 OFF-JT','훈련일 3일 전 본인·팀장에게 자동 알림','#forms/offjt'],
  ['job','사내공모 지원','DM·스캔 메일 대신 지원 양식 (팀장에게 안 보임) · 합격 고르면 나머지 결과 자동 안내','#forms/job'],
- ['ticket','티켓 선착순 접수','신청 시각 순서로 당첨·대기 자동','#forms/ticket'],
  ['log','통지 기록 (증빙)','모든 자동 알림을 받는 사람·시각별로 남김 · 엑셀로 내려받기','#auto/log']];
 const M365C=['Teams 협업','Copilot 활용 기초','Excel 자동화','SharePoint 문서 관리'];
 const aOn=k=>!(st.autoOff||{})[k];
@@ -1463,7 +1462,10 @@ function autoRun(){['alerts','autolog','lvplans','lvdraft','hunet','forms','pt']
  if(ch)save()}
 
 /* 화면: 자동 처리 */
-const atabs=(cur,xs,base)=>'<div class="types" style="margin-bottom:12px">'+xs.map(([k,l])=>'<button data-go="#'+base+'/'+k+'" class="'+(k===cur?'on':'')+'">'+l+'</button>').join('')+'</div>';
+const atabs=(cur,xs,base)=>'<div class="types" style="margin-bottom:12px">'+xs.map(([k,l,u])=>u?'<button data-href="'+u+'" title="Teams에서 열기">'+l+' ↗</button>':'<button data-go="#'+base+'/'+k+'" class="'+(k===cur?'on':'')+'">'+l+'</button>').join('')+'</div>';
+/* 바깥 링크(Teams 채널 등): data-href 누르면 새 창 — 인라인 onclick 은 SharePoint CSP 에서 막혀서 위임으로 */
+const TEAMS_REWORK='https://teams.cloud.microsoft/l/channel/19%3Aab89e6ac4ec2475c99816d47b0261697%40thread.tacv2/T_02_RE-Work%20Day?groupId=6c6c3fd2-ecc4-4c89-a3c7-5186a88a5e71&tenantId=9ed88ac7-c72f-409f-ba79-cd1ba89ca471',TEAMS_ILJT='https://teams.cloud.microsoft/l/channel/19%3AaZZsDISf4tfsMisMvPVy_Q7jsn26AM4w4GH6AQxzwFU1%40thread.tacv2/T_13_%28%ED%9C%B4%EB%A1%AC%29%20%EC%9D%BC%ED%95%99%EC%8A%B5%EB%B3%91%ED%96%89%20%ED%95%99%EC%8A%B5%20%EA%B7%BC%EB%A1%9C%EC%9E%90?groupId=87d9e372-e972-4b12-94c8-d27c7cde0338&tenantId=9ed88ac7-c72f-409f-ba79-cd1ba89ca471';
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-href]');if(b){e.preventDefault();window.open(b.dataset.href,'_blank','noopener')}});
 V.auto=(tab)=>{tab=tab||'list';if(st.role!=='hr')return head('자동 처리')+hrOnly();if(!st.people.length)return head('자동 처리')+needP();
  const T=[['list',AUTO.length+'가지'],['log','통지 기록'],['hunet','휴넷'],['caps','출퇴근 보정'],['np','국민연금'],['pt','휴가샵 포인트']];let b=atabs(tab,T,'auto');const t=today(),y=t.slice(0,4);
  if(tab==='list'){
@@ -1507,7 +1509,7 @@ function lvAutoSec(y){const xs=st.people.filter(p=>p.status!=='퇴직').map(p=>(
 
 /* 화면: 신청 접수 (양식) */
 V.forms=(tab)=>{tab=tab||'hunet';if(!st.people.length)return head('신청·접수')+needP();const r=st.role,me=viewerNo(),t=today(),F=st.forms,nm=no=>esc((person(no)||{}).name);
- let b=atabs(tab,[['hunet','휴넷 신청'],['m365','M365 교육'],['ticket','티켓 선착순'],['job','사내공모'],['offjt','OFF-JT']],'forms');
+ let b=atabs(tab,[['hunet','휴넷 신청'],['m365','M365 교육'],['rework','RE-Work Day',TEAMS_REWORK],['job','사내공모'],['iljt','일학습병행제',TEAMS_ILJT]],'forms');
  if(tab==='m365'){const ss=F.filter(f=>f.kind==='m365s').slice().reverse();
   const mn=st.m365Min||20;b+=sec('듣고 싶은 교육','「듣고 싶어요」가 '+mn+'명이 되면 자동으로 열리고, 먼저 낸 사람부터 등록됩니다',(r==='hr'?'<div style="margin-bottom:8px">자동 개설 기준 <input id="m3_min" type="number" min="1" value="'+mn+'" style="width:70px">명 <button class="btn sm" id="m3_mg">저장</button></div>':'')+tbl(['과정','듣고 싶다는 사람',''],M365C.map(c=>{const dm=F.filter(f=>f.kind==='m365d'&&f.course===c&&!f.sid);return '<tr><td><b>'+c+'</b></td><td>'+dm.length+' / '+mn+'</td><td class="right">'+(r!=='hr'&&me?(dm.some(d=>d.no===me)?'<span class="st o">냄</span>':'<button class="btn p sm" data-m3d="'+esc(c)+'">듣고 싶어요</button>'):'')+'</td></tr>'})));
   if(r==='hr')b+=sec('직접 회차 열기','급할 때만 · 보통은 위에서 자동으로 열립니다','<div class="form"><label>교육 이름<input id="m3_n" value="Copilot 활용 기초"></label><label>날짜<input id="m3_d" type="date" value="'+addD(t,7)+'"></label><label>정원<input id="m3_c" type="number" value="20"></label></div><button class="btn p" id="m3_open">열기</button>');
@@ -1528,6 +1530,7 @@ V.forms=(tab)=>{tab=tab||'hunet';if(!st.people.length)return head('신청·접�
   if(r==='hr')b+=sec('선거인 명부 만들기','기준일 재직자(휴직 포함)로 명부를 자동으로 만듭니다','<div class="form"><label>선거<input id="vt_n" value="'+t.slice(0,4)+' 노사협의회 근로자위원 선거"></label><label>기준일<input id="vt_d" type="date" value="'+t+'"></label></div><button class="btn p" id="vt_mk">'+(v?'다시 만들기':'명부 만들기')+'</button>');
   if(v){const cf=F.filter(a=>a.kind==='votec'&&a.sid===v.id);b+=sec(esc(v.name),'기준일 '+v.date+' · '+v.list.length+'명 · 본인 확인 '+cf.length+'명',(r!=='hr'&&me&&v.list.includes(me)?(cf.some(a=>a.no===me)?'<p><span class="st o">명부 확인함</span></p>':'<p><button class="btn p sm" id="vt_ok">제 이름이 명부에 맞습니다</button></p>'):'')+
    tbl(['번호','이름','부서','입사일','확인'],v.list.map((no,i)=>{const p=person(no)||{};return '<tr><td>'+(i+1)+'</td><td>'+esc(p.name)+'</td><td>'+esc(p.dept)+'</td><td>'+p.join+'</td><td>'+(cf.some(a=>a.no===no)?'<span class="st o">확인</span>':'')+'</td></tr>'})))}else if(r!=='hr')b+=sec('','','<div class="empty">만들어진 명부가 없습니다</div>')}
+ if(tab==='iljt'||tab==='rework'){const u=tab==='iljt'?TEAMS_ILJT:TEAMS_REWORK,n=tab==='iljt'?'일학습병행제':'RE-Work Day';b+=sec(n,'Teams 채널에서 봅니다','<button class="btn p" data-href="'+u+'">Teams에서 '+n+' 열기 ↗</button>');}
  if(tab==='offjt'){const xs=F.filter(f=>f.kind==='offjt').slice().reverse();
   if(r==='hr')b+=sec('OFF-JT 일정 넣기','훈련일 3일 전에 본인과 팀장에게 자동으로 알립니다','<div class="form"><label>학습근로자'+pick('oj_no',actives(),'')+'</label><label>훈련일<input id="oj_d" type="date" value="'+addD(t,3)+'"></label><label>장소<input id="oj_p" value="공동훈련센터"></label></div><button class="btn p" id="oj_add">넣기</button>');
   b+=sec('OFF-JT 일정',xs.length+'건',tbl(['날짜','이름','장소','알림'],xs.filter(f=>r==='hr'||f.no===me||(leadOf(f.no)||{}).no===me).map(f=>'<tr><td>'+f.date+'</td><td>'+nm(f.no)+'</td><td>'+esc(f.place)+'</td><td>'+(st.alerts.some(a=>a.key==='oj-'+f.id)?'<span class="st o">보냄</span>':'<span class="tag">'+addD(f.date,-3)+'에 보냄</span>')+'</td></tr>'),'일정이 없습니다'))}
