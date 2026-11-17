@@ -41,19 +41,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // AX-PLM 로컬 미리보기 — 브라우저 저장소 + 예시 2개 (?reset=1 이면 비우고 다시)
 const React = __importStar(require("react"));
 const ReactDom = __importStar(require("react-dom"));
-const AxPlm_1 = __importDefault(require("src/webparts/huromAxPlm/components/AxPlm.js"));
+const AxWork_1 = __importDefault(require("src/webparts/huromAxPlm/components/AxWork.js"));
 const store_1 = require("src/webparts/huromDevHub/model/store.js");
-const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
-const store = new store_1.LocalStore('hurom-axplm.projects.v1');
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
+const store = new store_1.LocalStore('hurom-axplm.projects.v2');
 const params = new URLSearchParams(location.search);
 if (params.get('reset'))
     window.localStorage.clear();
 store.list()
-    .then(ps => (ps.length || params.get('empty') ? undefined : (0, ax_1.axSamples)().reduce((acc, p) => acc.then(() => store.save(p)), Promise.resolve(undefined))))
-    .then(() => ReactDom.render(React.createElement(AxPlm_1.default, { store, userDisplayName: params.get('user') || '심준보' }), document.getElementById('root')));
+    .then(ps => (ps.length || params.get('empty') ? undefined : (0, work_1.workSamples)().reduce((acc, p) => acc.then(() => store.save(p)), Promise.resolve(undefined))))
+    .then(() => ReactDom.render(React.createElement(AxWork_1.default, { store, userDisplayName: params.get('user') || '심준보' }), document.getElementById('root')));
 
 };
-__m["src/webparts/huromAxPlm/components/AxPlm.js"]=function(module,exports,require){"use strict";
+__m["src/webparts/huromAxPlm/components/AxWork.js"]=function(module,exports,require){"use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -91,703 +91,586 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = AxPlm;
+exports.default = AxWork;
 const React = __importStar(require("react"));
 const store_1 = require("src/webparts/huromDevHub/model/store.js");
 const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
-const Timeline_1 = __importDefault(require("src/webparts/huromAxPlm/components/Timeline.js"));
-const RegRadar_1 = __importStar(require("src/webparts/huromAxPlm/components/RegRadar.js"));
-const theme_1 = require("src/webparts/huromAxPlm/components/theme.js");
-function aiEvents(items) {
-    const out = [];
-    const now = new Date().toISOString();
-    items.forEach(p => {
-        const st = (0, ax_1.stageOf)(p.stage);
-        const sl = `${st.no} ${st.name}`;
-        p.log.filter(l => l.ai).forEach(l => out.push({ at: l.at, who: l.who, project: p.name, pid: p.id, stage: sl, what: l.what }));
-        (p.brief || []).forEach(b => out.push({ at: b.at, who: b.who, project: p.name, pid: p.id, stage: sl, what: `브리핑 — ${b.text}` }));
-        (p.asks || []).forEach(a => {
-            if (a.answer)
-                out.push({ at: a.answeredAt || a.at, who: a.answeredBy || 'AI', project: p.name, pid: p.id, stage: `${(0, ax_1.stageOf)(a.stage).no} ${(0, ax_1.stageOf)(a.stage).name}`, what: `사전 검토 답 — ${a.text}` });
-            else
-                out.push({ at: a.at, who: 'AI 사전 검토', project: p.name, pid: p.id, stage: sl, what: `검토 중 — ${a.text}`, live: true });
-        });
-        const w = (0, ax_1.whereNow)(p);
-        if (w.state === 'behind' || w.state === 'late')
-            out.push({ at: now, who: 'AI 일정 감시', project: p.name, pid: p.id, stage: sl, what: `일정 경고 — ${w.label}`, live: true });
-    });
-    return out.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
-}
-const REAL = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-const ago = (iso) => {
-    if ((0, ax_1.today)() !== REAL())
-        return (0, ax_1.fmt)(iso);
-    const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-    return m < 1 ? '방금' : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : (0, ax_1.fmt)(iso);
-};
-const initials = (s) => (s.replace(/^PC-/, '').replace(/\(.*\)/, '').trim().slice(0, 2) || 'AI');
-function AxPlm(props) {
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
+const RegRadar_1 = __importDefault(require("src/webparts/huromAxPlm/components/RegRadar.js"));
+const C = { bg: '#F5F6F8', card: '#FFFFFF', line: '#E3E6EA', line2: '#CDD2D8', text: '#111827', sub: '#4B5563', faint: '#6B7280',
+    brand: '#0B7A53', brandBg: '#E3F4EC', blue: '#1D4ED8', blueBg: '#E6EEFF', red: '#C81E1E', redBg: '#FDECEC', amber: '#9A5B00', amberBg: '#FFF4DB', lock: '#9CA3AF', gold: '#B7791F', goldBg: '#FFF7E0' };
+const SHORT = ['컨셉', '공동검토', '설계', '개발', '양산', '생산', '출시 후'];
+const HUE = ['#7C3AED', '#2563EB', '#0891B2', '#0B7A53', '#CA8A04', '#EA580C', '#DB2777'];
+const font = '"Pretendard", "Malgun Gothic", "Segoe UI", sans-serif';
+const btn = { border: `1px solid ${C.line2}`, background: C.card, color: C.text, borderRadius: 8, padding: '6px 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font };
+const primary = Object.assign(Object.assign({}, btn), { background: C.brand, borderColor: C.brand, color: '#fff' });
+const inp = { border: `1px solid ${C.line2}`, borderRadius: 8, padding: '6px 9px', fontSize: 13, fontFamily: font, color: C.text, background: '#fff', minWidth: 0 };
+const card = { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14 };
+const nowIso = () => new Date().toISOString();
+const md = (s) => (s ? `${Number(s.slice(5, 7))}.${Number(s.slice(8, 10))}` : '—');
+const uid = (p) => p + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+const teamsChat = (mail, msg) => `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(mail)}&message=${encodeURIComponent(msg)}`;
+const pageUrl = () => window.location.href.split('#')[0];
+function AxWork(props) {
     const who = props.userDisplayName || '나';
     const [items, setItems] = React.useState(undefined);
-    const [err, setErr] = React.useState('');
-    const [sel, setSel] = React.useState(undefined);
-    const [adding, setAdding] = React.useState(false);
-    const [q, setQ] = React.useState('');
-    const [mine, setMine] = React.useState(false);
-    const [drag, setDrag] = React.useState(undefined);
-    const [over, setOver] = React.useState(undefined);
-    const [view, setView] = React.useState('board');
-    const [reg, setReg] = React.useState([]);
     const [demo, setDemo] = React.useState(false);
-    const [sim, setSim] = React.useState(undefined); // 시간 손잡이 날짜 (심준보 msg 10366339)
-    const [playing, setPlaying] = React.useState(false); // 목록이 비면 예시로 화면을 보여 주고 저장은 안 함 (심준보 msg 10364460 '아무화면안뜨는데')
-    (0, ax_1.setNow)(sim);
+    const [err, setErr] = React.useState('');
+    const [view, setView] = React.useState('todo');
+    const [sel, setSel] = React.useState(undefined);
+    const [focus, setFocus] = React.useState(undefined);
+    const [adding, setAdding] = React.useState(false);
     const queue = React.useMemo(() => new store_1.SaveQueue(props.store), [props.store]);
-    const tick = (0, theme_1.useTick)(3200);
     React.useEffect(() => {
         props.store.list().then(xs => { const open = xs.filter(x => !x.closed); if (!xs.length) {
             setDemo(true);
-            setItems((0, ax_1.axSamples)());
+            setItems((0, work_1.workSamples)());
         }
         else
             setItems(open); }, e => setErr(String((e && e.message) || e)));
-        (0, RegRadar_1.loadReg)().then(setReg, () => undefined);
     }, [props.store]);
+    React.useEffect(() => (0, store_1.guardLeave)(() => queue.busy()), [queue]);
     const update = (id, fn) => {
-        if (sim)
-            return;
         const cur = (items || []).filter(x => x.id === id)[0];
         if (!cur)
             return;
-        const stamp = (x) => (Object.assign(Object.assign({}, fn(x)), { updated: new Date().toISOString() }));
-        const next = stamp(cur);
+        const apply = (x) => (Object.assign(Object.assign({}, (0, work_1.settle)(fn(x), who)), { updated: nowIso() }));
+        const next = apply(cur);
         setItems(xs => (xs || []).map(x => (x.id === id ? next : x)));
         if (demo)
             return;
-        queue.save(next, stamp).then(r => setItems(xs => (xs || []).map(x => (x.id === id ? Object.assign(Object.assign(Object.assign({}, x), { spId: r.saved.spId, spVer: r.saved.spVer }), (r.merged ? r.saved : {})) : x))), e => setErr(`저장 못 했어요 — ${String((e && e.message) || e)}`));
+        queue.save(next, apply).then(r => setItems(xs => (xs || []).map(x => (x.id === id ? Object.assign(Object.assign(Object.assign({}, x), { spId: r.saved.spId, spVer: r.saved.spVer }), (r.merged ? r.saved : {})) : x))), e => setErr(`저장 못 했어요 — ${String((e && e.message) || e)}`));
     };
-    const add = (name, owner, target, start) => {
-        const p = (0, ax_1.newProject)(name, who, owner.trim() || who, target || undefined, start || undefined);
+    const add = (name, owner, approver, start, target) => {
+        const p = Object.assign(Object.assign({}, (0, ax_1.newProject)(name, who, owner.trim() || who, target || undefined, start || undefined)), { approver: approver.trim() || undefined });
         setItems(xs => [p].concat(demo ? [] : (xs || [])));
         setDemo(false);
         setAdding(false);
         setSel(p.id);
+        setFocus(0);
+        setView('project');
         props.store.save(p).then(s => setItems(xs => (xs || []).map(x => (x.id === p.id ? Object.assign(Object.assign({}, x), { spId: s.spId, spVer: s.spVer }) : x))), e => setErr(`저장 못 했어요 — ${String((e && e.message) || e)}`));
     };
-    const root = { minHeight: '100vh', fontFamily: '"Pretendard", "Malgun Gothic", "Segoe UI", sans-serif', color: theme_1.T.text, background: `radial-gradient(1200px 600px at 20% -10%, #0F2A20 0%, ${theme_1.T.bg} 60%)`, paddingBottom: 32 };
+    const open = (id, k) => { setSel(id); setFocus(k); setView('project'); };
+    const root = { minHeight: '100vh', background: C.bg, color: C.text, fontFamily: font, fontSize: 14, paddingBottom: 40 };
     if (!items)
-        return React.createElement("div", { "data-axplm": true, className: "axp", style: Object.assign(Object.assign({}, root), { padding: 32 }) },
-            React.createElement("style", null, theme_1.CSS),
-            React.createElement("span", { className: "axp-blink", style: { color: theme_1.T.sub } }, err || 'AI가 프로젝트를 불러오는 중…'));
-    const base = items.filter(p => !p.closed && (!q || (p.name + ' ' + (p.owner || '')).toLowerCase().indexOf(q.toLowerCase()) >= 0) && (!mine || p.owner === who));
-    const shown = sim ? base.map(p => (0, ax_1.simulate)(p, sim)) : base;
-    const cur = shown.filter(x => x.id === sel)[0] || (sim ? undefined : items.filter(x => x.id === sel)[0]);
-    const realToday = REAL();
-    const D = 86400000;
-    const dms = (x) => new Date(x + 'T00:00:00').getTime();
-    let lo = dms(realToday) - 60 * D;
-    let hi = dms(realToday) + 240 * D;
-    base.forEach(p => { if (p.start)
-        lo = Math.min(lo, dms(p.start)); const e = (p.plan || {}).S7; if (e)
-        hi = Math.max(hi, dms(e)); });
-    const ymdOf = (t) => { const x = new Date(t); return `${x.getFullYear()}-${('0' + (x.getMonth() + 1)).slice(-2)}-${('0' + x.getDate()).slice(-2)}`; };
-    const events = aiEvents(shown);
-    const careN = shown.reduce((a, p) => a + (0, ax_1.careList)(p).length, 0);
-    return (React.createElement("div", { "data-axplm": true, className: "axp", style: root },
-        React.createElement("style", null, theme_1.CSS),
-        React.createElement("div", { className: "axp-aurora" },
-            React.createElement("i", null),
-            React.createElement("i", null),
-            React.createElement("i", null)),
-        React.createElement("div", { className: "axp-grid" }),
-        React.createElement("div", { className: "axp-z" },
-            React.createElement(TopBar, { who: who, view: view, setView: setView, q: q, setQ: setQ, mine: mine, setMine: setMine, careN: careN, onNew: () => setAdding(true), aiLive: Object.keys(shown.reduce((m, p) => { m[p.aiHelper || 'AI 도우미'] = 1; return m; }, {})).length + 2 }),
-            err && React.createElement("div", { "data-ax-err": true, style: { margin: '0 24px 12px', background: theme_1.T.redDim, color: theme_1.T.red, padding: '8px 14px', borderRadius: 10, fontSize: 13 } },
-                err,
-                " ",
-                React.createElement("button", { onClick: () => setErr(''), style: Object.assign(Object.assign({}, theme_1.btn), { padding: '2px 10px', marginLeft: 8 }) }, "\uB2EB\uAE30")),
-            demo && React.createElement("div", { "data-ax-demo": true, style: { margin: '0 24px 10px', padding: '8px 14px', borderRadius: 12, background: theme_1.T.aiDim, color: '#D7CCFF', fontSize: 12.5, fontWeight: 700 } }, "\u2726 \uC544\uC9C1 \uB4F1\uB85D\uB41C \uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4\uC11C \uC608\uC2DC 2\uAC1C\uB85C \uBCF4\uC5EC \uB4DC\uB824\uC694 \u2014 \uC608\uC2DC\uB294 \uC800\uC7A5\uB418\uC9C0 \uC54A\uACE0, [+ \uC0C8 \uD504\uB85C\uC81D\uD2B8]\uB97C \uB9CC\uB4E4\uBA74 \uC0AC\uB77C\uC838\uC694."),
-            React.createElement(Scrub, { lo: lo, hi: hi, value: dms(sim || realToday), today: dms(realToday), items: base, playing: playing, sim: sim, onChange: t => { setPlaying(false); setSim(Math.abs(t - dms(realToday)) < D / 2 ? undefined : ymdOf(t)); }, onPlay: () => { if (playing) {
-                    setPlaying(false);
-                    return;
-                } if (!sim || dms(sim) >= hi)
-                    setSim(ymdOf(lo)); setPlaying(true); }, onReset: () => { setPlaying(false); setSim(undefined); }, step: ymdOf, setSim: setSim, setPlaying: setPlaying }),
-            events.length > 0 && React.createElement(Ticker, { events: events, onOpen: setSel }),
-            adding && React.createElement(NewForm, { who: who, onCancel: () => setAdding(false), onAdd: add }),
-            React.createElement("div", { style: { display: 'grid', gridTemplateColumns: 'minmax(0, 1.55fr) minmax(320px, 1fr)', gap: 16, padding: '16px 24px 0' } },
-                React.createElement(Where, { items: shown, onOpen: setSel }),
-                React.createElement(AiOps, { items: shown, events: events, reg: reg, tick: tick, onOpen: setSel })),
-            React.createElement(Kpis, { items: shown, events: events, reg: reg, careN: careN }),
-            view === 'plan' && React.createElement(Timeline_1.default, { items: shown, onOpen: id => setSel(id), sel: sel }),
-            view === 'board' && React.createElement("div", { style: { display: 'flex', gap: 12, padding: '6px 24px 8px', overflowX: 'auto', alignItems: 'flex-start' } }, ax_1.AX_STAGES.map((s, si) => {
-                const list = shown.filter(p => p.stage === s.id);
-                const aiTask = (s.ai || [])[(tick + si) % Math.max(1, (s.ai || []).length)];
-                const regN = reg.filter(x => x.stage === s.id).length;
-                return (React.createElement("div", { key: s.id, "data-ax-col": s.id, className: "axp-in", onDragOver: e => { if (drag) {
-                        e.preventDefault();
-                        setOver(s.id);
-                    } }, onDragLeave: () => setOver(o => (o === s.id ? undefined : o)), onDrop: e => { e.preventDefault(); const id = drag; setDrag(undefined); setOver(undefined); if (id)
-                        update(id, p => (0, ax_1.moveTo)(p, s.id, who)); }, style: Object.assign(Object.assign({}, theme_1.glass), { animationDelay: `${si * 60}ms`, flex: '1 0 214px', minWidth: 214, maxWidth: 300, padding: 10, background: over === s.id ? theme_1.T.brandDim : 'rgba(255,255,255,.03)', outline: over === s.id ? `2px dashed ${theme_1.T.brand}` : 'none' }) },
-                    React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, padding: '2px 4px 6px' } },
-                        React.createElement("span", { style: { width: 24, height: 24, borderRadius: 8, background: list.length ? theme_1.T.brandDim : theme_1.T.glass2, color: list.length ? theme_1.T.brand : theme_1.T.faint, fontWeight: 900, fontSize: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' } }, si + 1),
-                        React.createElement("span", { style: { fontSize: 14, fontWeight: 800 } }, s.name),
-                        React.createElement("span", { style: { flex: 1 } }),
-                        React.createElement("span", { style: { fontSize: 12, color: theme_1.T.faint, fontWeight: 700 } }, list.length)),
-                    React.createElement("div", { "data-ax-col-ai": true, title: (s.ai || []).join(' / '), style: { display: 'flex', alignItems: 'center', gap: 6, margin: '0 2px 8px', padding: '5px 8px', borderRadius: 9, background: theme_1.T.aiDim, fontSize: 11.5, color: '#D7CCFF', minHeight: 26 } },
-                        React.createElement("span", { className: "axp-dot", style: { color: theme_1.T.ai, width: 6, height: 6, flex: '0 0 auto' } }),
-                        React.createElement("span", { key: aiTask, className: "axp-in", style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } },
-                            "AI \u00B7 ",
-                            aiTask),
-                        regN > 0 && React.createElement("span", { title: "\uC774 \uB2E8\uACC4\uC5D0\uC11C \uBBF8\uB9AC \uBCFC \uADDC\uC81C\u00B7\uB9AC\uCF5C\u00B7\uBD88\uB7C9", style: { marginLeft: 'auto', flex: '0 0 auto', fontWeight: 800, color: theme_1.T.amber } },
-                            "\u2691",
-                            regN)),
-                    list.map(p => React.createElement(Card, { key: p.id, p: p, s: s, on: p.id === sel, onOpen: () => setSel(p.id), onDrag: () => setDrag(p.id), onDragEnd: () => { setDrag(undefined); setOver(undefined); } })),
-                    !list.length && React.createElement("div", { style: { fontSize: 12, color: theme_1.T.faint, textAlign: 'center', padding: '14px 0', border: `1px dashed ${theme_1.T.line}`, borderRadius: 12 } }, "\uC5EC\uAE30\uB85C \uB04C\uC5B4 \uB193\uAE30"),
-                    s.gate && React.createElement("div", { "data-ax-gate": s.gate, style: { marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, color: theme_1.T.brand, fontSize: 12, fontWeight: 800 } },
-                        React.createElement("span", { style: { flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${theme_1.T.brand})` } }),
-                        React.createElement("span", { style: { width: 9, height: 9, transform: 'rotate(45deg)', background: theme_1.T.brand, boxShadow: `0 0 12px ${theme_1.T.brand}` } }),
-                        s.gate,
-                        React.createElement("span", { style: { flex: 1, height: 1, background: `linear-gradient(90deg, ${theme_1.T.brand}, transparent)` } }))));
-            })),
-            items.length === 0 && !adding && React.createElement("div", { style: { textAlign: 'center', color: theme_1.T.faint, fontSize: 14, padding: '20px 0 40px' } }, "\uC544\uC9C1 \uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4\uC694. [+ \uC0C8 \uD504\uB85C\uC81D\uD2B8]\uB85C \uC2DC\uC791\uD558\uBA74 AI\uAC00 \uBC14\uB85C \uBD99\uC5B4\uC694.")),
-        cur && React.createElement(Panel, { p: cur, who: who, tick: tick, sim: !!sim, onClose: () => setSel(undefined), update: fn => update(cur.id, fn) })));
-}
-function TopBar(props) {
-    const d = new Date();
-    const wd = '일월화수목금토'.charAt(d.getDay());
-    return (React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 14, padding: '18px 24px 12px', flexWrap: 'wrap' } },
-        React.createElement("span", { className: "axp-orb", style: { width: 34, height: 34 } },
-            React.createElement("span", { style: { fontSize: 13, fontWeight: 900, color: theme_1.T.text } }, "AX")),
-        React.createElement("div", null,
-            React.createElement("div", { style: { fontSize: 22, fontWeight: 900, letterSpacing: '-.01em', lineHeight: 1.1 } },
-                React.createElement("span", { className: "axp-grad" }, "AX-PLM"),
-                " ",
-                React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: theme_1.T.sub } }, "AI\uC640 \uAC19\uC774 \uB2EC\uB9AC\uB294 \uAC1C\uBC1C \uAD00\uC81C")),
-            React.createElement("div", { style: { fontSize: 12, color: theme_1.T.faint, marginTop: 3 } },
-                d.getMonth() + 1,
-                "\uC6D4 ",
-                d.getDate(),
-                "\uC77C (",
-                wd,
-                ") \u00B7 ",
-                props.who,
-                " \uB2D8 \u00B7 \uB9C9\uC9C0 \uC54A\uACE0, \uC77C\uC815\uC774 \uAE30\uC900")),
-        React.createElement("span", { "data-ax-live": true, style: { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '4px 11px', borderRadius: 999, background: theme_1.T.aiDim, color: '#D7CCFF', fontSize: 12, fontWeight: 800 } },
-            React.createElement("span", { className: "axp-dot", style: { color: theme_1.T.ai } }),
-            "LIVE \u00B7 AI ",
-            props.aiLive,
-            "\uBA85 \uC791\uC5C5 \uC911"),
-        React.createElement("span", { style: { flex: 1 } }),
-        React.createElement("span", { style: { display: 'flex', background: theme_1.T.glass, border: `1px solid ${theme_1.T.line}`, borderRadius: 999, padding: 3 } }, [['board', '보드'], ['plan', '일정']].map(v => React.createElement("button", { key: v[0], "data-ax-view": v[0], onClick: () => props.setView(v[0]), style: Object.assign(Object.assign({}, theme_1.btn), { border: 'none', padding: '5px 16px', background: props.view === v[0] ? theme_1.T.text : 'transparent', color: props.view === v[0] ? theme_1.T.bg : theme_1.T.sub }) }, v[1]))),
-        props.careN > 0 && React.createElement("span", { "data-ax-care-total": true, title: "AI\uAC00 \uCC59\uAE38 \uAC83 \u2014 \uCE74\uB4DC\uB97C \uC5F4\uBA74 \uBCF4\uC5EC\uC694", style: { fontSize: 12.5, fontWeight: 800, background: theme_1.T.amberDim, color: theme_1.T.amber, borderRadius: 999, padding: '5px 12px' } },
-            "\uCC59\uAE38 \uAC83 ",
-            props.careN),
-        React.createElement("input", { "data-ax-search": true, value: props.q, onChange: e => props.setQ(e.target.value), placeholder: "\uD504\uB85C\uC81D\uD2B8\u00B7PM \uCC3E\uAE30", style: Object.assign(Object.assign({}, theme_1.inp), { width: 190, borderRadius: 999 }) }),
-        React.createElement("button", { "data-ax-mine": true, className: "axp-btn", onClick: () => props.setMine(!props.mine), style: Object.assign(Object.assign({}, theme_1.btn), { background: props.mine ? theme_1.T.brandDim : theme_1.T.glass, color: props.mine ? theme_1.T.brand : theme_1.T.sub }) }, "\uB0B4 \uAC83\uB9CC"),
-        React.createElement("button", { "data-ax-new": true, onClick: props.onNew, style: theme_1.primary }, "+ \uC0C8 \uD504\uB85C\uC81D\uD2B8")));
-}
-function Ticker(props) {
-    const xs = props.events.slice(0, 12);
-    const loop = xs.concat(xs);
-    return (React.createElement("div", { "data-ax-ticker": true, style: { margin: '0 24px', overflow: 'hidden', borderTop: `1px solid ${theme_1.T.line}`, borderBottom: `1px solid ${theme_1.T.line}`, padding: '7px 0', maskImage: 'linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent)', WebkitMaskImage: 'linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent)' } },
-        React.createElement("div", { className: "axp-ticker" }, loop.map((e, k) => React.createElement("span", { key: k, onClick: () => props.onOpen(e.pid), style: { fontSize: 12, color: theme_1.T.sub, whiteSpace: 'nowrap', cursor: 'pointer' } },
-            React.createElement("b", { style: { color: e.live ? theme_1.T.amber : '#D7CCFF' } },
-                "\u2726 ",
-                e.who),
-            " ",
-            React.createElement("span", { style: { color: theme_1.T.faint } },
-                "@ ",
-                e.project,
-                " \u00B7 ",
-                e.stage),
-            " \u2014 ",
-            e.what.length > 60 ? e.what.slice(0, 60) + '…' : e.what)))));
-}
-// 우리는 지금 어디쯤 — 프로젝트마다 7단계 길, 실제 위치(빛나는 점)와 오늘 있어야 할 곳(점선 고리)
-function Where(props) {
-    const rows = props.items.slice().sort((a, b) => (a.target || '9') < (b.target || '9') ? -1 : 1).slice(0, 6);
-    return (React.createElement("div", { "data-ax-where": true, className: "axp-in", style: Object.assign(Object.assign({}, theme_1.glass), { padding: '16px 18px', position: 'relative', overflow: 'hidden' }) },
-        React.createElement("span", { className: "axp-scan", style: { animationDelay: '-2s' } }),
-        React.createElement("div", { style: { display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 } },
-            React.createElement("span", { style: { fontSize: 16, fontWeight: 900 } }, "\uC6B0\uB9AC\uB294 \uC9C0\uAE08 \uC5B4\uB514\uCBE4"),
-            React.createElement("span", { style: { fontSize: 12, color: theme_1.T.faint } }, "\u25CF \uC9C0\uAE08 \uC704\uCE58 \u00B7 \u25CC \uC624\uB298 \uB0A0\uC9DC\uB85C \uC788\uC5B4\uC57C \uD560 \uACF3 \u00B7 \u25C6 \uAD00\uBB38")),
-        React.createElement("div", { style: { display: 'flex', gap: 10, fontSize: 10.5, color: theme_1.T.faint, marginBottom: 2 } },
-            React.createElement("span", { style: { width: 180, flex: '0 0 180px' } }),
-            React.createElement("div", { style: { position: 'relative', flex: 1, height: 14 } }, ax_1.AX_STAGES.map((s, k) => React.createElement("span", { key: s.id, style: { position: 'absolute', left: `${((k + 0.5) / ax_1.AX_STAGES.length) * 100}%`, transform: 'translateX(-50%)', whiteSpace: 'nowrap' } }, ['컨셉', '공동검토', '설계', '개발', '양산', '생산', '출시 후'][k]))),
-            React.createElement("span", { style: { width: 82, flex: '0 0 82px' } })),
-        rows.map((p, ri) => {
-            const w = (0, ax_1.whereNow)(p);
-            const col = theme_1.STATE_COLOR[w.state];
-            const pos = (k) => `${((k + 0.5) / ax_1.AX_STAGES.length) * 100}%`;
-            return (React.createElement("div", { key: p.id, "data-ax-where-row": p.id, onClick: () => props.onOpen(p.id), className: "axp-in", style: { animationDelay: `${ri * 80}ms`, display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: `1px solid ${theme_1.T.line}`, cursor: 'pointer' } },
-                React.createElement("div", { style: { width: 180, flex: '0 0 180px', minWidth: 0 } },
-                    React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, p.name),
-                    React.createElement("div", { style: { fontSize: 11.5, color: col, fontWeight: 800, marginTop: 2 } }, w.label),
-                    w.state !== 'none' && React.createElement("div", { title: "\uC2DC\uC791~\uCD9C\uC2DC \uBAA9\uD45C \uC911 \uC624\uB298 \uC704\uCE58", style: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 } },
-                        React.createElement("span", { style: { flex: 1, height: 3, borderRadius: 3, background: theme_1.T.line, overflow: 'hidden' } },
-                            React.createElement("span", { className: "axp-bar", style: { display: 'block', width: `${Math.round(w.pct * 100)}%`, height: '100%', background: theme_1.T.cyan } })),
-                        React.createElement("span", { style: { fontSize: 10.5, color: theme_1.T.faint } },
-                            "\uC77C\uC815 ",
-                            Math.round(w.pct * 100),
-                            "%"))),
-                React.createElement("div", { style: { position: 'relative', flex: 1, height: 30 } },
-                    React.createElement("div", { style: { position: 'absolute', left: pos(0), right: `${(0.5 / ax_1.AX_STAGES.length) * 100}%`, top: 14, height: 2, background: theme_1.T.line2, borderRadius: 2 } }),
-                    React.createElement("div", { className: "axp-bar", style: { position: 'absolute', left: pos(0), width: `${(w.cur / ax_1.AX_STAGES.length) * 100}%`, top: 13, height: 4, borderRadius: 4, background: `linear-gradient(90deg, ${theme_1.T.brand}, ${col})`, boxShadow: `0 0 12px ${col}`, overflow: 'hidden' } },
-                        React.createElement("span", { className: "axp-flow" })),
-                    ax_1.AX_STAGES.map((s, k) => {
-                        const done = k < w.cur;
-                        const isCur = k === w.cur;
-                        return (React.createElement(React.Fragment, { key: s.id },
-                            s.gate && React.createElement("span", { title: s.gate, style: { position: 'absolute', left: `${((k + 1) / ax_1.AX_STAGES.length) * 100}%`, top: 11, width: 8, height: 8, marginLeft: -4, transform: 'rotate(45deg)', background: k < w.cur ? theme_1.T.brand : theme_1.T.bg2, border: `1.5px solid ${k < w.cur ? theme_1.T.brand : theme_1.T.line2}` } }),
-                            !isCur && React.createElement("span", { title: `${s.no} ${s.name}${(p.plan || {})[s.id] ? ' ~ ' + (p.plan || {})[s.id] : ''}`, style: { position: 'absolute', left: pos(k), top: 10, width: 10, height: 10, marginLeft: -5, borderRadius: '50%', background: done ? theme_1.T.brand : theme_1.T.bg2, border: `2px solid ${done ? theme_1.T.brand : theme_1.T.line2}` } }),
-                            k === w.exp && w.exp !== w.cur && React.createElement("span", { title: "\uC624\uB298 \uB0A0\uC9DC\uB85C \uC788\uC5B4\uC57C \uD560 \uB2E8\uACC4", style: { position: 'absolute', left: pos(k), top: 4, width: 22, height: 22, marginLeft: -11, borderRadius: '50%', border: `2px dashed ${theme_1.T.sub}` } })));
-                    }),
-                    React.createElement("span", { "data-ax-where-me": true, className: "axp-dot", title: `지금: ${(0, ax_1.stageOf)(p.stage).no} ${(0, ax_1.stageOf)(p.stage).name}`, style: { position: 'absolute', left: pos(w.cur), top: 7, width: 16, height: 16, marginLeft: -8, color: col, background: col, boxShadow: `0 0 18px ${col}` } })),
-                React.createElement("div", { style: { width: 82, flex: '0 0 82px', textAlign: 'right' } },
-                    React.createElement("div", { style: { fontSize: 15, fontWeight: 900, color: p.target ? theme_1.T.text : theme_1.T.faint } }, p.target ? (0, ax_1.dday)(p.target) : '—'),
-                    React.createElement("div", { style: { fontSize: 10.5, color: theme_1.T.faint } }, p.target ? `출시 ${p.target.slice(2).replace(/-/g, '.')}` : '출시일 없음'))));
-        }),
-        !rows.length && React.createElement("div", { style: { fontSize: 13, color: theme_1.T.faint, padding: '14px 0' } }, "\uD504\uB85C\uC81D\uD2B8\uB97C \uB9CC\uB4E4\uBA74 \uC5EC\uAE30\uC11C 7\uB2E8\uACC4 \uC911 \uC9C0\uAE08 \uC5B4\uB514\uCBE4\uC778\uC9C0 \uBCF4\uC5EC\uC694.")));
-}
-// AI 관제 — AI 도우미별로 어느 프로젝트·단계에서 뭘 하는지 + 실시간 기록
-function AiOps(props) {
-    const { items, tick } = props;
-    const agents = [];
-    const helpers = {};
-    items.forEach(p => {
-        const s = (0, ax_1.stageOf)(p.stage);
-        const name = p.aiHelper || 'AI 도우미';
-        if (!helpers[name]) {
-            helpers[name] = { name, role: p.aiHelper ? '프로젝트 담당 AI' : '배정 전 · 기본 AI', jobs: [] };
-            agents.push(helpers[name]);
-        }
-        (s.ai || []).forEach(t => helpers[name].jobs.push({ pid: p.id, where: `${p.name} · ${s.no} ${s.name}`, what: t }));
-    });
-    const regJobs = items.map(p => { const n = props.reg.filter(x => x.stage === p.stage).length; const s = (0, ax_1.stageOf)(p.stage); return { pid: p.id, where: `${p.name} · ${s.no} ${s.name}`, what: n ? `규제·리콜·불량 ${n}건 미리 봄` : '이 단계 규제 없음 확인' }; });
-    agents.push({ name: 'AI 규제 레이더', role: `해외 규제·리콜 ${props.reg.length}건 감시`, jobs: regJobs });
-    const careJobs = [];
-    items.forEach(p => (0, ax_1.careList)(p).forEach(c => careJobs.push({ pid: p.id, where: p.name, what: c.text })));
-    agents.push({ name: 'AI 일정 감시', role: `일정·빈칸 ${careJobs.length}건 챙기는 중`, jobs: careJobs.length ? careJobs : [{ pid: '', where: '전체', what: '모든 일정 정상' }] });
-    return (React.createElement("div", { "data-ax-aiops": true, className: "axp-in", style: Object.assign(Object.assign({}, theme_1.glass), { padding: '16px 16px 12px', animationDelay: '120ms', display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative', overflow: 'hidden' }) },
-        React.createElement("span", { className: "axp-scan" }),
-        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 } },
-            React.createElement("span", { style: { fontSize: 16, fontWeight: 900 } },
-                React.createElement("span", { className: "axp-grad" }, "AI \uAD00\uC81C")),
-            React.createElement("span", { style: { fontSize: 12, color: theme_1.T.faint } }, "AI\uAC00 \uC5B4\uB514\uC11C \uBB34\uC5C7\uC744 \uD558\uACE0 \uC788\uB098"),
-            React.createElement("span", { style: { flex: 1 } }),
-            React.createElement("span", { style: { fontSize: 11.5, color: '#D7CCFF', fontWeight: 800 } },
-                "AI ",
-                agents.length,
-                "\uBA85 \uC791\uC5C5 \uC911")),
-        agents.map((a, k) => {
-            const j = a.jobs.length ? a.jobs[(tick + k) % a.jobs.length] : undefined;
-            return (React.createElement("div", { key: a.name, "data-ax-agent": a.name, onClick: () => { if (j && j.pid)
-                    props.onOpen(j.pid); }, style: { display: 'flex', gap: 10, alignItems: 'center', padding: '8px 4px', borderTop: k ? `1px solid ${theme_1.T.line}` : 'none', cursor: j && j.pid ? 'pointer' : 'default' } },
-                React.createElement("span", { className: "axp-orb", style: { width: 32, height: 32, flex: '0 0 32px' } },
-                    React.createElement("span", { style: { fontSize: 11, fontWeight: 900, color: '#D7CCFF' } }, initials(a.name))),
-                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-                    React.createElement("div", { style: { display: 'flex', alignItems: 'baseline', gap: 6 } },
-                        React.createElement("b", { style: { fontSize: 13 } }, a.name),
-                        React.createElement("span", { style: { fontSize: 11, color: theme_1.T.faint, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, a.role)),
-                    j && React.createElement("div", { key: j.where + j.what, className: "axp-in", style: { fontSize: 12, color: theme_1.T.sub, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 } },
-                        React.createElement("span", { style: { color: theme_1.T.cyan } },
-                            "@ ",
-                            j.where),
-                        " \u2014 ",
-                        j.what)),
-                React.createElement("span", { className: "axp-blink", style: { fontSize: 11, color: theme_1.T.brand, fontWeight: 800, flex: '0 0 auto' } }, "\uC791\uC5C5 \uC911")));
-        }),
-        React.createElement("div", { style: { fontSize: 12, fontWeight: 800, color: theme_1.T.sub, margin: '8px 4px 4px' } }, "AI \uD65C\uB3D9 \uAE30\uB85D"),
-        React.createElement("div", { "data-ax-feed": true, style: { maxHeight: 150, overflowY: 'auto' } },
-            props.events.slice(0, 8).map((e, k) => (React.createElement("div", { key: k, onClick: () => props.onOpen(e.pid), style: { display: 'flex', gap: 8, fontSize: 11.5, padding: '4px', cursor: 'pointer', borderRadius: 8 } },
-                React.createElement("span", { style: { width: 6, height: 6, borderRadius: '50%', background: e.live ? theme_1.T.amber : theme_1.T.ai, marginTop: 5, flex: '0 0 6px' } }),
-                React.createElement("span", { style: { flex: 1, minWidth: 0, color: theme_1.T.sub, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
-                    React.createElement("b", { style: { color: theme_1.T.text } }, e.who),
+        return React.createElement("div", { "data-axplm": true, style: Object.assign(Object.assign({}, root), { padding: 32, color: C.sub }) }, err || '불러오는 중…');
+    const mine = (0, work_1.todos)(items, who);
+    const cur = items.filter(x => x.id === sel)[0] || items[0];
+    return (React.createElement("div", { "data-axplm": true, "data-ax-v": "128", style: root },
+        React.createElement("div", { style: { background: C.card, borderBottom: `1px solid ${C.line}`, padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', position: 'sticky', top: 0, zIndex: 5 } },
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 20, fontWeight: 900 } }, "AX-PLM"),
+                React.createElement("div", { style: { fontSize: 12, color: C.faint } },
+                    who,
                     " \u00B7 ",
-                    e.project,
-                    " \u2014 ",
-                    e.what),
-                React.createElement("span", { style: { color: theme_1.T.faint, flex: '0 0 auto' } }, ago(e.at))))),
-            !props.events.length && React.createElement("div", { style: { fontSize: 12, color: theme_1.T.faint, padding: 4 } }, "\uC544\uC9C1 AI \uAE30\uB85D\uC774 \uC5C6\uC5B4\uC694."))));
-}
-function Kpi(props) {
-    const v = (0, theme_1.useCount)(props.n);
-    return (React.createElement("div", { className: "axp-in", style: Object.assign(Object.assign({}, theme_1.glass), { padding: '12px 16px', animationDelay: `${200 + props.k * 70}ms`, position: 'relative', overflow: 'hidden' }) },
-        React.createElement("div", { style: { position: 'absolute', right: -20, top: -20, width: 80, height: 80, borderRadius: '50%', background: props.color, opacity: 0.12, filter: 'blur(10px)' } }),
-        React.createElement("div", { style: { fontSize: 12, color: theme_1.T.sub, fontWeight: 700 } }, props.label),
-        React.createElement("div", { style: { fontSize: 28, fontWeight: 900, color: props.color, lineHeight: 1.15, marginTop: 2 } }, v),
-        React.createElement("div", { style: { fontSize: 11, color: theme_1.T.faint } }, props.sub)));
-}
-function Kpis(props) {
-    const ws = props.items.map(p => (0, ax_1.whereNow)(p));
-    const ok = ws.filter(w => w.state === 'ok' || w.state === 'ahead').length;
-    const bad = ws.filter(w => w.state === 'behind' || w.state === 'late').length;
-    const k = [
-        { label: '진행 중 프로젝트', n: props.items.length, color: theme_1.T.text, sub: 'PM 1명이 일정 기준으로' },
-        { label: '일정대로', n: ok, color: theme_1.T.brand, sub: '오늘 기준 제자리 이상' },
-        { label: '뒤처짐·늦음', n: bad, color: bad ? theme_1.T.red : theme_1.T.faint, sub: 'AI 일정 감시가 경고' },
-        { label: 'AI 활동', n: props.events.length, color: theme_1.T.ai, sub: '브리핑·검토·기록' },
-        { label: '미리 본 문제점', n: props.reg.length, color: theme_1.T.amber, sub: '규제·리콜·불량' },
-    ];
-    return React.createElement("div", { "data-ax-kpi": true, style: { display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 12, padding: '12px 24px 10px' } }, k.map((x, i) => React.createElement(Kpi, Object.assign({ key: x.label }, x, { k: i }))));
-}
-function Ring(props) {
-    const sz = props.size || 26;
-    const r = sz / 2 - 3;
-    const c = 2 * Math.PI * r;
-    const f = props.n ? props.v / props.n : 0;
-    return (React.createElement("span", { title: "\uC774 \uB2E8\uACC4 \uD575\uC2EC \uC0B0\uCD9C\uBB3C", style: { position: 'relative', width: sz, height: sz, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' } },
-        React.createElement("svg", { width: sz, height: sz, style: { position: 'absolute', inset: 0, transform: 'rotate(-90deg)' } },
-            React.createElement("circle", { cx: sz / 2, cy: sz / 2, r: r, fill: "none", stroke: theme_1.T.line2, strokeWidth: 3 }),
-            React.createElement("circle", { cx: sz / 2, cy: sz / 2, r: r, fill: "none", stroke: f >= 1 ? theme_1.T.brand : theme_1.T.cyan, strokeWidth: 3, strokeLinecap: "round", strokeDasharray: `${c * f} ${c}`, style: { transition: 'stroke-dasharray .6s ease' } })),
-        React.createElement("span", { style: { fontSize: 9.5, fontWeight: 900, color: theme_1.T.sub } },
-            props.v,
-            "/",
-            props.n)));
-}
-function Card(props) {
-    const { p, s } = props;
-    const done = (0, ax_1.docsDone)(p, s);
-    const end = (p.plan || {})[s.id];
-    const dd = (0, ax_1.dday)(end || p.target);
-    const care = (0, ax_1.careList)(p);
-    const red = care.some(c => c.level === 'red');
-    const w = (0, ax_1.whereNow)(p);
-    const col = theme_1.STATE_COLOR[w.state];
-    const el = (0, ax_1.stageElapsed)(p);
-    return (React.createElement("div", { "data-ax-card": p.id, className: "axp-card axp-in", draggable: true, onDragStart: e => { e.dataTransfer.setData('text/plain', p.id); props.onDrag(); }, onDragEnd: props.onDragEnd, onClick: props.onOpen, style: { background: 'linear-gradient(160deg, rgba(255,255,255,.075), rgba(255,255,255,.025))', borderRadius: 14, padding: '11px 12px', marginBottom: 8, cursor: 'pointer', border: `1px solid ${props.on ? theme_1.T.brand : theme_1.T.line}` } },
-        React.createElement("div", { style: { display: 'flex', gap: 8, alignItems: 'flex-start' } },
-            React.createElement("div", { style: { flex: 1, fontSize: 14, fontWeight: 800, lineHeight: 1.35 } }, p.name),
-            p.aiHelper && React.createElement("span", { className: "axp-orb", title: `AI 도우미 ${p.aiHelper} 붙어 있음`, style: { width: 22, height: 22, flex: '0 0 22px' } },
-                React.createElement("span", { style: { fontSize: 9, fontWeight: 900, color: '#D7CCFF' } }, "AI"))),
-        p.next && React.createElement("div", { style: { fontSize: 12.5, color: theme_1.T.sub, marginTop: 4 } },
-            "\u2192 ",
-            p.next),
-        care.length > 0 && React.createElement("div", { "data-ax-care-n": true, title: care.map(c => c.text).join(' / '), style: { fontSize: 11.5, fontWeight: 700, color: red ? theme_1.T.red : theme_1.T.amber, marginTop: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } },
-            "\u2726 AI \uCC59\uAE38 \uAC83 ",
-            care.length,
-            " \u00B7 ",
-            care[0].text),
-        el !== undefined && React.createElement("div", { title: `이 단계 기간 중 ${Math.round(el * 100)}% 지남 · ${w.label}`, style: { marginTop: 8, height: 4, borderRadius: 4, background: theme_1.T.line, overflow: 'hidden' } },
-            React.createElement("div", { className: "axp-bar", style: { width: `${Math.round(el * 100)}%`, height: '100%', borderRadius: 4, background: `linear-gradient(90deg, ${theme_1.T.brand}, ${col})` } })),
-        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 7, marginTop: 8, fontSize: 12 } },
-            React.createElement("span", { style: { width: 20, height: 20, borderRadius: '50%', background: theme_1.T.glass2, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: theme_1.T.sub, flex: '0 0 auto' } }, (p.owner || '?').slice(0, 1)),
-            React.createElement("span", { style: { color: theme_1.T.faint, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 } }, p.owner || 'PM 없음'),
+                    md((0, ax_1.today)()),
+                    " \uAE30\uC900")),
+            React.createElement("div", { style: { display: 'flex', gap: 4, background: C.bg, borderRadius: 10, padding: 4 } }, [['todo', `내 할 일 ${mine.length}`], ['project', '프로젝트'], ['all', `전체 현황 ${items.length}`]].map(v => React.createElement("button", { key: v[0], "data-ax-view": v[0], onClick: () => setView(v[0]), style: Object.assign(Object.assign({}, btn), { border: 'none', padding: '8px 16px', fontSize: 14, background: view === v[0] ? C.card : 'transparent', color: view === v[0] ? C.text : C.faint, boxShadow: view === v[0] ? '0 1px 3px rgba(0,0,0,.12)' : 'none' }) }, v[1]))),
             React.createElement("span", { style: { flex: 1 } }),
-            React.createElement(Ring, { v: done, n: s.docs.length }),
-            dd && React.createElement("span", { title: end ? `${s.no} 단계 목표일 ${end}` : `출시 목표 ${p.target}`, style: { fontWeight: 800, whiteSpace: 'nowrap', borderRadius: 999, padding: '2px 8px', background: col === theme_1.T.red ? theme_1.T.redDim : theme_1.T.brandDim, color: col === theme_1.T.red ? theme_1.T.red : theme_1.T.brand } }, dd))));
+            React.createElement("button", { "data-ax-new": true, onClick: () => setAdding(true), style: primary }, "+ \uC0C8 \uD504\uB85C\uC81D\uD2B8")),
+        err && React.createElement("div", { "data-ax-err": true, style: { margin: '12px 24px 0', background: C.redBg, color: C.red, padding: '8px 14px', borderRadius: 10, fontSize: 13 } },
+            err,
+            " ",
+            React.createElement("button", { onClick: () => setErr(''), style: Object.assign(Object.assign({}, btn), { padding: '2px 10px', marginLeft: 8 }) }, "\uB2EB\uAE30")),
+        demo && React.createElement("div", { "data-ax-demo": true, style: { margin: '12px 24px 0', padding: '9px 14px', borderRadius: 10, background: C.amberBg, color: C.amber, fontSize: 13, fontWeight: 700 } }, "\uB4F1\uB85D\uB41C \uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4\uC11C \uC608\uC2DC 2\uAC1C\uB85C \uBCF4\uC5EC \uB4DC\uB824\uC694. \uC608\uC2DC\uB294 \uC800\uC7A5\uB418\uC9C0 \uC54A\uACE0, [+ \uC0C8 \uD504\uB85C\uC81D\uD2B8]\uB97C \uB9CC\uB4E4\uBA74 \uC0AC\uB77C\uC838\uC694."),
+        adding && React.createElement(NewForm, { who: who, onCancel: () => setAdding(false), onAdd: add }),
+        React.createElement("div", { style: { padding: '16px 24px 0' } },
+            view === 'todo' && React.createElement(TodoView, { list: mine, items: items, who: who, onOpen: open }),
+            view === 'all' && React.createElement(AllView, { items: items, onOpen: open }),
+            view === 'project' && cur && React.createElement(ProjectView, { key: cur.id, p: cur, items: items, who: who, focus: focus, setFocus: setFocus, onPick: id => { setSel(id); setFocus(undefined); }, update: fn => update(cur.id, fn) }),
+            view === 'project' && !cur && React.createElement("div", { style: { color: C.faint, padding: 30, textAlign: 'center' } }, "\uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4\uC694. [+ \uC0C8 \uD504\uB85C\uC81D\uD2B8]\uB85C \uC2DC\uC791\uD558\uC138\uC694."))));
 }
-function NewForm(props) {
-    const [name, setName] = React.useState('');
-    const [owner, setOwner] = React.useState(props.who);
-    const [target, setTarget] = React.useState('');
-    const [start, setStart] = React.useState((0, ax_1.today)());
-    return (React.createElement("div", { "data-ax-newform": true, className: "axp-in", style: Object.assign(Object.assign({}, theme_1.glass), { margin: '14px 24px 0', border: `1px solid ${theme_1.T.brand}`, padding: 14, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }) },
-        React.createElement("input", { "data-ax-name": true, autoFocus: true, value: name, onChange: e => setName(e.target.value), onKeyDown: e => { if (e.key === 'Enter' && name.trim())
-                props.onAdd(name.trim(), owner, target, start); }, placeholder: "\uD504\uB85C\uC81D\uD2B8 \uC774\uB984 (\uC608: \uC18C\uD615 \uCC29\uC999\uAE30 \uD574\uC678\uC6A9)", style: Object.assign(Object.assign({}, theme_1.inp), { flex: '2 1 260px', width: 'auto', fontWeight: 700 }) }),
-        React.createElement("input", { "data-ax-owner": true, value: owner, onChange: e => setOwner(e.target.value), placeholder: "PM (1\uBA85)", title: "PM 1\uBA85\uC774 \uC77C\uC815\uC744 \uAE30\uC900\uC73C\uB85C \uB04C\uACE0 \uAC00\uC694", style: Object.assign(Object.assign({}, theme_1.inp), { flex: '1 1 120px', width: 'auto' }) }),
-        React.createElement("label", { style: { fontSize: 12.5, color: theme_1.T.faint, display: 'flex', alignItems: 'center', gap: 6 } },
-            "\uC2DC\uC791",
-            React.createElement("input", { "data-ax-start": true, type: "date", value: start, onChange: e => setStart(e.target.value), style: Object.assign(Object.assign({}, theme_1.inp), { width: 150 }) })),
-        React.createElement("label", { style: { fontSize: 12.5, color: theme_1.T.faint, display: 'flex', alignItems: 'center', gap: 6 } },
-            "\uBAA9\uD45C \uCD9C\uC2DC",
-            React.createElement("input", { "data-ax-target": true, type: "date", value: target, onChange: e => setTarget(e.target.value), style: Object.assign(Object.assign({}, theme_1.inp), { width: 150 }) })),
-        React.createElement("span", { style: { fontSize: 12, color: '#D7CCFF' } }, "\u2726 \uB123\uC73C\uBA74 AI\uAC00 \uB2E8\uACC4 \uC77C\uC815\uC744 \uBC14\uB85C \uB098\uB220\uC694"),
-        React.createElement("button", { onClick: props.onCancel, style: theme_1.btn }, "\uCDE8\uC18C"),
-        React.createElement("button", { "data-ax-create": true, disabled: !name.trim(), onClick: () => props.onAdd(name.trim(), owner, target, start), style: Object.assign(Object.assign({}, theme_1.primary), { opacity: name.trim() ? 1 : 0.5 }) }, "\uC2DC\uC791")));
+function Tag(props) {
+    return React.createElement("span", { title: props.title, style: { display: 'inline-block', fontSize: 12, fontWeight: 800, color: props.c, background: props.bg, borderRadius: 6, padding: '2px 8px', whiteSpace: 'nowrap' } }, props.children);
 }
-const H = (props) => (React.createElement("div", { style: { marginTop: 20, display: 'flex', alignItems: 'baseline', gap: 8 } },
-    React.createElement("span", { style: { fontSize: 14, fontWeight: 900 } }, props.ai ? React.createElement("span", { className: "axp-grad" }, props.t) : props.t),
-    props.sub && React.createElement("span", { style: { fontSize: 12, color: theme_1.T.faint } }, props.sub),
-    React.createElement("span", { style: { flex: 1 } }),
-    props.right));
-const AiTag = () => React.createElement("span", { style: { fontSize: 10, fontWeight: 900, color: '#0A1311', background: theme_1.AI_GRAD, borderRadius: 4, padding: '0 5px', marginRight: 6 } }, "AI");
-function Panel(props) {
-    const { p, who, update } = props;
-    const s = (0, ax_1.stageOf)(p.stage);
-    const i = (0, ax_1.stageIdx)(p.stage);
-    const nextS = ax_1.AX_STAGES[i + 1];
-    const prevS = ax_1.AX_STAGES[i - 1];
-    const missing = s.docs.length - (0, ax_1.docsDone)(p, s);
-    const w = (0, ax_1.whereNow)(p);
-    const col = theme_1.STATE_COLOR[w.state];
-    const [note, setNote] = React.useState('');
-    const [nextTxt, setNextTxt] = React.useState(p.next || '');
-    React.useEffect(() => setNextTxt(p.next || ''), [p.id, p.next]);
-    const at = () => new Date().toISOString();
-    const toggle = (key, label) => update(x => {
-        const st = x.docs[key] || {};
-        const done = !st.done;
-        return Object.assign(Object.assign({}, x), { docs: Object.assign(Object.assign({}, x.docs), { [key]: Object.assign(Object.assign({}, st), { done, by: who, at: at() }) }), log: x.log.concat([{ at: at(), who, kind: 'doc', what: `${label} ${done ? '완료' : '완료 취소'}` }]) });
-    });
-    const setLink = (key, label, link) => update(x => {
-        const st = x.docs[key] || {};
-        if ((st.link || '') === link)
-            return x;
-        return Object.assign(Object.assign({}, x), { docs: Object.assign(Object.assign({}, x.docs), { [key]: Object.assign(Object.assign({}, st), { link: link || undefined, done: st.done || !!link, by: who, at: at() }) }), log: x.log.concat([{ at: at(), who, kind: 'doc', what: `${label} 링크 ${link ? '넣음' : '뺌'}` }]) });
-    });
-    const field = (k, label, v) => update(x => {
-        if ((x[k] || '') === v)
-            return x;
-        const y = Object.assign(Object.assign({}, x), { [k]: v || undefined, log: x.log.concat([{ at: at(), who, kind: 'edit', what: `${label}: ${v || '비움'}` }]) });
-        if ((k === 'target' || k === 'start') && y.start && y.target && !Object.keys(y.plan || {}).length)
-            return Object.assign(Object.assign({}, y), { plan: (0, ax_1.suggestPlan)(y.start, y.target) });
-        return y;
-    });
-    const setPlan = (sid, v) => update(x => {
-        const old = (x.plan || {})[sid] || '';
-        if (old === v)
-            return x;
-        return Object.assign(Object.assign({}, x), { plan: Object.assign(Object.assign({}, (x.plan || {})), { [sid]: v }), log: x.log.concat([{ at: at(), who, kind: 'edit', what: `${(0, ax_1.stageOf)(sid).no} 목표일 ${old || '없음'} → ${v || '없음'}` }]) });
-    });
-    const care = (0, ax_1.careList)(p);
-    const aiNow = (s.ai || [])[props.tick % Math.max(1, (s.ai || []).length)];
-    const box = Object.assign(Object.assign({}, theme_1.glass), { borderRadius: 12, padding: '10px 12px' });
-    return (React.createElement("div", { "data-ax-panel": true, className: "axp-panel", style: { position: 'fixed', top: 0, right: 0, bottom: 0, width: 480, maxWidth: '100%', background: 'rgba(8,14,12,.94)', backdropFilter: 'blur(18px)', borderLeft: `1px solid ${theme_1.T.line2}`, boxShadow: '-20px 0 60px rgba(0,0,0,.55)', zIndex: 20, display: 'flex', flexDirection: 'column', color: theme_1.T.text, fontFamily: '"Pretendard", "Malgun Gothic", "Segoe UI", sans-serif' } },
-        React.createElement("div", { style: { padding: '16px 20px 12px', borderBottom: `1px solid ${theme_1.T.line}` } },
-            React.createElement("div", { style: { display: 'flex', alignItems: 'flex-start', gap: 10 } },
-                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-                    React.createElement("div", { style: { fontSize: 12, color: theme_1.T.brand, fontWeight: 800 } },
+function DueTag(props) {
+    if (props.left === undefined)
+        return React.createElement(Tag, { c: C.faint, bg: C.bg }, "\uAE30\uD55C \uC5C6\uC74C");
+    if (props.left < 0)
+        return React.createElement(Tag, { c: C.red, bg: C.redBg },
+            md(props.due),
+            " \u00B7 ",
+            -props.left,
+            "\uC77C \uB2A6\uC74C");
+    if (props.left === 0)
+        return React.createElement(Tag, { c: C.red, bg: C.redBg }, "\uC624\uB298 \uB9C8\uAC10");
+    if (props.left <= 7)
+        return React.createElement(Tag, { c: C.amber, bg: C.amberBg },
+            md(props.due),
+            " \u00B7 D-",
+            props.left);
+    return React.createElement(Tag, { c: C.sub, bg: C.bg },
+        md(props.due),
+        " \u00B7 D-",
+        props.left);
+}
+// 내 할 일 — 늦음 / 이번 주 / 그 뒤
+function TodoView(props) {
+    const groups = [
+        ['늦어진 것', props.list.filter(t => t.left !== undefined && t.left < 0)],
+        ['오늘·이번 주', props.list.filter(t => t.left !== undefined && t.left >= 0 && t.left <= 7)],
+        ['그 뒤', props.list.filter(t => t.left === undefined || t.left > 7)]
+    ];
+    return (React.createElement("div", { "data-ax-todo": true, style: { display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(260px, 1fr)', gap: 16 } },
+        React.createElement("div", null,
+            !props.list.length && React.createElement("div", { style: Object.assign(Object.assign({}, card), { padding: 24, color: C.faint }) },
+                props.who,
+                " \uB2D8 \uC55E\uC73C\uB85C \uB41C \uD560 \uC77C\uC774 \uC5C6\uC5B4\uC694. \uC0B0\uCD9C\uBB3C \uCE74\uB4DC\uC5D0\uC11C \uB2F4\uB2F9\uC744 \uC815\uD558\uBA74 \uC5EC\uAE30\uC5D0 \uBAA8\uC5EC\uC694."),
+            groups.filter(g => g[1].length).map(g => (React.createElement("div", { key: g[0], style: { marginBottom: 16 } },
+                React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: g[0] === '늦어진 것' ? C.red : C.sub, margin: '0 0 6px 2px' } },
+                    g[0],
+                    " ",
+                    g[1].length),
+                React.createElement("div", { style: card }, g[1].map((t, i) => (React.createElement("div", { key: i, "data-ax-todo-row": true, onClick: () => props.onOpen(t.pid, t.stage), style: { display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', borderTop: i ? `1px solid ${C.line}` : 'none', cursor: 'pointer' } },
+                    React.createElement(Tag, { c: t.kind === '승인' ? C.gold : t.kind === '산출물' ? C.blue : C.red, bg: t.kind === '승인' ? C.goldBg : t.kind === '산출물' ? C.blueBg : C.redBg }, t.kind),
+                    React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                        React.createElement("div", { style: { fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, t.text),
+                        React.createElement("div", { style: { fontSize: 12, color: C.faint } },
+                            t.project,
+                            " \u00B7 ",
+                            ax_1.AX_STAGES[t.stage].no,
+                            " ",
+                            ax_1.AX_STAGES[t.stage].name)),
+                    React.createElement(DueTag, { left: t.left, due: t.due }))))))))),
+        React.createElement("div", { style: Object.assign(Object.assign({}, card), { padding: 16, alignSelf: 'start' }) },
+            React.createElement("div", { style: { fontWeight: 800, marginBottom: 8 } }, "\uC9C4\uD589 \uC911\uC778 \uD504\uB85C\uC81D\uD2B8"),
+            props.items.map(p => {
+                const k = (0, work_1.curIdx)(p);
+                const late = (0, work_1.projLate)(p);
+                return (React.createElement("div", { key: p.id, onClick: () => props.onOpen(p.id), style: { padding: '8px 0', borderTop: `1px solid ${C.line}`, cursor: 'pointer' } },
+                    React.createElement("div", { style: { fontWeight: 700 } }, p.name),
+                    React.createElement("div", { style: { fontSize: 12, color: late ? C.red : C.faint } },
+                        ax_1.AX_STAGES[k].no,
+                        " ",
+                        ax_1.AX_STAGES[k].name,
+                        " \u00B7 PM ",
+                        p.owner || '없음',
+                        late ? ` · ${late}일 늦음` : '')));
+            }))));
+}
+// 전체 현황 — 프로젝트마다 7단계와 지연
+function AllView(props) {
+    return (React.createElement("div", { "data-ax-all": true, style: Object.assign(Object.assign({}, card), { overflowX: 'auto' }) },
+        React.createElement("table", { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 900 } },
+            React.createElement("thead", null,
+                React.createElement("tr", { style: { color: C.faint, textAlign: 'left' } },
+                    React.createElement("th", { style: { padding: '10px 14px' } }, "\uD504\uB85C\uC81D\uD2B8"),
+                    React.createElement("th", null, "PM"),
+                    ax_1.AX_STAGES.map(s => React.createElement("th", { key: s.id, style: { padding: '10px 4px', textAlign: 'center', whiteSpace: 'nowrap' } },
                         s.no,
                         " ",
-                        s.name,
-                        p.target ? ` · 출시 ${(0, ax_1.dday)(p.target)}` : ''),
-                    React.createElement("input", { "data-ax-pname": true, defaultValue: p.name, key: p.id + 'n', onBlur: e => { const v = e.target.value.trim(); if (v)
-                            field('name', '이름', v); }, style: Object.assign(Object.assign({}, theme_1.inp), { background: 'transparent', border: 'none', padding: '2px 0', fontSize: 20, fontWeight: 900 }) })),
-                React.createElement("button", { "data-ax-close": true, className: "axp-btn", onClick: props.onClose, style: Object.assign(Object.assign({}, theme_1.btn), { padding: '5px 13px' }) }, "\uB2EB\uAE30")),
-            React.createElement("div", { "data-ax-stepper": true, style: { display: 'flex', alignItems: 'center', marginTop: 8 } }, ax_1.AX_STAGES.map((st, k) => (React.createElement(React.Fragment, { key: st.id },
-                k > 0 && React.createElement("span", { style: { flex: 1, height: 2, background: k <= i ? theme_1.T.brand : theme_1.T.line2 } }),
-                React.createElement("span", { title: `${st.no} ${st.name}${k === w.exp && k !== i ? ' — 오늘 날짜로 있어야 할 곳' : ''}`, className: k === i ? 'axp-dot' : undefined, style: { width: k === i ? 14 : 9, height: k === i ? 14 : 9, borderRadius: '50%', background: k <= i ? (k === i ? col : theme_1.T.brand) : theme_1.T.bg2, color: col, border: k === w.exp && k !== i ? `2px dashed ${theme_1.T.sub}` : `1.5px solid ${k <= i ? theme_1.T.brand : theme_1.T.line2}`, flex: '0 0 auto' } }))))),
-            React.createElement("div", { style: { fontSize: 12, color: col, fontWeight: 800, marginTop: 6 } },
-                "\uC6B0\uB9AC\uB294 \uC9C0\uAE08 ",
+                        s.name.split('·')[0])),
+                    React.createElement("th", null, "\uCD9C\uC2DC \uBAA9\uD45C"),
+                    React.createElement("th", null, "\uC9C0\uC5F0"),
+                    React.createElement("th", null, "\uC774\uC288"),
+                    React.createElement("th", null, "\uC2B9\uC778"))),
+            React.createElement("tbody", null, props.items.map(p => {
+                const late = (0, work_1.projLate)(p);
+                const iss = (p.issues || []).filter(i => !i.done).length;
+                const req = ax_1.AX_STAGES.filter(s => s.gate && (0, work_1.gateState)(p, s) === 'requested').length;
+                return (React.createElement("tr", { key: p.id, "data-ax-all-row": p.id, style: { borderTop: `1px solid ${C.line}` } },
+                    React.createElement("td", { style: { padding: '10px 14px', fontWeight: 800, cursor: 'pointer' }, onClick: () => props.onOpen(p.id) }, p.name),
+                    React.createElement("td", null, p.owner || '—'),
+                    ax_1.AX_STAGES.map((s, k) => {
+                        const f = (0, work_1.perf)(p, k);
+                        const bg = f.state === 'done' ? C.brand : f.state === 'doing' ? (f.late ? C.red : C.blue) : C.line;
+                        return (React.createElement("td", { key: s.id, style: { padding: '4px', textAlign: 'center' }, onClick: () => props.onOpen(p.id, k) },
+                            React.createElement("div", { title: `${s.name} · 계획 ${md(f.plan)} · 실제 ${md(f.actual)}${f.late ? ` · ${f.late}일 늦음` : ''}`, style: { height: 22, borderRadius: 6, background: bg, color: f.state === 'todo' ? C.faint : '#fff', fontSize: 11, fontWeight: 800, lineHeight: '22px', cursor: 'pointer' } }, f.state === 'done' ? '완료' : f.state === 'doing' ? `${(0, work_1.stageDocsOk)(p, s)}/${s.docs.length}` : md(f.plan))));
+                    }),
+                    React.createElement("td", { style: { whiteSpace: 'nowrap' } },
+                        md(p.target),
+                        " ",
+                        React.createElement("span", { style: { color: C.faint } }, (0, ax_1.dday)(p.target))),
+                    React.createElement("td", null, late ? React.createElement(Tag, { c: C.red, bg: C.redBg },
+                        late,
+                        "\uC77C") : React.createElement(Tag, { c: C.brand, bg: C.brandBg }, "\uC815\uC0C1")),
+                    React.createElement("td", null, iss || '—'),
+                    React.createElement("td", null, req ? React.createElement(Tag, { c: C.gold, bg: C.goldBg },
+                        "\uB300\uAE30 ",
+                        req) : '—')));
+            })))));
+}
+function ProjectView(props) {
+    const { p, who, update } = props;
+    const ck = (0, work_1.curIdx)(p);
+    const k = props.focus === undefined ? ck : props.focus;
+    const s = ax_1.AX_STAGES[k];
+    const [tab, setTab] = React.useState('issue');
+    const [setting, setSetting] = React.useState(false);
+    const brief = (p.brief || []).slice(-1)[0];
+    return (React.createElement("div", { "data-ax-project": p.id },
+        React.createElement("div", { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 } }, props.items.map(x => React.createElement("button", { key: x.id, "data-ax-pick": x.id, onClick: () => props.onPick(x.id), style: Object.assign(Object.assign({}, btn), { borderRadius: 999, background: x.id === p.id ? C.text : C.card, color: x.id === p.id ? '#fff' : C.sub, borderColor: x.id === p.id ? C.text : C.line2 }) }, x.name))),
+        React.createElement("div", { style: Object.assign(Object.assign({}, card), { padding: '16px 18px' }) },
+            React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' } },
+                React.createElement("div", { style: { fontSize: 20, fontWeight: 900 } }, p.name),
+                React.createElement(Tag, { c: C.sub, bg: C.bg },
+                    "PM ",
+                    p.owner || '없음'),
+                React.createElement(Tag, { c: C.sub, bg: C.bg },
+                    "\uC2B9\uC778\uC790 ",
+                    p.approver || '없음'),
+                React.createElement(Tag, { c: C.sub, bg: C.bg },
+                    "\uCD9C\uC2DC \uBAA9\uD45C ",
+                    md(p.target),
+                    " ",
+                    (0, ax_1.dday)(p.target)),
+                (0, work_1.projLate)(p) > 0 && React.createElement(Tag, { c: C.red, bg: C.redBg },
+                    (0, work_1.projLate)(p),
+                    "\uC77C \uB2A6\uC74C"),
+                React.createElement("span", { style: { flex: 1 } }),
+                React.createElement("button", { "data-ax-setting": true, onClick: () => setSetting(!setting), style: btn }, setting ? '설정 닫기' : '프로젝트 설정')),
+            brief && React.createElement("div", { "data-ax-brief": true, style: { marginTop: 10, fontSize: 13, color: C.sub, background: C.bg, borderRadius: 10, padding: '8px 12px' } },
+                React.createElement("b", { style: { color: C.text } }, "AI \uC694\uC57D"),
+                " \u00B7 ",
+                brief.who,
+                " \u00B7 ",
+                (0, ax_1.fmt)(brief.at),
+                " \u2014 ",
+                brief.text),
+            setting && React.createElement(Settings, { p: p, who: who, update: update }),
+            React.createElement(Rail, { p: p, k: k, ck: ck, onPick: props.setFocus }),
+            React.createElement(Tree, { p: p, k: k, ck: ck, onPick: props.setFocus })),
+        React.createElement(StageDetail, { key: s.id, p: p, k: k, who: who, update: update }),
+        React.createElement("div", { style: Object.assign(Object.assign({}, card), { marginTop: 16, padding: '6px 18px 16px' }) },
+            React.createElement("div", { style: { display: 'flex', gap: 2, borderBottom: `1px solid ${C.line}`, marginBottom: 12 } }, [['issue', `이슈·리스크 ${(p.issues || []).filter(i => !i.done).length}`], ['change', `사양 변경 ${(p.changes || []).length}`], ['ai', 'AI 사전 검토'], ['log', '기록']].map(t => React.createElement("button", { key: t[0], "data-ax-tab": t[0], onClick: () => setTab(t[0]), style: Object.assign(Object.assign({}, btn), { border: 'none', borderRadius: 0, background: 'transparent', padding: '10px 14px', color: tab === t[0] ? C.text : C.faint, borderBottom: `2px solid ${tab === t[0] ? C.text : 'transparent'}` }) }, t[1]))),
+            tab === 'issue' && React.createElement(Issues, { p: p, who: who, update: update }),
+            tab === 'change' && React.createElement(Changes, { p: p, who: who, update: update }),
+            tab === 'ai' && React.createElement(Asks, { p: p, who: who, update: update }),
+            tab === 'log' && React.createElement(Log, { p: p, who: who, update: update }))));
+}
+// 위 일정 바 — 단계마다 계획일·실제일·늦은 날. 누르면 그 단계가 아래에 크게 열림
+function Rail(props) {
+    const { p } = props;
+    return (React.createElement("div", { "data-ax-rail": true, style: { display: 'flex', gap: 4, marginTop: 16 } }, ax_1.AX_STAGES.map((s, i) => {
+        const f = (0, work_1.perf)(p, i);
+        const on = i === props.k;
+        const bar = f.state === 'done' ? C.brand : f.state === 'doing' ? (f.late ? C.red : C.blue) : C.line;
+        return (React.createElement("button", { key: s.id, "data-ax-rail-stage": s.id, onClick: () => props.onPick(i), style: { flex: i === props.k ? 1.6 : 1, minWidth: 0, textAlign: 'left', border: `2px solid ${on ? C.text : 'transparent'}`, background: on ? C.bg : 'transparent', borderRadius: 10, padding: '8px 8px 6px', cursor: 'pointer', fontFamily: font, transition: 'flex .2s' } },
+            React.createElement("div", { style: { height: 8, borderRadius: 4, background: bar } }),
+            React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: (0, work_1.unlocked)(p, i) ? C.text : C.lock, marginTop: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } },
                 s.no,
                 " ",
-                s.name,
-                " \u00B7 ",
-                w.label,
-                w.state !== 'none' ? ` · 전체 일정 ${Math.round(w.pct * 100)}% 지점` : '')),
-        React.createElement("div", { style: { flex: 1, overflowY: 'auto', padding: '14px 20px 28px' } },
-            props.sim && React.createElement("div", { "data-ax-sim-note": true, style: { marginBottom: 10, padding: '7px 12px', borderRadius: 10, background: 'rgba(34,211,238,.12)', color: theme_1.T.cyan, fontSize: 12.5, fontWeight: 700 } },
-                "\u23F1 ",
-                (0, ax_1.today)(),
-                " \uC2DC\uC810 \uBBF8\uB9AC\uBCF4\uAE30\uC608\uC694 \u2014 \uC5EC\uAE30\uC11C \uBC14\uAFBC \uAC74 \uC800\uC7A5\uB418\uC9C0 \uC54A\uC544\uC694. \uC704 [\uC624\uB298\uB85C]\uB97C \uB204\uB974\uBA74 \uC2E4\uC81C \uD654\uBA74\uC774\uC5D0\uC694."),
-            React.createElement("div", { className: "axp-aiborder", style: { marginBottom: 12 } },
-                React.createElement("div", { style: { padding: '10px 12px' } },
-                    React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8 } },
-                        React.createElement("span", { className: "axp-orb", style: { width: 24, height: 24 } },
-                            React.createElement("span", { style: { fontSize: 9, fontWeight: 900, color: '#D7CCFF' } }, "AI")),
-                        React.createElement("b", { style: { fontSize: 13 } }, p.aiHelper || 'AI 도우미'),
-                        React.createElement("span", { className: "axp-blink", style: { fontSize: 11.5, color: theme_1.T.brand, fontWeight: 800 } }, "\u25CF \uC9C0\uAE08 \uD558\uB294 \uC77C")),
-                    React.createElement("div", { "data-ax-ai-now": true, key: aiNow, className: "axp-in", style: { fontSize: 13, color: '#D7CCFF', marginTop: 5 } },
-                        s.no,
-                        " ",
-                        s.name,
-                        " \u2014 ",
-                        aiNow),
-                    (p.brief || []).length > 0 && (() => {
-                        const b = p.brief[p.brief.length - 1];
-                        return (React.createElement("div", { "data-ax-brief": true, style: { marginTop: 8, paddingTop: 8, borderTop: `1px solid ${theme_1.T.line}` } },
-                            React.createElement("div", { style: { fontSize: 11.5, fontWeight: 800, color: theme_1.T.sub, marginBottom: 3 } },
-                                "AI \uBE0C\uB9AC\uD551 ",
-                                React.createElement("span", { style: { fontWeight: 500, color: theme_1.T.faint } },
-                                    b.who,
-                                    " \u00B7 ",
-                                    (0, ax_1.fmt)(b.at))),
-                            React.createElement("div", { style: { fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' } }, b.text)));
-                    })())),
-            care.length > 0 && React.createElement("div", { "data-ax-care": true, style: Object.assign(Object.assign({}, box), { background: theme_1.T.amberDim, borderColor: 'rgba(251,191,36,.25)', marginBottom: 12 }) },
-                React.createElement("div", { style: { fontSize: 12.5, fontWeight: 800, color: theme_1.T.amber, marginBottom: 4 } },
-                    "\u2726 AI\uAC00 \uCC59\uAE38 \uAC83 ",
-                    care.length),
-                care.map((c, k) => React.createElement("div", { key: k, style: { fontSize: 12.5, color: c.level === 'red' ? theme_1.T.red : theme_1.T.text, padding: '2px 0' } },
-                    "\u00B7 ",
-                    c.text))),
-            React.createElement("div", { style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 } },
-                React.createElement("label", { style: { fontSize: 12, color: theme_1.T.faint } },
-                    "\uC2DC\uC791",
-                    React.createElement("input", { "data-ax-pstart": true, type: "date", defaultValue: p.start || '', key: p.id + 's', onChange: e => field('start', '시작일', e.target.value), style: theme_1.inp })),
-                React.createElement("label", { style: { fontSize: 12, color: theme_1.T.faint }, title: "PM 1\uBA85\uC774 \uC77C\uC815\uC744 \uAE30\uC900\uC73C\uB85C \uB04C\uACE0 \uAC00\uC694" },
-                    "PM",
-                    React.createElement("input", { "data-ax-powner": true, defaultValue: p.owner || '', key: p.id + 'o', onBlur: e => field('owner', 'PM', e.target.value.trim()), style: theme_1.inp })),
-                React.createElement("label", { style: { fontSize: 12, color: theme_1.T.faint } },
-                    "\uBAA9\uD45C \uCD9C\uC2DC",
-                    React.createElement("input", { "data-ax-ptarget": true, type: "date", defaultValue: p.target || '', key: p.id + 't', onChange: e => field('target', '목표 출시', e.target.value), style: theme_1.inp }))),
-            React.createElement("label", { style: { display: 'block', fontSize: 12, color: theme_1.T.faint, marginTop: 10 } },
-                "\uB2E4\uC74C \uD560 \uC77C",
-                React.createElement("input", { "data-ax-next": true, value: nextTxt, onChange: e => setNextTxt(e.target.value), onBlur: () => { if (nextTxt.trim() !== (p.next || ''))
-                        update(x => (Object.assign(Object.assign({}, x), { next: nextTxt.trim() || undefined, log: x.log.concat([{ at: at(), who, kind: 'edit', what: `다음 할 일: ${nextTxt.trim() || '비움'}` }]) }))); }, placeholder: "\uD55C \uC904\uB85C (\uC608: \uC0AC\uC5C5\uC131 \uAC80\uD1A0\uC11C \uCD08\uC548)", style: theme_1.inp })),
-            React.createElement("div", { "data-ax-roles": true, style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 14 } },
-                React.createElement("div", { style: box },
-                    React.createElement("div", { style: { fontSize: 12, fontWeight: 800, color: theme_1.T.sub, marginBottom: 4 } },
-                        "\uC0AC\uB78C\uC774 \uD560 \uC77C \u00B7 ",
-                        s.no),
-                    (s.human || []).map((t, k) => React.createElement("div", { key: k, style: { fontSize: 12.5, padding: '2px 0' } },
-                        "\u00B7 ",
-                        t))),
-                React.createElement("div", { style: Object.assign(Object.assign({}, box), { background: theme_1.T.aiDim, borderColor: 'rgba(167,139,250,.35)' }) },
-                    React.createElement("div", { style: { fontSize: 12, fontWeight: 800, color: '#D7CCFF', marginBottom: 4 } },
-                        "AI\uAC00 \uD560 \uC77C",
-                        p.aiHelper ? ` · ${p.aiHelper}` : ''),
-                    (s.ai || []).map((t, k) => React.createElement("div", { key: k, style: { fontSize: 12.5, padding: '2px 0', display: 'flex', gap: 6, alignItems: 'center' } },
-                        React.createElement("span", { className: t === aiNow ? 'axp-dot' : undefined, style: { width: 6, height: 6, borderRadius: '50%', background: t === aiNow ? theme_1.T.ai : theme_1.T.line2, color: theme_1.T.ai, flex: '0 0 6px' } }),
-                        t)))),
-            React.createElement(H, { t: "\uB2E8\uACC4 \uC77C\uC815", sub: "\uB2E8\uACC4\uAC00 \uB05D\uB098\uC57C \uD558\uB294 \uB0A0 \u00B7 \uC77C\uC815\uC774 \uAE30\uC900", right: p.start && p.target ? React.createElement("button", { "data-ax-replan": true, className: "axp-btn", onClick: () => update(x => (Object.assign(Object.assign({}, x), { plan: (0, ax_1.suggestPlan)(x.start, x.target), log: x.log.concat([{ at: at(), who, kind: 'edit', what: '단계 일정 다시 나눔 (시작~출시 목표 기준)' }]) }))), style: Object.assign(Object.assign({}, theme_1.btn), { padding: '3px 10px', fontSize: 12 }), title: "\uC2DC\uC791\uC77C\uACFC \uCD9C\uC2DC \uBAA9\uD45C\uC77C\uB85C \uB2E8\uACC4 \uBAA9\uD45C\uC77C\uC744 \uB2E4\uC2DC \uB098\uB220\uC694" }, "\u2726 AI\uB85C \uB2E4\uC2DC \uB098\uB204\uAE30") : undefined }),
-            React.createElement("div", { "data-ax-plan": true, style: { marginTop: 6 } }, ax_1.AX_STAGES.map((st, k) => {
-                const v = (p.plan || {})[st.id] || '';
-                const dl = (0, ax_1.daysTo)(v);
-                const isCur = st.id === p.stage;
-                const past = k < i;
-                const late = !past && dl !== undefined && dl < 0;
-                return (React.createElement("div", { key: st.id, "data-ax-plan-row": st.id, style: { display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderRadius: 8, background: isCur ? theme_1.T.brandDim : 'transparent', fontSize: 12.5 } },
-                    React.createElement("span", { style: { width: 8, height: 8, borderRadius: '50%', background: past ? theme_1.T.brand : isCur ? col : theme_1.T.line2, flex: '0 0 8px' } }),
-                    React.createElement("span", { style: { flex: 1, fontWeight: isCur ? 800 : 500, color: past ? theme_1.T.faint : theme_1.T.text } },
-                        st.no,
-                        " ",
-                        st.name,
-                        st.gate ? React.createElement("span", { style: { color: theme_1.T.brand, fontSize: 11, fontWeight: 800 } },
-                            " \u00B7 ",
-                            st.gate.split(' ')[0]) : null),
-                    late && React.createElement("span", { style: { color: theme_1.T.red, fontWeight: 800, fontSize: 11.5 } },
-                        -dl,
-                        "\uC77C \uC9C0\uB0A8"),
-                    !late && !past && dl !== undefined && React.createElement("span", { style: { color: theme_1.T.faint, fontSize: 11.5 } },
-                        "D-",
-                        dl),
-                    past && React.createElement("span", { style: { color: theme_1.T.faint, fontSize: 11.5 } }, "\uC9C0\uB0A8"),
-                    React.createElement("input", { type: "date", "data-ax-plan-date": st.id, defaultValue: v, key: p.id + st.id + v, onChange: e => setPlan(st.id, e.target.value), style: Object.assign(Object.assign({}, theme_1.inp), { width: 140, padding: '3px 6px', fontSize: 12 }) })));
-            })),
-            React.createElement(H, { t: "\uD575\uC2EC \uC0B0\uCD9C\uBB3C", sub: `${(0, ax_1.docsDone)(p, s)}/${s.docs.length} · 비어도 넘어갈 수 있어요` }),
-            s.docs.map(x => {
-                const st = p.docs[x.key] || {};
-                return (React.createElement("div", { key: x.key, "data-ax-doc": x.key, style: { borderTop: `1px solid ${theme_1.T.line}`, padding: '8px 0' } },
-                    React.createElement("label", { style: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13.5 } },
-                        React.createElement("input", { type: "checkbox", checked: !!st.done, onChange: () => toggle(x.key, x.label), style: { accentColor: theme_1.T.brand, width: 16, height: 16 } }),
-                        React.createElement("span", { style: { flex: 1, fontWeight: 600, textDecoration: st.done ? 'line-through' : 'none', color: st.done ? theme_1.T.faint : theme_1.T.text } }, x.label),
-                        React.createElement("span", { title: "\uC5D1\uC140 \uD504\uB85C\uC138\uC2A4\uC758 Task \uBC88\uD638", style: { fontSize: 11, color: theme_1.T.faint } }, x.proc)),
-                    React.createElement("div", { style: { display: 'flex', gap: 6, marginTop: 4, paddingLeft: 24 } },
-                        React.createElement("input", { "data-ax-link": x.key, defaultValue: st.link || '', key: p.id + x.key + (st.link || ''), onBlur: e => setLink(x.key, x.label, e.target.value.trim()), placeholder: "\uD30C\uC77C\u00B7\uD3F4\uB354 \uB9C1\uD06C \uBD99\uC5EC\uB123\uAE30", style: Object.assign(Object.assign({}, theme_1.inp), { fontSize: 12, padding: '4px 8px' }) }),
-                        st.link && /^https?:\/\//.test(st.link) && React.createElement("a", { href: st.link, target: "_blank", rel: "noopener noreferrer", style: { fontSize: 12, color: theme_1.T.brand, fontWeight: 700, whiteSpace: 'nowrap', alignSelf: 'center' } }, "\uC5F4\uAE30"))));
-            }),
-            React.createElement("div", { style: { display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' } },
-                prevS && React.createElement("button", { "data-ax-prev": true, className: "axp-btn", onClick: () => update(x => (0, ax_1.moveTo)(x, prevS.id, who)), style: theme_1.btn }, "\uC774\uC804 \uB2E8\uACC4"),
-                React.createElement("span", { style: { flex: 1 } }),
-                nextS && React.createElement("button", { "data-ax-forward": true, onClick: () => update(x => (0, ax_1.moveTo)(x, nextS.id, who)), style: theme_1.primary, title: missing ? `산출물 ${missing}개가 비어 있어요 — 넘어가도 되고, 빈 채로 넘긴 기록이 남아요` : '' }, s.gate ? `${s.gate.split(' ')[0]} 통과 → ${nextS.no} ${nextS.name}` : `다음 단계 → ${nextS.no} ${nextS.name}`),
-                !nextS && !p.closed && React.createElement("button", { "data-ax-close-project": true, onClick: () => update(x => (Object.assign(Object.assign({}, x), { closed: true, log: x.log.concat([{ at: at(), who, kind: 'edit', what: '프로젝트 종료' }]) }))), style: theme_1.primary }, "\uD504\uB85C\uC81D\uD2B8 \uC885\uB8CC")),
-            nextS && missing > 0 && React.createElement("div", { style: { fontSize: 12, color: theme_1.T.amber, marginTop: 6, textAlign: 'right' } },
-                "\uC0B0\uCD9C\uBB3C ",
-                missing,
-                "\uAC1C \uBE44\uC5B4 \uC788\uC74C \u2014 \uADF8\uB798\uB3C4 \uB118\uC5B4\uAC08 \uC218 \uC788\uC5B4\uC694 (AI\uAC00 \uAE30\uB85D)"),
-            React.createElement("div", { "data-ax-ask": true, style: Object.assign(Object.assign({}, box), { marginTop: 18, background: theme_1.T.aiDim, borderColor: 'rgba(167,139,250,.35)' }) },
-                React.createElement("div", { style: { display: 'flex', alignItems: 'baseline', gap: 8 } },
-                    React.createElement("span", { style: { fontSize: 14, fontWeight: 900 } },
-                        React.createElement("span", { className: "axp-grad" }, "AI \uC0AC\uC804 \uAC80\uD1A0")),
-                    React.createElement("span", { style: { fontSize: 12, color: theme_1.T.faint } }, "\uBB38\uC81C\uAC00 \uB420 \uAC83 \uAC19\uC73C\uBA74 \uBBF8\uB9AC \uBB3C\uC5B4\uBCF4\uC138\uC694")),
-                React.createElement(AskBox, { onAsk: t => update(x => { const a = { id: 'q' + Date.now().toString(36), at: at(), who, stage: x.stage, text: t }; return Object.assign(Object.assign({}, x), { asks: (x.asks || []).concat([a]), log: x.log.concat([{ at: at(), who, kind: 'note', what: `AI 사전 검토 요청: ${t}` }]) }); }) }),
-                (p.asks || []).slice().reverse().map(a => (React.createElement("div", { key: a.id, "data-ax-ask-item": a.id, style: { borderTop: `1px solid ${theme_1.T.line}`, padding: '8px 0', fontSize: 12.5 } },
-                    React.createElement("div", null,
-                        React.createElement("b", null, a.text),
-                        " ",
-                        React.createElement("span", { style: { color: theme_1.T.faint } },
-                            "\u00B7 ",
-                            a.who,
-                            " \u00B7 ",
-                            (0, ax_1.fmt)(a.at),
-                            " \u00B7 ",
-                            (0, ax_1.stageOf)(a.stage).no)),
-                    a.answer ? React.createElement("div", { style: { marginTop: 5, background: 'rgba(0,0,0,.3)', borderRadius: 10, padding: '7px 9px', whiteSpace: 'pre-wrap', lineHeight: 1.55 } },
-                        React.createElement(AiTag, null),
-                        a.answer,
-                        React.createElement("span", { style: { color: theme_1.T.faint } },
-                            " \u2014 ",
-                            a.answeredBy,
-                            " \u00B7 ",
-                            (0, ax_1.fmt)(a.answeredAt)))
-                        : React.createElement("div", { style: { marginTop: 3, color: theme_1.T.amber, fontWeight: 700 } },
-                            React.createElement("span", { className: "axp-blink" }, "\u25CF"),
-                            " AI \uAC80\uD1A0 \uAE30\uB2E4\uB9AC\uB294 \uC911"))))),
-            React.createElement(RegRadar_1.default, { stage: s.id, stageLabel: `${s.no} ${s.name}` }),
-            React.createElement(H, { t: "\uD788\uC2A4\uD1A0\uB9AC", sub: "\uACB0\uC815\u00B7\uC774\uC288\u00B7AI \uAE30\uB85D\uC774 \uC790\uB3D9\uC73C\uB85C \uC313\uC5EC\uC694" }),
-            React.createElement("div", { style: { display: 'flex', gap: 6, marginTop: 8 } },
-                React.createElement("input", { "data-ax-note": true, value: note, onChange: e => setNote(e.target.value), onKeyDown: e => { if (e.key === 'Enter' && note.trim()) {
-                        const t = note.trim();
-                        setNote('');
-                        update(x => (Object.assign(Object.assign({}, x), { log: x.log.concat([{ at: at(), who, kind: 'note', what: t }]) })));
-                    } }, placeholder: "\uACB0\uC815\u00B7\uC774\uC288 \uD55C \uC904 \uB0A8\uAE30\uAE30 (Enter)", style: theme_1.inp })),
-            React.createElement("div", { "data-ax-log": true, style: { marginTop: 8, borderLeft: `2px solid ${theme_1.T.line}`, marginLeft: 4, paddingLeft: 12 } }, p.log.slice().reverse().map((l, k) => (React.createElement("div", { key: k, style: { position: 'relative', display: 'flex', gap: 8, fontSize: 12.5, padding: '5px 0' } },
-                React.createElement("span", { style: { position: 'absolute', left: -17, top: 10, width: 8, height: 8, borderRadius: '50%', background: l.ai ? theme_1.T.ai : l.kind === 'gate' ? theme_1.T.brand : theme_1.T.line2 } }),
-                React.createElement("span", { style: { flex: '0 0 74px', color: theme_1.T.faint } }, (0, ax_1.fmt)(l.at)),
-                React.createElement("span", { style: { flex: 1, color: l.kind === 'gate' ? theme_1.T.brand : theme_1.T.text, fontWeight: l.kind === 'gate' || l.kind === 'note' ? 700 : 400 } },
-                    l.ai && React.createElement(AiTag, null),
-                    l.what),
-                React.createElement("span", { style: { color: theme_1.T.faint } }, l.who))))))));
+                s.name),
+            React.createElement("div", { style: { fontSize: 11.5, color: C.faint, whiteSpace: 'nowrap' } },
+                "\uACC4\uD68D ",
+                md(f.plan),
+                f.actual ? ` · 실제 ${md(f.actual)}` : ''),
+            React.createElement("div", { style: { fontSize: 11.5, fontWeight: 800, color: f.late ? C.red : f.state === 'done' ? C.brand : f.state === 'doing' ? C.blue : C.lock } }, f.state === 'done' ? (f.late ? `완료 · ${f.late}일 늦음` : '완료') : f.state === 'doing' ? (f.late ? `진행 · ${f.late}일 늦음` : '진행 중') : '잠김')));
+    })));
 }
-function AskBox(props) {
-    const [t, setT] = React.useState('');
-    const go = () => { const v = t.trim(); if (v) {
-        props.onAsk(v);
-        setT('');
-    } };
-    return (React.createElement("div", { style: { display: 'flex', gap: 6, marginTop: 8 } },
-        React.createElement("input", { "data-ax-ask-input": true, value: t, onChange: e => setT(e.target.value), onKeyDown: e => { if (e.key === 'Enter')
-                go(); }, placeholder: "\uC608: \uC774 \uC7AC\uC9C8\uB85C \uC720\uB7FD \uC2DD\uD488 \uC811\uCD09 \uAD1C\uCC2E\uC744\uAE4C? \uBE44\uC2B7\uD55C \uBAA8\uB378 \uBD88\uB7C9 \uC788\uC5C8\uB098?", style: theme_1.inp }),
-        React.createElement("button", { "data-ax-ask-send": true, onClick: go, disabled: !t.trim(), style: Object.assign(Object.assign({}, theme_1.primary), { opacity: t.trim() ? 1 : 0.5, whiteSpace: 'nowrap' }) }, "\uAC80\uD1A0 \uC694\uCCAD")));
+// 스킬 트리 — 단계 노드와 보스(관문). 앞 단계를 다 끝내야 다음 노드가 열림
+function Tree(props) {
+    const { p } = props;
+    const nodes = [];
+    ax_1.AX_STAGES.forEach((s, i) => {
+        const open = (0, work_1.unlocked)(p, i);
+        const clear = (0, work_1.stageClear)(p, s);
+        const n = (0, work_1.stageDocsOk)(p, s);
+        const on = i === props.k;
+        const col = clear ? C.brand : open ? HUE[i] : C.lock;
+        if (i)
+            nodes.push(React.createElement("div", { key: 'l' + i, style: { flex: 1, minWidth: 12, height: 4, borderRadius: 2, background: open ? C.brand : C.line, alignSelf: 'center' } }));
+        nodes.push(React.createElement("div", { key: s.id, "data-ax-node": s.id, "data-ax-node-state": clear ? 'clear' : open ? 'open' : 'locked', onClick: () => props.onPick(i), title: open ? `${s.name} — 산출물 ${n}/${s.docs.length}` : '앞 단계를 끝내면 열려요', style: { display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', width: 76 } },
+            React.createElement("div", { style: { width: 54, height: 54, borderRadius: '50%', border: `4px solid ${col}`, background: on ? col : clear ? C.brandBg : '#fff', color: on ? '#fff' : col, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: open ? 15 : 13, boxShadow: on ? `0 0 0 4px ${col}33` : 'none' } }, clear ? '완료' : open ? `${n}/${s.docs.length}` : '잠김'),
+            React.createElement("div", { style: { fontSize: 12, fontWeight: 800, marginTop: 4, color: open ? C.text : C.lock, textAlign: 'center', whiteSpace: 'nowrap' } },
+                s.no,
+                " ",
+                SHORT[i])));
+        if (s.gate) {
+            const g = (0, work_1.gateState)(p, s);
+            const gc = g === 'approved' ? C.brand : g === 'rejected' ? C.red : g === 'requested' ? C.gold : (0, work_1.stageDocsOk)(p, s) === s.docs.length ? C.gold : C.lock;
+            nodes.push(React.createElement("div", { key: 'gl' + i, style: { flex: 1, minWidth: 8, height: 4, borderRadius: 2, background: open && (0, work_1.stageDocsOk)(p, s) === s.docs.length ? C.brand : C.line, alignSelf: 'center' } }));
+            nodes.push(React.createElement("div", { key: 'g' + i, "data-ax-boss": (0, work_1.gateKey)(s.gate), "data-ax-boss-state": g, onClick: () => props.onPick(i), title: `${s.gate} — 승인받아야 다음 단계가 열려요`, style: { display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', width: 70 } },
+                React.createElement("div", { style: { width: 46, height: 46, transform: 'rotate(45deg)', border: `4px solid ${gc}`, background: g === 'approved' ? C.brandBg : g === 'requested' ? C.goldBg : '#fff', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+                    React.createElement("span", { style: { transform: 'rotate(-45deg)', fontWeight: 900, fontSize: 13, color: gc } }, (0, work_1.gateKey)(s.gate).toUpperCase())),
+                React.createElement("div", { style: { fontSize: 11.5, fontWeight: 800, marginTop: 8, color: gc, whiteSpace: 'nowrap' } }, g === 'approved' ? '승인됨' : g === 'requested' ? '승인 대기' : g === 'rejected' ? '반려됨' : '관문')));
+        }
+    });
+    return React.createElement("div", { "data-ax-tree": true, style: { display: 'flex', alignItems: 'flex-start', marginTop: 16, padding: '14px 8px 4px', borderTop: `1px solid ${C.line}`, overflowX: 'auto' } }, nodes);
 }
-// 시간 손잡이 — 끌면 그 날짜까지 계획대로 흘렀을 때 화면이 채워짐, ▶ 자동 재생, 끝까지 가면 전부 채워짐 (심준보 msg 10366339)
-function Scrub(props) {
-    const { lo, hi, value } = props;
-    const D = 86400000;
-    const span = Math.max(D, hi - lo);
-    const pct = (t) => Math.max(0, Math.min(100, ((t - lo) / span) * 100));
-    const valRef = React.useRef(value);
-    valRef.current = value;
-    React.useEffect(() => {
-        if (!props.playing)
-            return undefined;
-        const h = window.setInterval(() => {
-            const nx = valRef.current + 3 * D;
-            if (nx >= hi) {
-                props.setSim(props.step(hi));
-                props.setPlaying(false);
-            }
-            else
-                props.setSim(props.step(nx));
-        }, 60);
-        return () => window.clearInterval(h);
-    }, [props.playing, hi]);
-    const months = [];
-    for (let d = new Date(new Date(lo).getFullYear(), new Date(lo).getMonth() + 1, 1); d.getTime() <= hi; d = new Date(d.getFullYear(), d.getMonth() + 1, 1))
-        months.push({ t: d.getTime(), label: d.getMonth() === 0 ? `${d.getFullYear()}` : `${d.getMonth() + 1}월` });
-    const v = new Date(value);
-    const atEnd = value >= hi - D / 2;
-    return (React.createElement("div", { "data-ax-scrubbar": true, className: "axp-in", style: Object.assign(Object.assign({}, theme_1.glass), { margin: '0 24px 12px', padding: '12px 18px 10px', background: props.sim ? 'rgba(34,211,238,.07)' : theme_1.T.glass, borderColor: props.sim ? 'rgba(34,211,238,.35)' : theme_1.T.line }) },
-        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' } },
-            React.createElement("button", { "data-ax-play": true, onClick: props.onPlay, title: "\uCC98\uC74C\uBD80\uD130 \uB05D\uAE4C\uC9C0 \uC790\uB3D9\uC73C\uB85C \uD758\uB824 \uBCF4\uAE30", style: Object.assign(Object.assign({}, theme_1.primary), { width: 40, height: 40, padding: 0, borderRadius: '50%', fontSize: 15 }) }, props.playing ? '❚❚' : '▶'),
-            React.createElement("div", null,
-                React.createElement("div", { style: { fontSize: 15, fontWeight: 900 } },
-                    "\uC2DC\uAC04 \uC190\uC7A1\uC774 ",
-                    React.createElement("span", { style: { fontSize: 12, fontWeight: 600, color: theme_1.T.faint } }, "\uB04C\uBA74 \uADF8 \uB0A0\uAE4C\uC9C0 \uC77C\uC815\uB300\uB85C \uD758\uB800\uC744 \uB54C \uB2E8\uACC4\u00B7\uC0B0\uCD9C\uBB3C\u00B7\uAD00\uBB38\u00B7AI \uAE30\uB85D\uC774 \uCC44\uC6CC\uC838\uC694")),
-                React.createElement("div", { "data-ax-scrub-date": true, style: { fontSize: 13, fontWeight: 800, color: props.sim ? theme_1.T.cyan : theme_1.T.brand, marginTop: 2 } },
-                    v.getFullYear(),
-                    ".",
-                    v.getMonth() + 1,
-                    ".",
-                    v.getDate(),
-                    " ",
-                    props.sim ? (atEnd ? '· 끝까지 — 모든 단계 완료' : value < props.today ? '· 지난 시점 미리보기' : '· 앞으로 미리보기') : '· 오늘 (실제 화면)')),
+function Settings(props) {
+    const { p } = props;
+    const [v, setV] = React.useState({ name: p.name, owner: p.owner || '', approver: p.approver || '', approverMail: p.approverMail || '', start: p.start || '', target: p.target || '' });
+    const f = (k, label, type = 'text', w = 150) => React.createElement("label", { style: { display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12, color: C.faint } },
+        label,
+        React.createElement("input", { "data-ax-set": k, type: type, value: v[k], onChange: e => setV(Object.assign(Object.assign({}, v), { [k]: e.target.value })), style: Object.assign(Object.assign({}, inp), { width: w }) }));
+    const save = () => props.update(x => {
+        const ch = [];
+        Object.keys(v).forEach(k => { if ((x[k] || '') !== v[k])
+            ch.push(k); });
+        const plan = (v.start && v.target && (v.start !== x.start || v.target !== x.target)) ? (0, ax_1.suggestPlan)(v.start, v.target) : x.plan;
+        return Object.assign(Object.assign({}, x), { name: v.name || x.name, owner: v.owner || undefined, approver: v.approver || undefined, approverMail: v.approverMail || undefined, start: v.start || undefined, target: v.target || undefined, plan, log: ch.length ? x.log.concat([{ at: nowIso(), who: props.who, kind: 'edit', what: `프로젝트 정보 바꿈 (${ch.join(', ')})` }]) : x.log });
+    });
+    const setPlan = (sid, d) => props.update(x => (Object.assign(Object.assign({}, x), { plan: Object.assign(Object.assign({}, (x.plan || {})), { [sid]: d }), log: x.log.concat([{ at: nowIso(), who: props.who, kind: 'edit', what: `${ax_1.AX_STAGES.filter(s => s.id === sid)[0].name} 계획일 ${d}` }]) })));
+    return (React.createElement("div", { "data-ax-settings": true, style: { marginTop: 12, padding: 14, background: C.bg, borderRadius: 12 } },
+        React.createElement("div", { style: { display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' } },
+            f('name', '프로젝트 이름', 'text', 220),
+            f('owner', 'PM'),
+            f('approver', '관문 승인자'),
+            f('approverMail', '승인자 메일 (Teams 알림)', 'email', 200),
+            f('start', '시작일', 'date'),
+            f('target', '출시 목표일', 'date'),
+            React.createElement("button", { "data-ax-set-save": true, onClick: save, style: primary }, "\uC800\uC7A5")),
+        React.createElement("div", { style: { fontSize: 12, color: C.faint, margin: '12px 0 4px' } }, "\uB2E8\uACC4\uBCC4 \uACC4\uD68D\uC77C (\uC2DC\uC791\uC77C\u00B7\uCD9C\uC2DC \uBAA9\uD45C\uC77C\uC744 \uBC14\uAFB8\uBA74 \uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uB098\uB214)"),
+        React.createElement("div", { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, ax_1.AX_STAGES.map(s => React.createElement("label", { key: s.id, style: { display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11.5, color: C.faint } },
+            s.no,
+            " ",
+            s.name.split('·')[0],
+            React.createElement("input", { "data-ax-plan": s.id, type: "date", value: (p.plan || {})[s.id] || '', onChange: e => e.target.value && setPlan(s.id, e.target.value), style: Object.assign(Object.assign({}, inp), { width: 140 }) }))))));
+}
+// 단계 상세 — 아이템(산출물) 카드 + 보스(관문) 카드
+function StageDetail(props) {
+    const { p, k, who, update } = props;
+    const s = ax_1.AX_STAGES[k];
+    const open = (0, work_1.unlocked)(p, k);
+    const f = (0, work_1.perf)(p, k);
+    return (React.createElement("div", { "data-ax-stage": s.id, style: Object.assign(Object.assign({}, card), { marginTop: 16, padding: '16px 18px', opacity: open ? 1 : 0.75 }) },
+        React.createElement("div", { style: { display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' } },
+            React.createElement("span", { style: { fontSize: 18, fontWeight: 900 } },
+                s.no,
+                " ",
+                s.name),
+            React.createElement("span", { style: { fontSize: 13, color: C.sub } }, s.focus),
             React.createElement("span", { style: { flex: 1 } }),
-            props.sim && React.createElement("button", { "data-ax-scrub-reset": true, className: "axp-btn", onClick: props.onReset, style: theme_1.btn }, "\uC624\uB298\uB85C")),
-        React.createElement("div", { style: { position: 'relative', height: 48, marginTop: 6 } },
-            React.createElement("div", { style: { position: 'absolute', left: 0, right: 0, top: 20, height: 6, borderRadius: 6, background: theme_1.T.line } }),
-            React.createElement("div", { style: { position: 'absolute', left: 0, width: `${pct(value)}%`, top: 20, height: 6, borderRadius: 6, background: theme_1.AI_GRAD, boxShadow: '0 0 16px rgba(34,211,238,.6)', overflow: 'hidden' } },
-                React.createElement("span", { className: "axp-flow" })),
-            months.map(m => React.createElement("span", { key: m.t, style: { position: 'absolute', left: `${pct(m.t)}%`, top: 32, fontSize: 10, color: theme_1.T.faint, transform: 'translateX(-50%)', whiteSpace: 'nowrap' } }, m.label)),
-            props.items.filter(p => p.target).map(p => React.createElement("span", { key: p.id, title: `${p.name} 출시 목표 ${p.target}`, style: { position: 'absolute', left: `${pct(new Date(p.target + 'T00:00:00').getTime())}%`, top: 2, transform: 'translateX(-50%)', fontSize: 10, color: theme_1.T.amber, whiteSpace: 'nowrap', fontWeight: 800 } },
-                "\u25C6 ",
-                p.name.split(' ')[0],
-                " \uCD9C\uC2DC")),
-            React.createElement("span", { title: "\uC624\uB298", style: { position: 'absolute', left: `${pct(props.today)}%`, top: 14, width: 2, height: 18, marginLeft: -1, background: theme_1.T.brand } }),
-            React.createElement("span", { className: "axp-dot", style: { position: 'absolute', left: `${pct(value)}%`, top: 13, width: 20, height: 20, marginLeft: -10, color: theme_1.T.cyan, background: '#fff', border: `4px solid ${theme_1.T.cyan}`, boxShadow: `0 0 20px ${theme_1.T.cyan}`, pointerEvents: 'none' } }),
-            React.createElement("input", { "data-ax-scrub": true, type: "range", min: 0, max: Math.round(span / D), step: 1, value: Math.round((value - lo) / D), onChange: e => props.onChange(lo + Number(e.target.value) * D), "aria-label": "\uC2DC\uAC04 \uC190\uC7A1\uC774", style: { position: 'absolute', left: 0, right: 0, top: 8, width: '100%', height: 30, margin: 0, opacity: 0, cursor: 'grab' } }))));
+            React.createElement("span", { style: { fontSize: 13, color: C.sub } },
+                "\uACC4\uD68D ",
+                md(f.plan),
+                " \u00B7 \uC2E4\uC81C ",
+                md(f.actual)),
+            f.late > 0 && React.createElement(Tag, { c: C.red, bg: C.redBg },
+                f.late,
+                "\uC77C \uB2A6\uC74C")),
+        !open && React.createElement("div", { "data-ax-locked": true, style: { marginTop: 10, padding: '10px 14px', background: C.bg, borderRadius: 10, color: C.sub, fontSize: 13, fontWeight: 700 } }, "\uC7A0\uAE34 \uB2E8\uACC4\uC608\uC694. \uC55E \uB2E8\uACC4 \uC0B0\uCD9C\uBB3C\uC744 \uB2E4 \uCC44\uC6B0\uACE0 \uAD00\uBB38 \uC2B9\uC778\uC744 \uBC1B\uC73C\uBA74 \uC5F4\uB824\uC694. \uBBF8\uB9AC \uB2F4\uB2F9\u00B7\uAE30\uD55C\uC740 \uC815\uD574 \uB458 \uC218 \uC788\uC5B4\uC694."),
+        React.createElement("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12, marginTop: 14 } }, s.docs.map(d => React.createElement(Item, { key: d.key, p: p, s: s, dkey: d.key, label: d.label, proc: d.proc, hue: HUE[k], open: open, who: who, update: update }))),
+        s.gate && React.createElement(Boss, { p: p, s: s, open: open, who: who, update: update }),
+        React.createElement("div", { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 14 } },
+            React.createElement("div", { style: { fontSize: 13, color: C.sub } },
+                React.createElement("b", { style: { color: C.text } }, "\uC0AC\uB78C\uC774 \uD560 \uC77C"),
+                React.createElement("br", null),
+                (s.human || []).join(' · '),
+                React.createElement("br", null),
+                React.createElement("b", { style: { color: C.text } }, "AI\uAC00 \uB3C4\uC6B8 \uC77C"),
+                React.createElement("br", null),
+                (s.ai || []).join(' · ')),
+            React.createElement(RegRadar_1.default, { stage: s.id, stageLabel: `${s.no} ${s.name}` }))));
+}
+function ItemArt(props) {
+    const [ok, setOk] = React.useState(false); // 그림이 실제로 읽혔을 때만 보임, 아니면 기본 카드
+    return (React.createElement("div", { style: { position: 'relative', height: 96, borderRadius: 10, background: `linear-gradient(135deg, ${props.hue}22, ${props.hue}0D)`, display: 'flex', alignItems: 'center', justifyContent: 'center', filter: props.dim ? 'grayscale(1)' : 'none', opacity: props.dim ? 0.55 : 1 } },
+        React.createElement("img", { "data-ax-item-img": true, src: work_1.ITEM_IMG + props.dkey + '.png', alt: "", onLoad: () => setOk(true), onError: () => setOk(false), style: { maxHeight: 84, maxWidth: '80%', display: ok ? 'block' : 'none' } }),
+        !ok && React.createElement("span", { "data-ax-item-art": true, style: { width: 52, height: 64, borderRadius: 6, background: '#fff', border: `2px solid ${props.hue}`, boxShadow: `4px 4px 0 ${props.hue}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, color: props.hue, textAlign: 'center', lineHeight: 1.1, padding: 2 } }, props.label.replace(/[·(].*$/, '').slice(0, 6))));
+}
+function Item(props) {
+    const { p, dkey, label, who, update } = props;
+    const st = p.docs[dkey] || {};
+    const ok = (0, work_1.docOk)(st);
+    const [link, setLink] = React.useState(st.link || '');
+    const [skipping, setSkipping] = React.useState(false);
+    const [why, setWhy] = React.useState('');
+    const set = (patch, what) => update(x => (Object.assign(Object.assign({}, x), { docs: Object.assign(Object.assign({}, x.docs), { [dkey]: Object.assign(Object.assign({}, (x.docs[dkey] || {})), patch) }), log: x.log.concat([{ at: nowIso(), who, kind: 'doc', what: `${label} — ${what}` }]) })));
+    const left = (0, ax_1.daysTo)(st.due || (p.plan || {})[props.s.id]);
+    return (React.createElement("div", { "data-ax-item": dkey, "data-ax-item-state": st.done ? 'done' : st.skip ? 'skip' : 'todo', style: { border: `2px solid ${st.done ? C.brand : C.line}`, borderRadius: 12, padding: 10, background: '#fff', display: 'flex', flexDirection: 'column', gap: 7 } },
+        React.createElement(ItemArt, { dkey: dkey, label: label, hue: props.hue, dim: !props.open }),
+        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 6 } },
+            React.createElement("span", { style: { fontWeight: 800, flex: 1, minWidth: 0 }, title: props.proc }, label),
+            st.done && React.createElement(Tag, { c: C.brand, bg: C.brandBg }, "\uC644\uB8CC"),
+            st.skip && React.createElement(Tag, { c: C.faint, bg: C.bg, title: st.skip }, "\uD544\uC694 \uC5C6\uC74C")),
+        React.createElement("div", { style: { display: 'flex', gap: 6 } },
+            React.createElement("input", { "data-ax-item-who": true, placeholder: "\uB2F4\uB2F9", defaultValue: st.who || '', onBlur: e => { const v = e.target.value.trim(); if (v !== (st.who || ''))
+                    set({ who: v || undefined }, `담당 ${v || '비움'}`); }, style: Object.assign(Object.assign({}, inp), { flex: 1, width: 0 }) }),
+            React.createElement("input", { "data-ax-item-due": true, type: "date", value: st.due || '', onChange: e => set({ due: e.target.value || undefined }, `기한 ${e.target.value || '비움'}`), style: Object.assign(Object.assign({}, inp), { width: 128 }) })),
+        !ok && left !== undefined && left < 0 && React.createElement("div", { style: { fontSize: 12, fontWeight: 800, color: C.red } },
+            -left,
+            "\uC77C \uB2A6\uC74C"),
+        React.createElement("div", { style: { display: 'flex', gap: 6 } },
+            React.createElement("input", { "data-ax-item-link": true, placeholder: "SharePoint \uD30C\uC77C \uB9C1\uD06C \uBD99\uC5EC\uB123\uAE30", value: link, onChange: e => setLink(e.target.value), onBlur: () => { const v = link.trim(); if (v !== (st.link || ''))
+                    set({ link: v || undefined, by: v ? who : undefined, at: v ? nowIso() : undefined }, v ? '파일 링크 붙임' : '파일 링크 뺌'); }, style: Object.assign(Object.assign({}, inp), { flex: 1, width: 0 }) }),
+            st.link && React.createElement("a", { "data-ax-item-open": true, href: st.link, target: "_blank", rel: "noopener noreferrer", style: Object.assign(Object.assign({}, btn), { textDecoration: 'none', padding: '6px 10px' }) }, "\uC5F4\uAE30")),
+        st.link && st.by && React.createElement("div", { style: { fontSize: 11.5, color: C.faint } },
+            "\uC62C\uB9B0 \uC0AC\uB78C ",
+            st.by,
+            " \u00B7 ",
+            (0, ax_1.fmt)(st.at)),
+        !skipping ? React.createElement("div", { style: { display: 'flex', gap: 6 } },
+            React.createElement("button", { "data-ax-item-done": true, disabled: !props.open || !!st.skip, onClick: () => set({ done: !st.done, by: st.by || who, at: st.at || nowIso() }, st.done ? '완료 취소' : '완료'), style: Object.assign(Object.assign({}, (st.done ? btn : primary)), { flex: 1, opacity: !props.open || st.skip ? 0.45 : 1, cursor: !props.open || st.skip ? 'not-allowed' : 'pointer' }) }, st.done ? '완료 취소' : '완료'),
+            React.createElement("button", { "data-ax-item-skip": true, disabled: !props.open || !!st.done, onClick: () => (st.skip ? set({ skip: undefined }, '필요 없음 취소') : setSkipping(true)), style: Object.assign(Object.assign({}, btn), { opacity: !props.open || st.done ? 0.45 : 1 }) }, st.skip ? '되돌리기' : '필요 없음')) : React.createElement("div", { style: { display: 'flex', gap: 6 } },
+            React.createElement("input", { "data-ax-item-why": true, autoFocus: true, placeholder: "\uD544\uC694 \uC5C6\uB294 \uC774\uC720", value: why, onChange: e => setWhy(e.target.value), style: Object.assign(Object.assign({}, inp), { flex: 1, width: 0 }) }),
+            React.createElement("button", { "data-ax-item-why-ok": true, disabled: !why.trim(), onClick: () => { set({ skip: why.trim() }, `필요 없음 — ${why.trim()}`); setSkipping(false); setWhy(''); }, style: Object.assign(Object.assign({}, primary), { opacity: why.trim() ? 1 : 0.45 }) }, "\uD655\uC778"),
+            React.createElement("button", { onClick: () => setSkipping(false), style: btn }, "\uCDE8\uC18C"))));
+}
+// 보스 노드 — 관문 승인 요청 → 승인/반려, 누가 언제 했는지 쌓임
+function Boss(props) {
+    const { p, s, who, update } = props;
+    const gate = s.gate;
+    const g = (0, work_1.gateState)(p, s);
+    const ready = (0, work_1.stageDocsOk)(p, s) === s.docs.length;
+    const [note, setNote] = React.useState('');
+    const isApprover = !p.approver || p.approver.replace(/\s/g, '') === who.replace(/\s/g, '');
+    const act = (kind) => {
+        update(x => (Object.assign(Object.assign({}, x), { approvals: (x.approvals || []).concat([{ gate, kind, at: nowIso(), who, note: note.trim() || undefined }]), log: x.log.concat([{ at: nowIso(), who, kind: 'gate', what: `${gate} ${kind === 'request' ? '승인 요청' : kind === 'approve' ? '승인' : '반려'}${note.trim() ? ` — ${note.trim()}` : ''}` }]) })));
+        setNote('');
+    };
+    const hist = (p.approvals || []).filter(a => a.gate === gate);
+    const la = (0, work_1.lastApproval)(p, gate);
+    const msg = `[AX-PLM] ${p.name} ${gate} 승인 부탁드려요. ${pageUrl()}`;
+    return (React.createElement("div", { "data-ax-boss-card": (0, work_1.gateKey)(gate), style: { marginTop: 14, border: `2px solid ${g === 'approved' ? C.brand : g === 'rejected' ? C.red : C.gold}`, background: g === 'approved' ? C.brandBg : C.goldBg, borderRadius: 14, padding: 14, display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' } },
+        React.createElement("div", { style: { width: 80, height: 80, borderRadius: 12, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' } },
+            React.createElement(BossArt, { k: (0, work_1.gateKey)(gate) })),
+        React.createElement("div", { style: { flex: 1, minWidth: 240 } },
+            React.createElement("div", { style: { fontSize: 16, fontWeight: 900 } },
+                gate,
+                " ",
+                React.createElement("span", { style: { fontSize: 12, color: C.sub, fontWeight: 700 } },
+                    "\u00B7 \uC2B9\uC778\uC790 ",
+                    p.approver || '아직 없음 (프로젝트 설정)')),
+            React.createElement("div", { style: { fontSize: 13, color: C.sub, marginTop: 3 } }, g === 'approved' ? `승인됨 — ${la ? `${la.who} · ${(0, ax_1.fmt)(la.at)}` : '이전 판에서 통과'}` : g === 'requested' ? `승인 대기 — ${la ? `${la.who}가 ${(0, ax_1.fmt)(la.at)} 요청` : ''}` : g === 'rejected' ? `반려됨 — ${la ? `${la.who} · ${la.note || '사유 없음'}` : ''}. 고친 뒤 다시 요청하세요.` : ready ? '산출물을 다 채웠어요. 승인을 요청하세요.' : `산출물 ${s.docs.length - (0, work_1.stageDocsOk)(p, s)}개를 더 채우면 승인을 요청할 수 있어요.`),
+            props.open && g !== 'approved' && React.createElement("div", { style: { display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' } },
+                React.createElement("input", { "data-ax-gate-note": true, placeholder: g === 'requested' ? '승인·반려 의견 (반려는 필수)' : '요청 메모', value: note, onChange: e => setNote(e.target.value), style: Object.assign(Object.assign({}, inp), { flex: 1, minWidth: 180 }) }),
+                (g === 'wait' || g === 'rejected') && React.createElement("button", { "data-ax-gate-request": true, disabled: !ready, onClick: () => act('request'), style: Object.assign(Object.assign({}, primary), { opacity: ready ? 1 : 0.45 }) }, "\uC2B9\uC778 \uC694\uCCAD"),
+                g === 'requested' && React.createElement("button", { "data-ax-gate-approve": true, disabled: !isApprover, title: isApprover ? '' : `승인자(${p.approver})만 승인할 수 있어요`, onClick: () => act('approve'), style: Object.assign(Object.assign({}, primary), { opacity: isApprover ? 1 : 0.45 }) }, "\uC2B9\uC778"),
+                g === 'requested' && React.createElement("button", { "data-ax-gate-reject": true, disabled: !isApprover || !note.trim(), onClick: () => act('reject'), style: Object.assign(Object.assign({}, btn), { color: C.red, opacity: isApprover && note.trim() ? 1 : 0.45 }) }, "\uBC18\uB824"),
+                g === 'requested' && (p.approverMail ? React.createElement("a", { "data-ax-gate-teams": true, href: teamsChat(p.approverMail, msg), target: "_blank", rel: "noopener noreferrer", style: Object.assign(Object.assign({}, btn), { textDecoration: 'none' }) }, "Teams\uB85C \uC54C\uB9AC\uAE30") : React.createElement("span", { style: { fontSize: 12, color: C.faint, alignSelf: 'center' } }, "\uC2B9\uC778\uC790 \uBA54\uC77C\uC744 \uB123\uC73C\uBA74 Teams\uB85C \uC54C\uB9B4 \uC218 \uC788\uC5B4\uC694"))),
+            g === 'approved' && props.open && React.createElement("button", { "data-ax-gate-undo": true, onClick: () => act('reject'), style: Object.assign(Object.assign({}, btn), { marginTop: 8, fontSize: 12 }), disabled: !isApprover }, "\uC2B9\uC778 \uCDE8\uC18C"),
+            hist.length > 0 && React.createElement("div", { style: { marginTop: 8, fontSize: 12, color: C.sub } }, hist.map((a, i) => React.createElement("div", { key: i },
+                (0, ax_1.fmt)(a.at),
+                " \u00B7 ",
+                a.who,
+                " \u00B7 ",
+                a.kind === 'request' ? '요청' : a.kind === 'approve' ? '승인' : '반려',
+                a.note ? ` — ${a.note}` : ''))))));
+}
+function BossArt(props) {
+    const [ok, setOk] = React.useState(false);
+    return React.createElement(React.Fragment, null,
+        React.createElement("img", { src: work_1.ITEM_IMG + props.k + '.png', alt: "", onLoad: () => setOk(true), style: { maxWidth: 72, maxHeight: 72, display: ok ? 'block' : 'none' } }),
+        !ok && React.createElement("span", { style: { fontSize: 22, fontWeight: 900, color: C.gold } }, props.k.toUpperCase()));
+}
+function Issues(props) {
+    const { p, who, update } = props;
+    const [v, setV] = React.useState({ kind: '이슈', text: '', owner: '', due: '' });
+    const [showDone, setShowDone] = React.useState(false);
+    const list = (p.issues || []).filter(i => showDone || !i.done);
+    const addI = () => {
+        if (!v.text.trim())
+            return;
+        const i = { id: uid('i'), kind: v.kind, text: v.text.trim(), owner: v.owner.trim() || undefined, due: v.due || undefined, at: nowIso(), who, stage: ax_1.AX_STAGES[(0, work_1.curIdx)(p)].id };
+        update(x => (Object.assign(Object.assign({}, x), { issues: (x.issues || []).concat([i]), log: x.log.concat([{ at: nowIso(), who, kind: 'note', what: `${i.kind} 등록 — ${i.text}` }]) })));
+        setV(Object.assign(Object.assign({}, v), { text: '', owner: '', due: '' }));
+    };
+    const toggle = (id) => update(x => (Object.assign(Object.assign({}, x), { issues: (x.issues || []).map(i => (i.id === id ? Object.assign(Object.assign({}, i), { done: !i.done, doneAt: i.done ? undefined : nowIso() }) : i)), log: x.log.concat([{ at: nowIso(), who, kind: 'note', what: `${((x.issues || []).filter(i => i.id === id)[0] || { text: '' }).text} — ${((x.issues || []).filter(i => i.id === id)[0] || { done: false }).done ? '다시 열림' : '해결'}` }]) })));
+    return (React.createElement("div", { "data-ax-issues": true },
+        React.createElement("div", { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 } },
+            React.createElement("select", { "data-ax-issue-kind": true, value: v.kind, onChange: e => setV(Object.assign(Object.assign({}, v), { kind: e.target.value })), style: inp },
+                React.createElement("option", null, "\uC774\uC288"),
+                React.createElement("option", null, "\uB9AC\uC2A4\uD06C")),
+            React.createElement("input", { "data-ax-issue-text": true, placeholder: "\uBB34\uC2A8 \uBB38\uC81C\uC778\uC9C0", value: v.text, onChange: e => setV(Object.assign(Object.assign({}, v), { text: e.target.value })), onKeyDown: e => e.key === 'Enter' && addI(), style: Object.assign(Object.assign({}, inp), { flex: 1, minWidth: 220 }) }),
+            React.createElement("input", { "data-ax-issue-owner": true, placeholder: "\uB2F4\uB2F9", value: v.owner, onChange: e => setV(Object.assign(Object.assign({}, v), { owner: e.target.value })), style: Object.assign(Object.assign({}, inp), { width: 100 }) }),
+            React.createElement("input", { "data-ax-issue-due": true, type: "date", value: v.due, onChange: e => setV(Object.assign(Object.assign({}, v), { due: e.target.value })), style: Object.assign(Object.assign({}, inp), { width: 140 }) }),
+            React.createElement("button", { "data-ax-issue-add": true, onClick: addI, style: primary }, "\uB4F1\uB85D"),
+            React.createElement("label", { style: { fontSize: 12, color: C.faint, alignSelf: 'center' } },
+                React.createElement("input", { type: "checkbox", checked: showDone, onChange: e => setShowDone(e.target.checked) }),
+                " \uD574\uACB0\uB41C \uAC83\uB3C4")),
+        !list.length && React.createElement("div", { style: { color: C.faint, fontSize: 13 } }, "\uC5F4\uB9B0 \uC774\uC288\u00B7\uB9AC\uC2A4\uD06C\uAC00 \uC5C6\uC5B4\uC694."),
+        list.map(i => {
+            const left = (0, ax_1.daysTo)(i.due);
+            return (React.createElement("div", { key: i.id, "data-ax-issue": i.id, style: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: `1px solid ${C.line}`, opacity: i.done ? 0.55 : 1 } },
+                React.createElement("input", { "data-ax-issue-done": true, type: "checkbox", checked: !!i.done, onChange: () => toggle(i.id) }),
+                React.createElement(Tag, { c: i.kind === '리스크' ? C.amber : C.red, bg: i.kind === '리스크' ? C.amberBg : C.redBg }, i.kind),
+                React.createElement("span", { style: { flex: 1, textDecoration: i.done ? 'line-through' : 'none' } }, i.text),
+                React.createElement("span", { style: { fontSize: 12, color: C.faint } },
+                    ax_1.AX_STAGES.filter(s => s.id === i.stage).map(s => s.no)[0],
+                    " \u00B7 ",
+                    i.owner || '담당 없음'),
+                !i.done && React.createElement(DueTag, { left: left, due: i.due })));
+        })));
+}
+function Changes(props) {
+    const { p, who, update } = props;
+    const [what, setWhat] = React.useState('');
+    const [why, setWhy] = React.useState('');
+    const addC = () => {
+        if (!what.trim() || !why.trim())
+            return;
+        const c = { id: uid('c'), at: nowIso(), who, what: what.trim(), why: why.trim(), stage: ax_1.AX_STAGES[(0, work_1.curIdx)(p)].id };
+        update(x => (Object.assign(Object.assign({}, x), { changes: (x.changes || []).concat([c]), log: x.log.concat([{ at: nowIso(), who, kind: 'edit', what: `사양 변경 — ${c.what} (${c.why})` }]) })));
+        setWhat('');
+        setWhy('');
+    };
+    return (React.createElement("div", { "data-ax-changes": true },
+        React.createElement("div", { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 } },
+            React.createElement("input", { "data-ax-change-what": true, placeholder: "\uBB34\uC5C7\uC744 \uBC14\uAFE8\uB098 (\uC608: \uC6A9\uB7C9 2L \u2192 2.5L)", value: what, onChange: e => setWhat(e.target.value), style: Object.assign(Object.assign({}, inp), { flex: 1, minWidth: 220 }) }),
+            React.createElement("input", { "data-ax-change-why": true, placeholder: "\uC65C", value: why, onChange: e => setWhy(e.target.value), style: Object.assign(Object.assign({}, inp), { flex: 1, minWidth: 180 }) }),
+            React.createElement("button", { "data-ax-change-add": true, disabled: !what.trim() || !why.trim(), onClick: addC, style: Object.assign(Object.assign({}, primary), { opacity: what.trim() && why.trim() ? 1 : 0.45 }) }, "\uAE30\uB85D")),
+        !(p.changes || []).length && React.createElement("div", { style: { color: C.faint, fontSize: 13 } }, "\uC0AC\uC591 \uBCC0\uACBD \uAE30\uB85D\uC774 \uC5C6\uC5B4\uC694."),
+        (p.changes || []).slice().reverse().map(c => (React.createElement("div", { key: c.id, "data-ax-change": c.id, style: { padding: '8px 0', borderTop: `1px solid ${C.line}` } },
+            React.createElement("div", { style: { fontWeight: 700 } }, c.what),
+            React.createElement("div", { style: { fontSize: 12.5, color: C.sub } },
+                "\uC774\uC720: ",
+                c.why,
+                " \u00B7 ",
+                ax_1.AX_STAGES.filter(s => s.id === c.stage).map(s => `${s.no} ${s.name}`)[0],
+                " \u00B7 ",
+                c.who,
+                " \u00B7 ",
+                (0, ax_1.fmt)(c.at)))))));
+}
+function Asks(props) {
+    const { p, who, update } = props;
+    const [t, setT] = React.useState('');
+    const ask = () => {
+        if (!t.trim())
+            return;
+        const a = { id: uid('q'), at: nowIso(), who, stage: ax_1.AX_STAGES[(0, work_1.curIdx)(p)].id, text: t.trim() };
+        update(x => (Object.assign(Object.assign({}, x), { asks: (x.asks || []).concat([a]), log: x.log.concat([{ at: nowIso(), who, kind: 'note', what: `AI 사전 검토 요청 — ${a.text}` }]) })));
+        setT('');
+    };
+    return (React.createElement("div", { "data-ax-asks": true },
+        React.createElement("div", { style: { fontSize: 13, color: C.sub, marginBottom: 8 } },
+            "\uBBF8\uB9AC \uD655\uC778\uD560 \uAC83\uC744 \uC801\uC5B4 \uB450\uBA74 AI \uB3C4\uC6B0\uBBF8(",
+            p.aiHelper || 'PC-곽두팔',
+            ")\uAC00 \uB2F5\uC744 \uB2EC\uC544\uC694."),
+        React.createElement("div", { style: { display: 'flex', gap: 6, marginBottom: 10 } },
+            React.createElement("input", { "data-ax-ask": true, placeholder: "\uC608: UV \uC0B4\uADE0 \uB123\uC73C\uBA74 \uAD11\uACE0\uC5D0 99.9% \uC368\uB3C4 \uB3FC?", value: t, onChange: e => setT(e.target.value), onKeyDown: e => e.key === 'Enter' && ask(), style: Object.assign(Object.assign({}, inp), { flex: 1 }) }),
+            React.createElement("button", { "data-ax-ask-send": true, onClick: ask, style: primary }, "\uAC80\uD1A0 \uC694\uCCAD")),
+        (p.asks || []).slice().reverse().map(a => (React.createElement("div", { key: a.id, style: { padding: '8px 0', borderTop: `1px solid ${C.line}` } },
+            React.createElement("div", { style: { fontWeight: 700 } },
+                a.text,
+                " ",
+                React.createElement("span", { style: { fontSize: 12, color: C.faint, fontWeight: 400 } },
+                    "\u00B7 ",
+                    a.who,
+                    " \u00B7 ",
+                    (0, ax_1.fmt)(a.at))),
+            React.createElement("div", { style: { fontSize: 13, color: a.answer ? C.text : C.amber, marginTop: 2 } }, a.answer ? `${a.answeredBy || 'AI'}: ${a.answer}` : '답 기다리는 중'))))));
+}
+function Log(props) {
+    const [t, setT] = React.useState('');
+    const addL = () => { if (!t.trim())
+        return; const v = t.trim(); props.update(x => (Object.assign(Object.assign({}, x), { next: v, log: x.log.concat([{ at: nowIso(), who: props.who, kind: 'note', what: v }]) }))); setT(''); };
+    return (React.createElement("div", { "data-ax-log": true },
+        React.createElement("div", { style: { display: 'flex', gap: 6, marginBottom: 10 } },
+            React.createElement("input", { "data-ax-note": true, placeholder: "\uC9C4\uD589 \uC0C1\uD669 \uD55C \uC904", value: t, onChange: e => setT(e.target.value), onKeyDown: e => e.key === 'Enter' && addL(), style: Object.assign(Object.assign({}, inp), { flex: 1 }) }),
+            React.createElement("button", { "data-ax-note-add": true, onClick: addL, style: primary }, "\uB0A8\uAE30\uAE30")),
+        props.p.log.slice().sort((x, y) => (x.at < y.at ? 1 : x.at > y.at ? -1 : 0)).slice(0, 80).map((l, i) => (React.createElement("div", { key: i, style: { display: 'flex', gap: 10, padding: '6px 0', borderTop: `1px solid ${C.line}`, fontSize: 13 } },
+            React.createElement("span", { style: { color: C.faint, width: 80, flex: '0 0 80px' } }, (0, ax_1.fmt)(l.at)),
+            React.createElement("span", { style: { width: 110, flex: '0 0 110px', fontWeight: 700, color: l.ai ? '#6D28D9' : C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, l.who),
+            React.createElement("span", { style: { flex: 1 } }, l.what))))));
+}
+function NewForm(props) {
+    const [v, setV] = React.useState({ name: '', owner: props.who, approver: '', start: (0, ax_1.today)(), target: '' });
+    const f = (k, label, type = 'text', w = 150) => React.createElement("label", { style: { display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12, color: C.faint } },
+        label,
+        React.createElement("input", { "data-ax-new-f": k, type: type, value: v[k], onChange: e => setV(Object.assign(Object.assign({}, v), { [k]: e.target.value })), style: Object.assign(Object.assign({}, inp), { width: w }) }));
+    return (React.createElement("div", { "data-ax-newform": true, style: Object.assign(Object.assign({}, card), { margin: '12px 24px 0', padding: 16, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }) },
+        f('name', '제품·프로젝트 이름', 'text', 240),
+        f('owner', 'PM'),
+        f('approver', '관문 승인자'),
+        f('start', '시작일', 'date'),
+        f('target', '출시 목표일', 'date'),
+        React.createElement("button", { "data-ax-new-ok": true, disabled: !v.name.trim(), onClick: () => props.onAdd(v.name.trim(), v.owner, v.approver, v.start, v.target), style: Object.assign(Object.assign({}, primary), { opacity: v.name.trim() ? 1 : 0.45 }) }, "\uB9CC\uB4E4\uAE30"),
+        React.createElement("button", { onClick: props.onCancel, style: btn }, "\uCDE8\uC18C"),
+        React.createElement("div", { style: { width: '100%', fontSize: 12, color: C.faint } }, "\uCD9C\uC2DC \uBAA9\uD45C\uC77C\uC744 \uB123\uC73C\uBA74 \uB2E8\uACC4\uBCC4 \uACC4\uD68D\uC77C\uC774 \uC790\uB3D9\uC73C\uB85C \uB098\uB258\uC5B4\uC694.")));
 }
 
 };
@@ -2761,104 +2644,130 @@ function stageElapsed(p, now = (0, exports.today)()) {
 }
 
 };
-__m["src/webparts/huromAxPlm/components/Timeline.js"]=function(module,exports,require){"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
+__m["src/webparts/huromAxPlm/model/work.js"]=function(module,exports,require){"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = Timeline;
-const React = __importStar(require("react"));
+exports.projLate = exports.stageClear = exports.lastApproval = exports.stageDocsOk = exports.docOk = exports.gateKey = exports.ITEM_IMG = void 0;
+exports.gateState = gateState;
+exports.unlocked = unlocked;
+exports.curIdx = curIdx;
+exports.settle = settle;
+exports.perf = perf;
+exports.todos = todos;
+exports.workSamples = workSamples;
+// AX-PLM 1.0.128 — PM이 매일 쓰는 기능 (심준보 2026-11-17 #ax-plm msg 10389967 '실제 사용에도 문제없게 AX팀용 PLM' · 10389890/10389907 '게임 스킬 트리처럼 단계별로')
+// 스킬 트리 규칙: 단계 산출물을 다 채우면(또는 '필요 없음' + 사유) 다음 단계가 열림. 관문(G1~G3)은 보스 — 승인받아야 넘어감
 const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
-// 일정 보기 — 프로젝트마다 한 줄, 단계별 목표일로 막대 7칸. 오늘 세로선, 지금 단계는 진하게, 늦은 단계는 빨강
-const C = { brand: '#34D399', text: '#ECF3EF', faint: '#73857C', line: 'rgba(255,255,255,.09)', red: '#FB7185', amber: '#FBBF24', cyan: '#22D3EE' }; // 어두운 관제 화면 (1.0.126)
-const SHADE = ['#6EE7B7', '#34D399', '#2DD4BF', '#22D3EE', '#38BDF8', '#818CF8', '#A78BFA'];
-const day = (s) => new Date(s + 'T00:00:00').getTime();
-const DAY = 86400000;
-function Timeline(props) {
-    const rows = props.items.filter(p => p.start && Object.keys(p.plan || {}).length);
-    const none = props.items.filter(p => rows.indexOf(p) < 0);
-    const now = day((0, ax_1.today)());
-    let lo = now - 30 * DAY;
-    let hi = now + 180 * DAY;
-    rows.forEach(p => { lo = Math.min(lo, day(p.start)); ax_1.AX_STAGES.forEach(s => { const v = (p.plan || {})[s.id]; if (v)
-        hi = Math.max(hi, day(v)); }); });
-    lo = new Date(new Date(lo).getFullYear(), new Date(lo).getMonth(), 1).getTime();
-    const W = 1100;
-    const x = (t) => ((t - lo) / (hi - lo)) * W;
-    const months = [];
-    for (let d = new Date(lo); d.getTime() <= hi; d = new Date(d.getFullYear(), d.getMonth() + 1, 1))
-        months.push({ t: d.getTime(), label: d.getMonth() === 0 ? `${d.getFullYear()}.1` : `${d.getMonth() + 1}월` });
-    return (React.createElement("div", { "data-ax-timeline": true, style: { padding: '6px 24px 24px', overflowX: 'auto' } },
-        React.createElement("div", { style: { background: 'rgba(255,255,255,.04)', border: `1px solid ${C.line}`, borderRadius: 16, padding: '12px 16px', minWidth: W + 260 } },
-            React.createElement("div", { style: { display: 'flex', fontSize: 11.5, color: C.faint, marginLeft: 240, position: 'relative', height: 18 } }, months.map(m => React.createElement("span", { key: m.t, style: { position: 'absolute', left: x(m.t), borderLeft: `1px solid ${C.line}`, paddingLeft: 4 } }, m.label))),
-            rows.map(p => {
-                const cur = (0, ax_1.stageIdx)(p.stage);
-                const care = (0, ax_1.careList)(p);
-                let prev = day(p.start);
-                return (React.createElement("div", { key: p.id, "data-ax-trow": p.id, onClick: () => props.onOpen(p.id), style: { display: 'flex', alignItems: 'center', height: 40, borderTop: `1px solid ${C.line}`, cursor: 'pointer', background: props.sel === p.id ? 'rgba(52,211,153,.10)' : 'transparent' } },
-                    React.createElement("div", { style: { width: 240, flex: '0 0 240px', paddingRight: 10, overflow: 'hidden' } },
-                        React.createElement("div", { style: { fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, p.name),
-                        React.createElement("div", { style: { fontSize: 11.5, color: C.faint, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } },
-                            "PM ",
-                            p.owner || '없음',
-                            " \u00B7 ",
-                            ax_1.AX_STAGES[cur].no,
-                            " ",
-                            ax_1.AX_STAGES[cur].name,
-                            care.length ? React.createElement("span", { style: { color: care.some(c => c.level === 'red') ? C.red : C.amber, fontWeight: 800 } },
-                                " \u00B7 \uCC59\uAE38 \uAC83 ",
-                                care.length) : null)),
-                    React.createElement("div", { style: { position: 'relative', width: W, height: 40 } },
-                        ax_1.AX_STAGES.map((s, k) => {
-                            const v = (p.plan || {})[s.id];
-                            if (!v)
-                                return null;
-                            const a = prev;
-                            const b = day(v);
-                            prev = b;
-                            const late = k >= cur && b < now;
-                            return React.createElement("div", { key: s.id, className: "axp-bar", title: `${s.no} ${s.name} ~ ${v}${s.gate ? ' · ' + s.gate : ''}`, style: { position: 'absolute', top: 11, height: 18, left: x(a), width: Math.max(3, x(b) - x(a) - 2), background: late ? C.red : SHADE[k], opacity: k < cur ? 0.45 : 1, borderRadius: 4, outline: k === cur ? `2px solid #fff` : 'none', fontSize: 10.5, color: '#04110C', fontWeight: 800, lineHeight: '18px', animationDelay: `${k * 90}ms`, boxShadow: k === cur ? `0 0 14px ${SHADE[k]}` : 'none', paddingLeft: 3, overflow: 'hidden', whiteSpace: 'nowrap', boxSizing: 'border-box' } }, s.no);
-                        }),
-                        p.target && React.createElement("div", { title: `출시 목표 ${p.target}`, style: { position: 'absolute', left: x(day(p.target)) - 5, top: 6, width: 10, height: 10, background: C.amber, transform: 'rotate(45deg)', boxShadow: `0 0 10px ${C.amber}` } }))));
-            }),
-            React.createElement("div", { style: { position: 'relative', marginLeft: 240, height: 0 } },
-                React.createElement("div", { title: "\uC624\uB298", style: { position: 'absolute', left: x(now), top: -(rows.length * 40) - 2, height: rows.length * 40 + 2, borderLeft: `2px solid ${C.cyan}`, boxShadow: `0 0 12px ${C.cyan}` } },
-                    React.createElement("span", { className: "axp-dot", style: { position: 'absolute', top: -6, left: -6, width: 10, height: 10, color: C.cyan } }),
-                    React.createElement("span", { style: { position: 'absolute', top: -22, left: -14, fontSize: 11, fontWeight: 800, color: C.cyan, whiteSpace: 'nowrap' } }, "\uC624\uB298"))),
-            !rows.length && React.createElement("div", { style: { fontSize: 13, color: C.faint, padding: '12px 0' } }, "\uC77C\uC815\uC774 \uC788\uB294 \uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4\uC694. \uCE74\uB4DC\uB97C \uC5F4\uC5B4 \uC2DC\uC791\uC77C\u00B7\uCD9C\uC2DC \uBAA9\uD45C\uB97C \uB123\uC73C\uBA74 \uB2E8\uACC4 \uC77C\uC815\uC774 \uC790\uB3D9\uC73C\uB85C \uC0DD\uACA8\uC694."),
-            none.length > 0 && React.createElement("div", { style: { fontSize: 12, color: C.faint, paddingTop: 10 } },
-                "\uC77C\uC815 \uC5C6\uC74C: ",
-                none.map(p => React.createElement("a", { key: p.id, onClick: () => props.onOpen(p.id), style: { color: C.brand, cursor: 'pointer', marginRight: 8 } }, p.name))))));
+exports.ITEM_IMG = 'https://simjb23-oss.github.io/hurom-ehr/axplm/items/'; // 곽두팔이 피그마로 만든 아이템 그림 (<키>.png). 없으면 기본 카드
+const gateKey = (gate) => (gate ? gate.split(' ')[0].toLowerCase() : '');
+exports.gateKey = gateKey;
+const docOk = (d) => !!d && (!!d.done || !!d.skip);
+exports.docOk = docOk;
+const stageDocsOk = (p, s) => s.docs.filter(x => (0, exports.docOk)(p.docs[x.key])).length;
+exports.stageDocsOk = stageDocsOk;
+const lastApproval = (p, gate) => (p.approvals || []).filter(a => a.gate === gate).slice(-1)[0];
+exports.lastApproval = lastApproval;
+function gateState(p, s) {
+    if (!s.gate)
+        return 'none';
+    const a = (0, exports.lastApproval)(p, s.gate);
+    if (a)
+        return a.kind === 'approve' ? 'approved' : a.kind === 'reject' ? 'rejected' : 'requested';
+    if (p.gates && p.gates[s.gate])
+        return 'approved'; // 1.0.127 이전에 넘긴 관문은 통과로 봄
+    return 'wait';
+}
+const stageClear = (p, s) => (0, exports.stageDocsOk)(p, s) === s.docs.length && (!s.gate || gateState(p, s) === 'approved');
+exports.stageClear = stageClear;
+// 그 단계가 열렸나 — 앞 단계가 모두 끝나야 열림
+function unlocked(p, k) {
+    for (let i = 0; i < k; i++)
+        if (!(0, exports.stageClear)(p, ax_1.AX_STAGES[i]))
+            return false;
+    return true;
+}
+// 지금 단계 = 처음으로 안 끝난 단계
+function curIdx(p) {
+    for (let i = 0; i < ax_1.AX_STAGES.length; i++)
+        if (!(0, exports.stageClear)(p, ax_1.AX_STAGES[i]))
+            return i;
+    return ax_1.AX_STAGES.length - 1;
+}
+// 바꾼 뒤 단계를 다시 맞춤 — 앞으로 가면 끝난 날(actual) 기록, 이력에 남김
+function settle(p, who) {
+    const k = curIdx(p);
+    const before = (0, ax_1.stageIdx)(p.stage);
+    if (k === before)
+        return p;
+    const at = new Date().toISOString();
+    const actual = Object.assign({}, (p.actual || {}));
+    const log = p.log.slice();
+    if (k > before)
+        for (let i = before; i < k; i++) {
+            actual[ax_1.AX_STAGES[i].id] = actual[ax_1.AX_STAGES[i].id] || (0, ax_1.today)();
+            log.push({ at, who, kind: 'move', what: `${ax_1.AX_STAGES[i].no} ${ax_1.AX_STAGES[i].name} 완료 → ${ax_1.AX_STAGES[i + 1].no} ${ax_1.AX_STAGES[i + 1].name} 열림` });
+        }
+    else {
+        for (let i = k; i < before; i++)
+            delete actual[ax_1.AX_STAGES[i].id];
+        log.push({ at, who, kind: 'move', what: `${ax_1.AX_STAGES[k].no} ${ax_1.AX_STAGES[k].name}(으)로 되돌아감` });
+    }
+    return Object.assign(Object.assign({}, p), { stage: ax_1.AX_STAGES[k].id, actual, log });
+}
+function perf(p, k, now = (0, ax_1.today)()) {
+    const s = ax_1.AX_STAGES[k];
+    const plan = (p.plan || {})[s.id];
+    const actual = (p.actual || {})[s.id];
+    const ck = curIdx(p);
+    const allClear = (0, exports.stageClear)(p, s);
+    const state = allClear && k < ck ? 'done' : allClear && k === ax_1.AX_STAGES.length - 1 ? 'done' : k === ck ? 'doing' : 'todo';
+    let late = 0;
+    if (plan) {
+        const ref = state === 'done' ? (actual || plan) : now;
+        const d = (0, ax_1.daysTo)(plan, ref);
+        late = d !== undefined && d < 0 ? -d : 0;
+        if (state === 'todo')
+            late = 0;
+    }
+    return { plan, actual, late, state };
+}
+const projLate = (p) => perf(p, curIdx(p)).late;
+exports.projLate = projLate;
+function todos(items, who, now = (0, ax_1.today)()) {
+    const out = [];
+    const me = (n) => !!n && !!who && n.replace(/\s/g, '') === who.replace(/\s/g, '');
+    items.forEach(p => {
+        const k = curIdx(p);
+        const s = ax_1.AX_STAGES[k];
+        const pm = me(p.owner);
+        s.docs.forEach(d => { const st = p.docs[d.key] || {}; if ((0, exports.docOk)(st))
+            return; if (me(st.who) || (pm && !st.who)) {
+            const due = st.due || (p.plan || {})[s.id];
+            out.push({ pid: p.id, project: p.name, kind: '산출물', text: d.label, stage: k, due, left: (0, ax_1.daysTo)(due, now), key: d.key });
+        } });
+        if (s.gate && gateState(p, s) === 'requested' && me(p.approver))
+            out.push({ pid: p.id, project: p.name, kind: '승인', text: `${s.gate} 승인 요청`, stage: k, due: (p.plan || {})[s.id], left: (0, ax_1.daysTo)((p.plan || {})[s.id], now) });
+        (p.issues || []).filter(i => !i.done && (me(i.owner) || (pm && !i.owner))).forEach(i => out.push({ pid: p.id, project: p.name, kind: i.kind, text: i.text, stage: (0, ax_1.stageIdx)(i.stage), due: i.due, left: (0, ax_1.daysTo)(i.due, now) }));
+    });
+    return out.sort((a, b) => (a.left === undefined ? 9999 : a.left) - (b.left === undefined ? 9999 : b.left));
+}
+// 예시 — 1.0.127 예시에 담당·기한·승인·이슈·변경 이력을 채움 (저장 안 함)
+function workSamples() {
+    const xs = (0, ax_1.axSamples)();
+    const iso = (d, h = 10) => `${d}T${('0' + h).slice(-2)}:00:00.000Z`;
+    return xs.map(p => {
+        if (p.id === 'ax-sample-food') {
+            const ap = [
+                { gate: 'G1 기획 승인', kind: 'request', at: iso('2026-06-13'), who: '심준보' }, { gate: 'G1 기획 승인', kind: 'approve', at: iso('2026-06-15'), who: '김현숙', note: '건조·분쇄형으로 진행' },
+                { gate: 'G2 개발발의 승인', kind: 'request', at: iso('2026-07-02'), who: '심준보' }, { gate: 'G2 개발발의 승인', kind: 'reject', at: iso('2026-07-03'), who: '김현숙', note: '원가 목표 다시' },
+                { gate: 'G2 개발발의 승인', kind: 'request', at: iso('2026-07-08'), who: '심준보' }, { gate: 'G2 개발발의 승인', kind: 'approve', at: iso('2026-07-09'), who: '김현숙' }
+            ];
+            const docs = Object.assign(Object.assign({}, p.docs), { trial: { who: '김호철', due: '2026-11-21' }, ppap: { who: '심준보', due: '2026-12-05' }, cert: { who: '김호철', due: '2027-01-15' }, print: { who: '심준보', due: '2026-12-20' }, issue: { done: true, by: 'PC-곽두팔', at: iso('2026-11-15') } });
+            return Object.assign(Object.assign({}, p), { docs, approver: '김현숙', approvals: ap, actual: { S1: '2026-06-15', S2: '2026-07-09', S3: '2026-09-04' }, issues: [{ id: 'i1', kind: '이슈', text: '분쇄날 하우징 변형 (T0 전 확인)', owner: '김호철', due: '2026-11-21', at: iso('2026-11-12'), who: '심준보', stage: 'S4' },
+                    { id: 'i2', kind: '리스크', text: 'KC EMC 시험 일정 밀리면 출시 지연', owner: '심준보', due: '2027-01-10', at: iso('2026-11-14'), who: 'PC-곽두팔', stage: 'S4' },
+                    { id: 'i3', kind: '이슈', text: '활성탄 필터 공급처 2곳 견적', owner: '심준보', due: '2026-10-30', done: true, doneAt: iso('2026-10-29'), at: iso('2026-10-20'), who: '심준보', stage: 'S4' }], changes: [{ id: 'c1', at: iso('2026-08-20'), who: '심준보', what: '용량 2L → 2.5L', why: 'VOC 4인 가족 하루 양 부족', stage: 'S3' }] });
+        }
+        return Object.assign(Object.assign({}, p), { approver: '김현숙', docs: Object.assign(Object.assign({}, p.docs), { plan: { who: '김호철', due: '2026-11-20' }, biz: { who: '심준보', due: '2026-11-24' }, g1rep: { who: '심준보' } }), issues: [{ id: 'i4', kind: '리스크', text: '"세균 99.9%" 광고는 공인 시험성적서 먼저', owner: '김호철', due: '2026-12-15', at: iso('2026-11-16'), who: 'PC-김호철(PLM)', stage: 'S1' }], changes: [] });
+    });
 }
 
 };
@@ -2910,8 +2819,8 @@ function loadReg() {
         cache = fetch(exports.REG_SITE + 'axplm.json', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : { items: [] })).then(d => (d && Array.isArray(d.items) ? d.items : []), () => []);
     return cache;
 }
-const C = { brand: '#34D399', text: '#ECF3EF', faint: '#73857C', line: 'rgba(255,255,255,.09)', red: '#FB7185', redBg: 'rgba(251,113,133,.14)', amber: '#FBBF24', amberBg: 'rgba(251,191,36,.13)' }; // 어두운 관제 화면 (1.0.126)
-const TAG = { 규제: [C.brand, 'rgba(52,211,153,.14)'], 리콜: [C.red, C.redBg], 불량: [C.amber, C.amberBg] };
+const C = { brand: '#0B7A53', text: '#111827', faint: '#5B6472', line: '#E3E6EA', red: '#C81E1E', redBg: '#FDECEC', amber: '#9A5B00', amberBg: '#FFF4DB' }; // 밝은 화면 (1.0.128)
+const TAG = { 규제: [C.brand, '#E3F4EC'], 리콜: [C.red, C.redBg], 불량: [C.amber, C.amberBg] };
 function RegRadar(props) {
     const [items, setItems] = React.useState(undefined);
     React.useEffect(() => { let live = true; loadReg().then(xs => { if (live)
@@ -2926,7 +2835,7 @@ function RegRadar(props) {
     const shown = all ? mine : mine.slice(0, 5);
     return (React.createElement("div", { "data-ax-reg": true, style: { marginTop: 18 } },
         React.createElement("div", { style: { display: 'flex', alignItems: 'baseline', gap: 8 } },
-            React.createElement("span", { style: { fontSize: 14, fontWeight: 900 } }, "\u2726 AI \uADDC\uC81C \uB808\uC774\uB354 \u00B7 \uBBF8\uB9AC \uBCFC \uBB38\uC81C\uC810"),
+            React.createElement("span", { style: { fontSize: 14, fontWeight: 900 } }, "\uC774 \uB2E8\uACC4 \uADDC\uC81C\u00B7\uB9AC\uCF5C\u00B7\uBD88\uB7C9"),
             React.createElement("span", { style: { fontSize: 12, color: C.faint } },
                 props.stageLabel,
                 sum ? ` · ${sum}` : ''),
@@ -2935,7 +2844,7 @@ function RegRadar(props) {
         items === undefined && React.createElement("div", { style: { fontSize: 12.5, color: C.faint, padding: '6px 0' } }, "\uBD88\uB7EC\uC624\uB294 \uC911\u2026"),
         items !== undefined && mine.length === 0 && React.createElement("div", { style: { fontSize: 12.5, color: C.faint, padding: '6px 0' } }, "AI\uAC00 \uC774 \uB2E8\uACC4\uC5D0\uC11C \uBBF8\uB9AC \uBCFC \uADDC\uC81C\u00B7\uB9AC\uCF5C\u00B7\uBD88\uB7C9\uC744 \uCC44\uC6B0\uB294 \uC911\uC774\uC5D0\uC694. \uC9C0\uAE08\uC740 \uADDC\uC81C \uC0AC\uC774\uD2B8\uC5D0\uC11C \uBC95\uADDC\uBCC4 \uC810\uAC80\uD45C\u00B7\uB9AC\uCF5C \uC0AC\uB840\uB97C \uBCFC \uC218 \uC788\uC5B4\uC694."),
         shown.map((x, k) => {
-            const t = TAG[x.kind] || [C.faint, 'rgba(255,255,255,.06)'];
+            const t = TAG[x.kind] || [C.faint, '#F1F3F5'];
             return (React.createElement("div", { key: k, "data-ax-reg-item": true, style: { display: 'flex', gap: 8, alignItems: 'flex-start', padding: '6px 0', borderTop: `1px solid ${C.line}`, fontSize: 12.5 } },
                 React.createElement("span", { style: { flex: '0 0 auto', fontSize: 11, fontWeight: 800, color: t[0], background: t[1], borderRadius: 4, padding: '1px 6px' } }, x.kind),
                 React.createElement("span", { style: { flex: 1, minWidth: 0 } },
@@ -2949,128 +2858,7 @@ function RegRadar(props) {
                         x.when) : null,
                     x.note ? React.createElement("div", { title: x.note, style: { color: C.faint, marginTop: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflowWrap: 'anywhere' } }, x.note) : null)));
         }),
-        mine.length > 5 && React.createElement("button", { "data-ax-reg-more": true, onClick: () => setAll(!all), style: { marginTop: 4, border: `1px solid ${C.line}`, background: 'rgba(255,255,255,.05)', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700, color: C.brand, cursor: 'pointer' } }, all ? '접기' : `${mine.length - 5}건 더 보기`)));
-}
-
-};
-__m["src/webparts/huromAxPlm/components/theme.js"]=function(module,exports,require){"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.CSS = exports.glass = exports.inp = exports.primary = exports.btn = exports.STATE_COLOR = exports.AI_GRAD = exports.T = void 0;
-exports.useCount = useCount;
-exports.useTick = useTick;
-const React = __importStar(require("react"));
-// AX-PLM 어두운 관제 화면 테마 (심준보 2026-11-17 msg 10360848 '모빈 참고, 그래픽 엄청나게' · 10360869 '움직이는 html 느낌' · 10360889 '너무 구닥다리')
-// Mobbin 참고: Plane·Gumloop(어두운 AI 홈, 에이전트 카드), Browserbase(에이전트 단계 기록), Mintlify(활동 목록)
-exports.T = {
-    bg: '#060A09', bg2: '#0B1210', glass: 'rgba(255,255,255,.045)', glass2: 'rgba(255,255,255,.075)', line: 'rgba(255,255,255,.09)', line2: 'rgba(255,255,255,.16)',
-    text: '#ECF3EF', sub: '#B3C2BA', faint: '#73857C',
-    brand: '#34D399', brandDim: 'rgba(52,211,153,.14)', cyan: '#22D3EE', ai: '#A78BFA', aiDim: 'rgba(167,139,250,.16)',
-    amber: '#FBBF24', amberDim: 'rgba(251,191,36,.13)', red: '#FB7185', redDim: 'rgba(251,113,133,.14)',
-};
-exports.AI_GRAD = 'linear-gradient(120deg, #A78BFA, #22D3EE 55%, #34D399)';
-exports.STATE_COLOR = { ok: exports.T.brand, ahead: exports.T.cyan, behind: exports.T.red, late: exports.T.red, none: exports.T.faint };
-exports.btn = { border: `1px solid ${exports.T.line2}`, background: exports.T.glass, borderRadius: 999, padding: '7px 15px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: exports.T.sub };
-exports.primary = Object.assign(Object.assign({}, exports.btn), { background: 'linear-gradient(120deg, #10B981, #22D3EE)', border: 'none', color: '#04110C', boxShadow: '0 6px 24px rgba(34,211,238,.25)' });
-exports.inp = { border: `1px solid ${exports.T.line}`, background: 'rgba(0,0,0,.35)', color: exports.T.text, borderRadius: 10, padding: '8px 11px', fontSize: 13.5, fontFamily: 'inherit', boxSizing: 'border-box', width: '100%', minWidth: 0, outline: 'none', colorScheme: 'dark' };
-exports.glass = { background: exports.T.glass, border: `1px solid ${exports.T.line}`, borderRadius: 16, backdropFilter: 'blur(14px)' };
-exports.CSS = `
-.axp{position:relative;overflow:hidden}
-.axp *{box-sizing:border-box}
-.axp input::placeholder{color:${exports.T.faint}}
-.axp ::-webkit-scrollbar{height:8px;width:8px}.axp ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:8px}
-.axp-aurora{position:absolute;inset:-20% -10% auto -10%;height:720px;pointer-events:none;z-index:0;filter:blur(60px);opacity:.55}
-.axp-aurora i{position:absolute;border-radius:50%;mix-blend-mode:screen;animation:axpFloat 18s ease-in-out infinite alternate}
-.axp-aurora i:nth-child(1){left:5%;top:0;width:520px;height:340px;background:radial-gradient(circle,#10B98199,transparent 70%)}
-.axp-aurora i:nth-child(2){left:40%;top:-60px;width:600px;height:360px;background:radial-gradient(circle,#7C3AED88,transparent 70%);animation-duration:23s;animation-delay:-6s}
-.axp-aurora i:nth-child(3){left:70%;top:40px;width:480px;height:320px;background:radial-gradient(circle,#06B6D488,transparent 70%);animation-duration:27s;animation-delay:-12s}
-.axp-grid{position:absolute;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(to bottom,#000,transparent 620px);-webkit-mask-image:linear-gradient(to bottom,#000,transparent 620px)}
-.axp-z{position:relative;z-index:1}
-@keyframes axpFloat{0%{transform:translate(0,0) scale(1)}50%{transform:translate(60px,40px) scale(1.15)}100%{transform:translate(-40px,20px) scale(.95)}}
-@keyframes axpPulse{0%{box-shadow:0 0 0 0 currentColor}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
-@keyframes axpSpin{to{transform:rotate(360deg)}}
-@keyframes axpShine{0%{background-position:0% 50%}100%{background-position:200% 50%}}
-@keyframes axpFlow{0%{left:-6%}100%{left:100%}}
-@keyframes axpIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-@keyframes axpGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-@keyframes axpBlink{0%,100%{opacity:1}50%{opacity:.25}}
-@keyframes axpTicker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-@keyframes axpSlide{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
-@keyframes axpDash{to{stroke-dashoffset:-24}}
-.axp-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor;animation:axpPulse 1.8s infinite}
-.axp-grad{background:${exports.AI_GRAD};background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:axpShine 6s linear infinite}
-.axp-in{animation:axpIn .5s cubic-bezier(.2,.8,.2,1) both}
-.axp-card{transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
-.axp-card:hover{transform:translateY(-3px);border-color:rgba(52,211,153,.45)!important;box-shadow:0 14px 40px rgba(0,0,0,.45),0 0 0 1px rgba(52,211,153,.15)}
-.axp-aiborder{position:relative;border-radius:16px;padding:1px;background:${exports.AI_GRAD};background-size:200% 100%;animation:axpShine 5s linear infinite}
-.axp-aiborder>div{border-radius:15px;background:#0A1311}
-.axp-orb{position:relative;display:inline-flex;align-items:center;justify-content:center;border-radius:50%}
-.axp-orb:before{content:'';position:absolute;inset:-3px;border-radius:50%;background:conic-gradient(from 0deg,#A78BFA,#22D3EE,#34D399,transparent 70%);animation:axpSpin 2.6s linear infinite}
-.axp-orb:after{content:'';position:absolute;inset:0;border-radius:50%;background:#0A1311}
-.axp-orb>span{position:relative;z-index:1}
-.axp-flow{position:absolute;top:50%;width:6%;height:2px;margin-top:-1px;background:linear-gradient(90deg,transparent,#22D3EE,transparent);animation:axpFlow 3.2s linear infinite}
-.axp-bar{transform-origin:left center;animation:axpGrow .9s cubic-bezier(.2,.8,.2,1) both}
-.axp-blink{animation:axpBlink 1.4s ease-in-out infinite}
-.axp-ticker{display:flex;gap:28px;width:max-content;animation:axpTicker 60s linear infinite}
-.axp-ticker:hover{animation-play-state:paused}
-.axp-panel{animation:axpSlide .28s cubic-bezier(.2,.8,.2,1) both}
-.axp-dash{stroke-dasharray:4 8;animation:axpDash 1.2s linear infinite}
-.axp-scan{position:absolute;left:0;right:0;top:0;height:80px;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(34,211,238,.07),transparent);animation:axpScan 6s linear infinite}
-@keyframes axpScan{0%{transform:translateY(-80px)}100%{transform:translateY(600px)}}
-.axp-btn:hover{border-color:${exports.T.brand}!important;color:${exports.T.text}!important}
-@media (prefers-reduced-motion:reduce){.axp *,.axp *:before,.axp *:after{animation:none!important;transition:none!important}}
-`;
-// 숫자 올라가는 효과
-function useCount(n, ms = 900) {
-    const [v, setV] = React.useState(0);
-    React.useEffect(() => {
-        let raf = 0;
-        const t0 = Date.now();
-        const from = 0;
-        const step = () => { const k = Math.min(1, (Date.now() - t0) / ms); setV(Math.round(from + (n - from) * (1 - Math.pow(1 - k, 3)))); if (k < 1)
-            raf = window.requestAnimationFrame(step); };
-        raf = window.requestAnimationFrame(step);
-        return () => window.cancelAnimationFrame(raf);
-    }, [n]);
-    return v;
-}
-// 몇 초마다 바뀌는 순번 (AI가 하는 일 돌려 보여주기)
-function useTick(ms) {
-    const [t, setT] = React.useState(0);
-    React.useEffect(() => { const h = window.setInterval(() => setT(x => x + 1), ms); return () => window.clearInterval(h); }, [ms]);
-    return t;
+        mine.length > 5 && React.createElement("button", { "data-ax-reg-more": true, onClick: () => setAll(!all), style: { marginTop: 4, border: `1px solid ${C.line}`, background: '#fff', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700, color: C.brand, cursor: 'pointer' } }, all ? '접기' : `${mine.length - 5}건 더 보기`)));
 }
 
 };
