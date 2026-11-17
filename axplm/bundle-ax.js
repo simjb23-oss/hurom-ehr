@@ -97,20 +97,68 @@ const store_1 = require("src/webparts/huromDevHub/model/store.js");
 const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
 const work_1 = require("src/webparts/huromAxPlm/model/work.js");
 const RegRadar_1 = __importDefault(require("src/webparts/huromAxPlm/components/RegRadar.js"));
-const C = { bg: '#F5F6F8', card: '#FFFFFF', line: '#E3E6EA', line2: '#CDD2D8', text: '#111827', sub: '#4B5563', faint: '#6B7280',
-    brand: '#0B7A53', brandBg: '#E3F4EC', blue: '#1D4ED8', blueBg: '#E6EEFF', red: '#C81E1E', redBg: '#FDECEC', amber: '#9A5B00', amberBg: '#FFF4DB', lock: '#9CA3AF', gold: '#B7791F', goldBg: '#FFF7E0' };
-const SHORT = ['컨셉', '공동검토', '설계', '개발', '양산', '생산', '출시 후'];
-const HUE = ['#7C3AED', '#2563EB', '#0891B2', '#0B7A53', '#CA8A04', '#EA580C', '#DB2777'];
-const font = '"Pretendard", "Malgun Gothic", "Segoe UI", sans-serif';
-const btn = { border: `1px solid ${C.line2}`, background: C.card, color: C.text, borderRadius: 8, padding: '6px 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font };
-const primary = Object.assign(Object.assign({}, btn), { background: C.brand, borderColor: C.brand, color: '#fff' });
-const inp = { border: `1px solid ${C.line2}`, borderRadius: 8, padding: '6px 9px', fontSize: 13, fontFamily: font, color: C.text, background: '#fff', minWidth: 0 };
-const card = { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14 };
+const C = { bg: '#FAFAFA', card: '#FFFFFF', line: '#E5E5E5', line2: '#D4D4D4', hover: '#F5F5F5', text: '#0A0A0A', sub: '#525252', faint: '#8A8A8A',
+    accent: '#4F46E5', accentBg: '#EEF2FF', ok: '#16A34A', soon: '#EA580C', late: '#DC2626', lock: '#A3A3A3' };
+const font = '"Pretendard", "Malgun Gothic", "Segoe UI", -apple-system, sans-serif';
+const CSS = `
+.axw{font-family:${font};color:${C.text};background:${C.bg};font-size:14px;line-height:1.45;min-height:100vh;-webkit-font-smoothing:antialiased}
+.axw *{box-sizing:border-box}
+.axw button{font-family:inherit}
+.axw-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid ${C.line};cursor:pointer;min-height:44px}
+.axw-row:first-child{border-top:none}
+.axw-row:hover{background:${C.hover}}
+.axw-row.on{background:${C.accentBg}}
+.axw-main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
+.axw-todo{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+.axw-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.axw-panel{position:sticky;top:72px}
+.axw-x{display:none}
+.axw-rail{display:flex;gap:2px}
+@media (max-width:820px){
+  .axw-main,.axw-todo{grid-template-columns:minmax(0,1fr)}
+  .axw-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .axw-panel{position:static}
+  .axw-panel.sheet{position:fixed;left:0;right:0;bottom:0;top:auto;max-height:80vh;overflow:auto;z-index:30;border-radius:14px 14px 0 0 !important;box-shadow:0 -8px 30px rgba(0,0,0,.15)}
+  .axw-x{display:inline-block}
+  .axw-hide-sm{display:none !important}
+  .axw-rail{overflow-x:auto}
+  .axw-rail > button{min-width:108px !important;flex:0 0 108px !important}
+  .axw-pad{padding-left:14px !important;padding-right:14px !important}
+  .axw-top{gap:8px !important}
+  .axw-top nav button{padding:0 6px !important;font-size:13px !important}
+  .axw-cnt{display:none}
+}`;
+const btn = { border: `1px solid ${C.line2}`, background: C.card, color: C.text, borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: font, whiteSpace: 'nowrap' };
+const primary = Object.assign(Object.assign({}, btn), { background: C.accent, borderColor: C.accent, color: '#fff' });
+const inp = { border: `1px solid ${C.line2}`, borderRadius: 6, padding: '7px 9px', fontSize: 13, fontFamily: font, color: C.text, background: '#fff', minWidth: 0, width: '100%' };
+const card = { background: C.card, border: `1px solid ${C.line}`, borderRadius: 10 };
+const label = { fontSize: 12, color: C.faint, fontWeight: 600 };
 const nowIso = () => new Date().toISOString();
-const md = (s) => (s ? `${Number(s.slice(5, 7))}.${Number(s.slice(8, 10))}` : '—');
+const md = (s) => (s ? `${Number(s.slice(5, 7))}/${Number(s.slice(8, 10))}` : '—');
 const uid = (p) => p + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
 const teamsChat = (mail, msg) => `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(mail)}&message=${encodeURIComponent(msg)}`;
 const pageUrl = () => window.location.href.split('#')[0];
+const SHORT = ['컨셉·기획', '공동검토', '설계·시제품', '개발·검증', '양산준비', '생산', '출시 후'];
+const ST_COLOR = { done: C.ok, skip: C.lock, late: C.late, soon: C.soon, open: C.line2, lock: C.lock, wait: C.soon };
+function Dot(props) {
+    const z = props.size || 8;
+    return React.createElement("span", { style: { display: 'inline-block', width: z, height: z, borderRadius: '50%', flex: `0 0 ${z}px`, background: props.s === 'open' ? 'transparent' : ST_COLOR[props.s], border: props.s === 'open' ? `1.5px solid ${C.line2}` : 'none' } });
+}
+function Due(props) {
+    const left = (0, ax_1.daysTo)(props.due);
+    if (props.done)
+        return React.createElement("span", { style: { fontSize: 12.5, color: C.faint } }, md(props.due));
+    if (left === undefined)
+        return React.createElement("span", { style: { fontSize: 12.5, color: C.faint } }, "\uAE30\uD55C \uC5C6\uC74C");
+    const col = left < 0 ? C.late : left <= 7 ? C.soon : C.sub;
+    return React.createElement("span", { style: { fontSize: 12.5, color: col, fontWeight: left <= 7 ? 700 : 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } },
+        left < 0 ? `${-left}일 지연` : left === 0 ? '오늘' : `D-${left}`,
+        " ",
+        React.createElement("span", { style: { color: C.faint, fontWeight: 500 } }, md(props.due)));
+}
+const FileIcon = (props) => (React.createElement("svg", { width: "14", height: "16", viewBox: "0 0 14 16", style: { flex: '0 0 14px', opacity: props.on ? 1 : 0.25 }, "aria-label": props.on ? '파일 있음' : '파일 없음' },
+    React.createElement("path", { d: "M2 1h6l4 4v10H2z", fill: "none", stroke: props.on ? C.text : C.faint, strokeWidth: "1.3" }),
+    React.createElement("path", { d: "M8 1v4h4", fill: "none", stroke: props.on ? C.text : C.faint, strokeWidth: "1.3" })));
 function AxWork(props) {
     const who = props.userDisplayName || '나';
     const [items, setItems] = React.useState(undefined);
@@ -119,6 +167,7 @@ function AxWork(props) {
     const [view, setView] = React.useState('todo');
     const [sel, setSel] = React.useState(undefined);
     const [focus, setFocus] = React.useState(undefined);
+    const [pick, setPick] = React.useState(undefined); // 오른쪽 패널에 연 산출물 키 또는 'gate'
     const [adding, setAdding] = React.useState(false);
     const queue = React.useMemo(() => new store_1.SaveQueue(props.store), [props.store]);
     React.useEffect(() => {
@@ -148,147 +197,159 @@ function AxWork(props) {
         setAdding(false);
         setSel(p.id);
         setFocus(0);
+        setPick(undefined);
         setView('project');
         props.store.save(p).then(s => setItems(xs => (xs || []).map(x => (x.id === p.id ? Object.assign(Object.assign({}, x), { spId: s.spId, spVer: s.spVer }) : x))), e => setErr(`저장 못 했어요 — ${String((e && e.message) || e)}`));
     };
-    const open = (id, k) => { setSel(id); setFocus(k); setView('project'); };
-    const root = { minHeight: '100vh', background: C.bg, color: C.text, fontFamily: font, fontSize: 14, paddingBottom: 40 };
+    const open = (id, k, key) => { setSel(id); setFocus(k); setPick(key); setView('project'); };
     if (!items)
-        return React.createElement("div", { "data-axplm": true, style: Object.assign(Object.assign({}, root), { padding: 32, color: C.sub }) }, err || '불러오는 중…');
+        return React.createElement("div", { "data-axplm": true, className: "axw", style: { padding: 32, color: C.sub } },
+            React.createElement("style", null, CSS),
+            err || '불러오는 중…');
     const mine = (0, work_1.todos)(items, who);
     const cur = items.filter(x => x.id === sel)[0] || items[0];
-    return (React.createElement("div", { "data-axplm": true, "data-ax-v": "128", style: root },
-        React.createElement("div", { style: { background: C.card, borderBottom: `1px solid ${C.line}`, padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', position: 'sticky', top: 0, zIndex: 5 } },
-            React.createElement("div", null,
-                React.createElement("div", { style: { fontSize: 20, fontWeight: 900 } }, "AX-PLM"),
-                React.createElement("div", { style: { fontSize: 12, color: C.faint } },
-                    who,
-                    " \u00B7 ",
-                    md((0, ax_1.today)()),
-                    " \uAE30\uC900")),
-            React.createElement("div", { style: { display: 'flex', gap: 4, background: C.bg, borderRadius: 10, padding: 4 } }, [['todo', `내 할 일 ${mine.length}`], ['project', '프로젝트'], ['all', `전체 현황 ${items.length}`]].map(v => React.createElement("button", { key: v[0], "data-ax-view": v[0], onClick: () => setView(v[0]), style: Object.assign(Object.assign({}, btn), { border: 'none', padding: '8px 16px', fontSize: 14, background: view === v[0] ? C.card : 'transparent', color: view === v[0] ? C.text : C.faint, boxShadow: view === v[0] ? '0 1px 3px rgba(0,0,0,.12)' : 'none' }) }, v[1]))),
+    const tabs = [['todo', '내 할 일', mine.length], ['project', '프로젝트', undefined], ['all', '전체 현황', items.length]];
+    return (React.createElement("div", { "data-axplm": true, "data-ax-v": "129", className: "axw" },
+        React.createElement("style", null, CSS),
+        React.createElement("div", { className: "axw-pad axw-top", style: { background: C.card, borderBottom: `1px solid ${C.line}`, padding: '0 24px', display: 'flex', alignItems: 'center', gap: 20, position: 'sticky', top: 0, zIndex: 10, height: 56 } },
+            React.createElement("span", { style: { fontSize: 15, fontWeight: 800, letterSpacing: '-.01em', whiteSpace: 'nowrap' } }, "AX-PLM"),
+            React.createElement("nav", { style: { display: 'flex', gap: 2, height: '100%' } }, tabs.map(t => React.createElement("button", { key: t[0], "data-ax-view": t[0], onClick: () => setView(t[0]), style: { border: 'none', background: 'transparent', padding: '0 10px', fontSize: 14, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', color: view === t[0] ? C.text : C.faint, boxShadow: view === t[0] ? `inset 0 -2px 0 ${C.text}` : 'none' } },
+                t[1],
+                t[2] !== undefined && React.createElement("span", { className: "axw-cnt", style: { marginLeft: 5, fontSize: 12, color: C.faint, fontWeight: 600 } }, t[2])))),
             React.createElement("span", { style: { flex: 1 } }),
-            React.createElement("button", { "data-ax-new": true, onClick: () => setAdding(true), style: primary }, "+ \uC0C8 \uD504\uB85C\uC81D\uD2B8")),
-        err && React.createElement("div", { "data-ax-err": true, style: { margin: '12px 24px 0', background: C.redBg, color: C.red, padding: '8px 14px', borderRadius: 10, fontSize: 13 } },
-            err,
-            " ",
-            React.createElement("button", { onClick: () => setErr(''), style: Object.assign(Object.assign({}, btn), { padding: '2px 10px', marginLeft: 8 }) }, "\uB2EB\uAE30")),
-        demo && React.createElement("div", { "data-ax-demo": true, style: { margin: '12px 24px 0', padding: '9px 14px', borderRadius: 10, background: C.amberBg, color: C.amber, fontSize: 13, fontWeight: 700 } }, "\uB4F1\uB85D\uB41C \uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4\uC11C \uC608\uC2DC 2\uAC1C\uB85C \uBCF4\uC5EC \uB4DC\uB824\uC694. \uC608\uC2DC\uB294 \uC800\uC7A5\uB418\uC9C0 \uC54A\uACE0, [+ \uC0C8 \uD504\uB85C\uC81D\uD2B8]\uB97C \uB9CC\uB4E4\uBA74 \uC0AC\uB77C\uC838\uC694."),
-        adding && React.createElement(NewForm, { who: who, onCancel: () => setAdding(false), onAdd: add }),
-        React.createElement("div", { style: { padding: '16px 24px 0' } },
+            React.createElement("span", { className: "axw-hide-sm", style: { fontSize: 12.5, color: C.faint } }, who),
+            React.createElement("button", { "data-ax-new": true, onClick: () => setAdding(true), style: primary },
+                "+ \uC0C8",
+                React.createElement("span", { className: "axw-cnt" }, " \uD504\uB85C\uC81D\uD2B8"))),
+        React.createElement("div", { className: "axw-pad", style: { padding: '20px 24px 48px', maxWidth: 1360, margin: '0 auto' } },
+            err && React.createElement("div", { "data-ax-err": true, style: Object.assign(Object.assign({}, card), { marginBottom: 12, padding: '9px 14px', fontSize: 13, color: C.late, display: 'flex', gap: 8, alignItems: 'center' }) },
+                React.createElement(Dot, { s: "late" }),
+                err,
+                React.createElement("span", { style: { flex: 1 } }),
+                React.createElement("button", { onClick: () => setErr(''), style: btn }, "\uB2EB\uAE30")),
+            demo && React.createElement("div", { "data-ax-demo": true, style: Object.assign(Object.assign({}, card), { marginBottom: 12, padding: '9px 14px', fontSize: 13, color: C.sub }) }, "\uB4F1\uB85D\uB41C \uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4 \uC608\uC2DC 2\uAC1C\uB97C \uBCF4\uC5EC \uB4DC\uB824\uC694. \uC608\uC2DC\uB294 \uC800\uC7A5\uB418\uC9C0 \uC54A\uACE0, \uC0C8 \uD504\uB85C\uC81D\uD2B8\uB97C \uB9CC\uB4E4\uBA74 \uC0AC\uB77C\uC838\uC694."),
+            adding && React.createElement(NewForm, { who: who, onCancel: () => setAdding(false), onAdd: add }),
             view === 'todo' && React.createElement(TodoView, { list: mine, items: items, who: who, onOpen: open }),
             view === 'all' && React.createElement(AllView, { items: items, onOpen: open }),
-            view === 'project' && cur && React.createElement(ProjectView, { key: cur.id, p: cur, items: items, who: who, focus: focus, setFocus: setFocus, onPick: id => { setSel(id); setFocus(undefined); }, update: fn => update(cur.id, fn) }),
-            view === 'project' && !cur && React.createElement("div", { style: { color: C.faint, padding: 30, textAlign: 'center' } }, "\uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4\uC694. [+ \uC0C8 \uD504\uB85C\uC81D\uD2B8]\uB85C \uC2DC\uC791\uD558\uC138\uC694."))));
+            view === 'project' && cur && React.createElement(ProjectView, { key: cur.id, p: cur, items: items, who: who, focus: focus, setFocus: k => { setFocus(k); setPick(undefined); }, pick: pick, setPick: setPick, onPick: id => { setSel(id); setFocus(undefined); setPick(undefined); }, update: fn => update(cur.id, fn) }),
+            view === 'project' && !cur && React.createElement("div", { style: Object.assign(Object.assign({}, card), { padding: 32, color: C.faint, textAlign: 'center' }) }, "\uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4\uC694. \uC0C8 \uD504\uB85C\uC81D\uD2B8\uB85C \uC2DC\uC791\uD558\uC138\uC694."))));
 }
-function Tag(props) {
-    return React.createElement("span", { title: props.title, style: { display: 'inline-block', fontSize: 12, fontWeight: 800, color: props.c, background: props.bg, borderRadius: 6, padding: '2px 8px', whiteSpace: 'nowrap' } }, props.children);
-}
-function DueTag(props) {
-    if (props.left === undefined)
-        return React.createElement(Tag, { c: C.faint, bg: C.bg }, "\uAE30\uD55C \uC5C6\uC74C");
-    if (props.left < 0)
-        return React.createElement(Tag, { c: C.red, bg: C.redBg },
-            md(props.due),
-            " \u00B7 ",
-            -props.left,
-            "\uC77C \uB2A6\uC74C");
-    if (props.left === 0)
-        return React.createElement(Tag, { c: C.red, bg: C.redBg }, "\uC624\uB298 \uB9C8\uAC10");
-    if (props.left <= 7)
-        return React.createElement(Tag, { c: C.amber, bg: C.amberBg },
-            md(props.due),
-            " \u00B7 D-",
-            props.left);
-    return React.createElement(Tag, { c: C.sub, bg: C.bg },
-        md(props.due),
-        " \u00B7 D-",
-        props.left);
-}
-// 내 할 일 — 늦음 / 이번 주 / 그 뒤
+// 내 할 일 — 결론 한 줄 → 숫자 4칸 → 목록, 오른쪽은 프로젝트별 진행 막대
 function TodoView(props) {
-    const groups = [
-        ['늦어진 것', props.list.filter(t => t.left !== undefined && t.left < 0)],
-        ['오늘·이번 주', props.list.filter(t => t.left !== undefined && t.left >= 0 && t.left <= 7)],
-        ['그 뒤', props.list.filter(t => t.left === undefined || t.left > 7)]
-    ];
-    return (React.createElement("div", { "data-ax-todo": true, style: { display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(260px, 1fr)', gap: 16 } },
-        React.createElement("div", null,
-            !props.list.length && React.createElement("div", { style: Object.assign(Object.assign({}, card), { padding: 24, color: C.faint }) },
-                props.who,
-                " \uB2D8 \uC55E\uC73C\uB85C \uB41C \uD560 \uC77C\uC774 \uC5C6\uC5B4\uC694. \uC0B0\uCD9C\uBB3C \uCE74\uB4DC\uC5D0\uC11C \uB2F4\uB2F9\uC744 \uC815\uD558\uBA74 \uC5EC\uAE30\uC5D0 \uBAA8\uC5EC\uC694."),
-            groups.filter(g => g[1].length).map(g => (React.createElement("div", { key: g[0], style: { marginBottom: 16 } },
-                React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: g[0] === '늦어진 것' ? C.red : C.sub, margin: '0 0 6px 2px' } },
-                    g[0],
-                    " ",
-                    g[1].length),
-                React.createElement("div", { style: card }, g[1].map((t, i) => (React.createElement("div", { key: i, "data-ax-todo-row": true, onClick: () => props.onOpen(t.pid, t.stage), style: { display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', borderTop: i ? `1px solid ${C.line}` : 'none', cursor: 'pointer' } },
-                    React.createElement(Tag, { c: t.kind === '승인' ? C.gold : t.kind === '산출물' ? C.blue : C.red, bg: t.kind === '승인' ? C.goldBg : t.kind === '산출물' ? C.blueBg : C.redBg }, t.kind),
-                    React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-                        React.createElement("div", { style: { fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, t.text),
-                        React.createElement("div", { style: { fontSize: 12, color: C.faint } },
-                            t.project,
-                            " \u00B7 ",
-                            ax_1.AX_STAGES[t.stage].no,
-                            " ",
-                            ax_1.AX_STAGES[t.stage].name)),
-                    React.createElement(DueTag, { left: t.left, due: t.due }))))))))),
-        React.createElement("div", { style: Object.assign(Object.assign({}, card), { padding: 16, alignSelf: 'start' }) },
-            React.createElement("div", { style: { fontWeight: 800, marginBottom: 8 } }, "\uC9C4\uD589 \uC911\uC778 \uD504\uB85C\uC81D\uD2B8"),
-            props.items.map(p => {
-                const k = (0, work_1.curIdx)(p);
-                const late = (0, work_1.projLate)(p);
-                return (React.createElement("div", { key: p.id, onClick: () => props.onOpen(p.id), style: { padding: '8px 0', borderTop: `1px solid ${C.line}`, cursor: 'pointer' } },
-                    React.createElement("div", { style: { fontWeight: 700 } }, p.name),
-                    React.createElement("div", { style: { fontSize: 12, color: late ? C.red : C.faint } },
-                        ax_1.AX_STAGES[k].no,
+    const late = props.list.filter(t => t.left !== undefined && t.left < 0);
+    const week = props.list.filter(t => t.left !== undefined && t.left >= 0 && t.left <= 7);
+    const appr = props.list.filter(t => t.kind === '승인');
+    const risk = props.items.reduce((n, p) => n + (p.issues || []).filter(i => !i.done && i.kind === '리스크').length, 0);
+    const first = late[0] || week[0] || props.list[0];
+    const head = !props.list.length ? '지금 내 앞으로 된 할 일이 없어요.'
+        : `이번 주 마감 ${week.length}건, 지연 ${late.length}건 — ${first ? `「${first.text}」부터` : ''}`;
+    const groups = [['지연', late], ['이번 주', week], ['그 뒤', props.list.filter(t => t.left === undefined || t.left > 7)]];
+    const stat = (k, n, s, tip) => (React.createElement("div", { "data-ax-stat": k, title: tip, style: Object.assign(Object.assign({}, card), { padding: '14px 16px' }) },
+        React.createElement("div", { style: Object.assign(Object.assign({}, label), { display: 'flex', alignItems: 'center', gap: 6 }) },
+            n > 0 && React.createElement(Dot, { s: s, size: 7 }),
+            k),
+        React.createElement("div", { style: { fontSize: 26, fontWeight: 700, marginTop: 4, fontVariantNumeric: 'tabular-nums', color: C.text } }, n)));
+    return (React.createElement("div", { "data-ax-todo": true },
+        React.createElement("h1", { "data-ax-headline": true, style: { fontSize: 20, fontWeight: 700, letterSpacing: '-.01em', margin: '0 0 14px' } }, head),
+        React.createElement("div", { className: "axw-stats", style: { marginBottom: 16 } },
+            stat('이번 주 마감', week.length, 'soon', '7일 안에 마감인 내 할 일'),
+            stat('지연', late.length, 'late', '마감이 지난 내 할 일'),
+            stat('승인 대기', appr.length, 'wait', '내가 승인할 관문'),
+            stat('열린 리스크', risk, 'soon', '전체 프로젝트의 해결 안 된 리스크')),
+        React.createElement("div", { className: "axw-todo" },
+            React.createElement("div", { style: card },
+                !props.list.length && React.createElement("div", { style: { padding: 24, color: C.faint, fontSize: 13 } }, "\uC0B0\uCD9C\uBB3C\uC5D0\uC11C \uB2F4\uB2F9\uC744 \uC815\uD558\uBA74 \uC5EC\uAE30\uC5D0 \uBAA8\uC5EC\uC694."),
+                groups.filter(g => g[1].length).map(g => (React.createElement("div", { key: g[0] },
+                    React.createElement("div", { style: Object.assign(Object.assign({}, label), { padding: '10px 14px 6px', borderTop: g[0] === groups.filter(x => x[1].length)[0][0] ? 'none' : `1px solid ${C.line}`, background: C.bg }) },
+                        g[0],
                         " ",
-                        ax_1.AX_STAGES[k].name,
-                        " \u00B7 PM ",
-                        p.owner || '없음',
-                        late ? ` · ${late}일 늦음` : '')));
-            }))));
+                        g[1].length),
+                    g[1].map((t, i) => (React.createElement("div", { key: i, className: "axw-row", "data-ax-todo-row": true, onClick: () => props.onOpen(t.pid, t.stage, t.key || (t.kind === '승인' ? 'gate' : undefined)) },
+                        React.createElement(Dot, { s: t.left !== undefined && t.left < 0 ? 'late' : t.left !== undefined && t.left <= 7 ? 'soon' : 'open' }),
+                        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                            React.createElement("div", { style: { fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, t.text),
+                            React.createElement("div", { style: { fontSize: 12, color: C.faint, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+                                t.kind,
+                                " \u00B7 ",
+                                t.project,
+                                " \u00B7 ",
+                                ax_1.AX_STAGES[t.stage].no,
+                                " ",
+                                SHORT[t.stage])),
+                        React.createElement(Due, { due: t.due })))))))),
+            React.createElement("div", { "data-ax-progress": true, style: Object.assign(Object.assign({}, card), { padding: '14px 16px' }) },
+                React.createElement("div", { style: { fontWeight: 700, marginBottom: 4 } }, "\uD504\uB85C\uC81D\uD2B8 \uC9C4\uD589"),
+                props.items.map(p => {
+                    const total = ax_1.AX_STAGES.reduce((n, s) => n + s.docs.length, 0);
+                    const done = ax_1.AX_STAGES.reduce((n, s) => n + (0, work_1.stageDocsOk)(p, s), 0);
+                    const k = (0, work_1.curIdx)(p);
+                    const lt = (0, work_1.projLate)(p);
+                    return (React.createElement("div", { key: p.id, "data-ax-progress-row": p.id, onClick: () => props.onOpen(p.id), style: { padding: '12px 0', borderTop: `1px solid ${C.line}`, cursor: 'pointer' } },
+                        React.createElement("div", { style: { display: 'flex', alignItems: 'baseline', gap: 8 } },
+                            React.createElement("span", { style: { fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, p.name),
+                            React.createElement("span", { style: { fontSize: 12, color: C.faint, fontVariantNumeric: 'tabular-nums' } },
+                                Math.round(done / total * 100),
+                                "%")),
+                        React.createElement("div", { style: { display: 'flex', gap: 2, margin: '7px 0 6px' } }, ax_1.AX_STAGES.map((s, i) => { const f = (0, work_1.perf)(p, i); return React.createElement("span", { key: s.id, style: { flex: 1, height: 6, borderRadius: 2, background: f.state === 'done' ? C.text : f.state === 'doing' ? (f.late ? C.late : C.accent) : C.line } }); })),
+                        React.createElement("div", { style: { fontSize: 12, color: C.faint, display: 'flex', alignItems: 'center', gap: 6 } },
+                            lt > 0 && React.createElement(Dot, { s: "late", size: 6 }),
+                            ax_1.AX_STAGES[k].no,
+                            " ",
+                            SHORT[k],
+                            " \u00B7 PM ",
+                            p.owner || '없음',
+                            lt > 0 ? ` · ${lt}일 지연` : '',
+                            " \u00B7 \uCD9C\uC2DC ",
+                            md(p.target))));
+                })))));
 }
 // 전체 현황 — 프로젝트마다 7단계와 지연
 function AllView(props) {
+    const th = { padding: '10px 12px', fontSize: 12, fontWeight: 600, color: C.faint, textAlign: 'left', whiteSpace: 'nowrap', borderBottom: `1px solid ${C.line}` };
+    const td = { padding: '11px 12px', borderBottom: `1px solid ${C.line}`, whiteSpace: 'nowrap' };
     return (React.createElement("div", { "data-ax-all": true, style: Object.assign(Object.assign({}, card), { overflowX: 'auto' }) },
-        React.createElement("table", { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 900 } },
+        React.createElement("table", { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 860 } },
             React.createElement("thead", null,
-                React.createElement("tr", { style: { color: C.faint, textAlign: 'left' } },
-                    React.createElement("th", { style: { padding: '10px 14px' } }, "\uD504\uB85C\uC81D\uD2B8"),
-                    React.createElement("th", null, "PM"),
-                    ax_1.AX_STAGES.map(s => React.createElement("th", { key: s.id, style: { padding: '10px 4px', textAlign: 'center', whiteSpace: 'nowrap' } },
-                        s.no,
-                        " ",
-                        s.name.split('·')[0])),
-                    React.createElement("th", null, "\uCD9C\uC2DC \uBAA9\uD45C"),
-                    React.createElement("th", null, "\uC9C0\uC5F0"),
-                    React.createElement("th", null, "\uC774\uC288"),
-                    React.createElement("th", null, "\uC2B9\uC778"))),
+                React.createElement("tr", null,
+                    React.createElement("th", { style: th }, "\uD504\uB85C\uC81D\uD2B8"),
+                    React.createElement("th", { style: th }, "PM"),
+                    React.createElement("th", { style: Object.assign(Object.assign({}, th), { width: 280 }) }, "\uB2E8\uACC4"),
+                    React.createElement("th", { style: th }, "\uD604\uC7AC"),
+                    React.createElement("th", { style: th }, "\uCD9C\uC2DC \uBAA9\uD45C"),
+                    React.createElement("th", { style: th }, "\uC9C0\uC5F0"),
+                    React.createElement("th", { style: th }, "\uC5F4\uB9B0 \uC774\uC288"),
+                    React.createElement("th", { style: th }, "\uC2B9\uC778 \uB300\uAE30"))),
             React.createElement("tbody", null, props.items.map(p => {
-                const late = (0, work_1.projLate)(p);
+                const lt = (0, work_1.projLate)(p);
+                const k = (0, work_1.curIdx)(p);
                 const iss = (p.issues || []).filter(i => !i.done).length;
                 const req = ax_1.AX_STAGES.filter(s => s.gate && (0, work_1.gateState)(p, s) === 'requested').length;
-                return (React.createElement("tr", { key: p.id, "data-ax-all-row": p.id, style: { borderTop: `1px solid ${C.line}` } },
-                    React.createElement("td", { style: { padding: '10px 14px', fontWeight: 800, cursor: 'pointer' }, onClick: () => props.onOpen(p.id) }, p.name),
-                    React.createElement("td", null, p.owner || '—'),
-                    ax_1.AX_STAGES.map((s, k) => {
-                        const f = (0, work_1.perf)(p, k);
-                        const bg = f.state === 'done' ? C.brand : f.state === 'doing' ? (f.late ? C.red : C.blue) : C.line;
-                        return (React.createElement("td", { key: s.id, style: { padding: '4px', textAlign: 'center' }, onClick: () => props.onOpen(p.id, k) },
-                            React.createElement("div", { title: `${s.name} · 계획 ${md(f.plan)} · 실제 ${md(f.actual)}${f.late ? ` · ${f.late}일 늦음` : ''}`, style: { height: 22, borderRadius: 6, background: bg, color: f.state === 'todo' ? C.faint : '#fff', fontSize: 11, fontWeight: 800, lineHeight: '22px', cursor: 'pointer' } }, f.state === 'done' ? '완료' : f.state === 'doing' ? `${(0, work_1.stageDocsOk)(p, s)}/${s.docs.length}` : md(f.plan))));
-                    }),
-                    React.createElement("td", { style: { whiteSpace: 'nowrap' } },
+                return (React.createElement("tr", { key: p.id, "data-ax-all-row": p.id, onClick: () => props.onOpen(p.id), style: { cursor: 'pointer' } },
+                    React.createElement("td", { style: Object.assign(Object.assign({}, td), { fontWeight: 600 }) }, p.name),
+                    React.createElement("td", { style: Object.assign(Object.assign({}, td), { color: C.sub }) }, p.owner || '—'),
+                    React.createElement("td", { style: td },
+                        React.createElement("div", { style: { display: 'flex', gap: 2 } }, ax_1.AX_STAGES.map((s, i) => { const f = (0, work_1.perf)(p, i); return React.createElement("span", { key: s.id, title: `${s.no} ${s.name} · 계획 ${md(f.plan)} · 실제 ${md(f.actual)}${f.late ? ` · ${f.late}일 지연` : ''}`, onClick: e => { e.stopPropagation(); props.onOpen(p.id, i); }, style: { flex: 1, height: 8, borderRadius: 2, background: f.state === 'done' ? C.text : f.state === 'doing' ? (f.late ? C.late : C.accent) : C.line } }); }))),
+                    React.createElement("td", { style: Object.assign(Object.assign({}, td), { color: C.sub }) },
+                        ax_1.AX_STAGES[k].no,
+                        " ",
+                        SHORT[k],
+                        " ",
+                        React.createElement("span", { style: { color: C.faint } },
+                            (0, work_1.stageDocsOk)(p, ax_1.AX_STAGES[k]),
+                            "/",
+                            ax_1.AX_STAGES[k].docs.length)),
+                    React.createElement("td", { style: Object.assign(Object.assign({}, td), { color: C.sub, fontVariantNumeric: 'tabular-nums' }) },
                         md(p.target),
                         " ",
                         React.createElement("span", { style: { color: C.faint } }, (0, ax_1.dday)(p.target))),
-                    React.createElement("td", null, late ? React.createElement(Tag, { c: C.red, bg: C.redBg },
-                        late,
-                        "\uC77C") : React.createElement(Tag, { c: C.brand, bg: C.brandBg }, "\uC815\uC0C1")),
-                    React.createElement("td", null, iss || '—'),
-                    React.createElement("td", null, req ? React.createElement(Tag, { c: C.gold, bg: C.goldBg },
-                        "\uB300\uAE30 ",
-                        req) : '—')));
+                    React.createElement("td", { style: td }, lt ? React.createElement("span", { style: { color: C.late, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 } },
+                        React.createElement(Dot, { s: "late", size: 7 }),
+                        lt,
+                        "\uC77C") : React.createElement("span", { style: { color: C.faint } }, "\u2014")),
+                    React.createElement("td", { style: Object.assign(Object.assign({}, td), { color: iss ? C.text : C.faint }) }, iss || '—'),
+                    React.createElement("td", { style: td }, req ? React.createElement("span", { style: { color: C.soon, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 } },
+                        React.createElement(Dot, { s: "wait", size: 7 }),
+                        req) : React.createElement("span", { style: { color: C.faint } }, "\u2014"))));
             })))));
 }
 function ProjectView(props) {
@@ -299,208 +360,187 @@ function ProjectView(props) {
     const [tab, setTab] = React.useState('issue');
     const [setting, setSetting] = React.useState(false);
     const brief = (p.brief || []).slice(-1)[0];
+    const lt = (0, work_1.projLate)(p);
     return (React.createElement("div", { "data-ax-project": p.id },
-        React.createElement("div", { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 } }, props.items.map(x => React.createElement("button", { key: x.id, "data-ax-pick": x.id, onClick: () => props.onPick(x.id), style: Object.assign(Object.assign({}, btn), { borderRadius: 999, background: x.id === p.id ? C.text : C.card, color: x.id === p.id ? '#fff' : C.sub, borderColor: x.id === p.id ? C.text : C.line2 }) }, x.name))),
-        React.createElement("div", { style: Object.assign(Object.assign({}, card), { padding: '16px 18px' }) },
-            React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' } },
-                React.createElement("div", { style: { fontSize: 20, fontWeight: 900 } }, p.name),
-                React.createElement(Tag, { c: C.sub, bg: C.bg },
-                    "PM ",
-                    p.owner || '없음'),
-                React.createElement(Tag, { c: C.sub, bg: C.bg },
-                    "\uC2B9\uC778\uC790 ",
-                    p.approver || '없음'),
-                React.createElement(Tag, { c: C.sub, bg: C.bg },
-                    "\uCD9C\uC2DC \uBAA9\uD45C ",
-                    md(p.target),
-                    " ",
-                    (0, ax_1.dday)(p.target)),
-                (0, work_1.projLate)(p) > 0 && React.createElement(Tag, { c: C.red, bg: C.redBg },
-                    (0, work_1.projLate)(p),
-                    "\uC77C \uB2A6\uC74C"),
-                React.createElement("span", { style: { flex: 1 } }),
-                React.createElement("button", { "data-ax-setting": true, onClick: () => setSetting(!setting), style: btn }, setting ? '설정 닫기' : '프로젝트 설정')),
-            brief && React.createElement("div", { "data-ax-brief": true, style: { marginTop: 10, fontSize: 13, color: C.sub, background: C.bg, borderRadius: 10, padding: '8px 12px' } },
-                React.createElement("b", { style: { color: C.text } }, "AI \uC694\uC57D"),
-                " \u00B7 ",
-                brief.who,
-                " \u00B7 ",
-                (0, ax_1.fmt)(brief.at),
-                " \u2014 ",
-                brief.text),
-            setting && React.createElement(Settings, { p: p, who: who, update: update }),
-            React.createElement(Rail, { p: p, k: k, ck: ck, onPick: props.setFocus }),
-            React.createElement(Tree, { p: p, k: k, ck: ck, onPick: props.setFocus })),
-        React.createElement(StageDetail, { key: s.id, p: p, k: k, who: who, update: update }),
-        React.createElement("div", { style: Object.assign(Object.assign({}, card), { marginTop: 16, padding: '6px 18px 16px' }) },
-            React.createElement("div", { style: { display: 'flex', gap: 2, borderBottom: `1px solid ${C.line}`, marginBottom: 12 } }, [['issue', `이슈·리스크 ${(p.issues || []).filter(i => !i.done).length}`], ['change', `사양 변경 ${(p.changes || []).length}`], ['ai', 'AI 사전 검토'], ['log', '기록']].map(t => React.createElement("button", { key: t[0], "data-ax-tab": t[0], onClick: () => setTab(t[0]), style: Object.assign(Object.assign({}, btn), { border: 'none', borderRadius: 0, background: 'transparent', padding: '10px 14px', color: tab === t[0] ? C.text : C.faint, borderBottom: `2px solid ${tab === t[0] ? C.text : 'transparent'}` }) }, t[1]))),
-            tab === 'issue' && React.createElement(Issues, { p: p, who: who, update: update }),
-            tab === 'change' && React.createElement(Changes, { p: p, who: who, update: update }),
-            tab === 'ai' && React.createElement(Asks, { p: p, who: who, update: update }),
-            tab === 'log' && React.createElement(Log, { p: p, who: who, update: update }))));
+        React.createElement("div", { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 } }, props.items.map(x => React.createElement("button", { key: x.id, "data-ax-pick": x.id, onClick: () => props.onPick(x.id), style: Object.assign(Object.assign({}, btn), { background: x.id === p.id ? C.text : C.card, color: x.id === p.id ? '#fff' : C.sub, borderColor: x.id === p.id ? C.text : C.line2 }) }, x.name))),
+        React.createElement("div", { style: { display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: 6 } },
+            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                React.createElement("h1", { style: { fontSize: 22, fontWeight: 700, letterSpacing: '-.01em', margin: 0 } }, p.name),
+                React.createElement("div", { style: { fontSize: 13, color: C.sub, marginTop: 4, display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' } },
+                    React.createElement("span", null,
+                        "PM ",
+                        p.owner || '없음'),
+                    React.createElement("span", null,
+                        "\uC2B9\uC778\uC790 ",
+                        p.approver || '없음'),
+                    React.createElement("span", null,
+                        "\uCD9C\uC2DC \uBAA9\uD45C ",
+                        md(p.target),
+                        " ",
+                        React.createElement("span", { style: { color: C.faint } }, (0, ax_1.dday)(p.target))),
+                    lt > 0 && React.createElement("span", { style: { color: C.late, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 } },
+                        React.createElement(Dot, { s: "late", size: 7 }),
+                        lt,
+                        "\uC77C \uC9C0\uC5F0"))),
+            React.createElement("button", { "data-ax-setting": true, onClick: () => setSetting(!setting), style: btn }, setting ? '설정 닫기' : '설정')),
+        brief && React.createElement("div", { "data-ax-brief": true, style: { fontSize: 13, color: C.sub, margin: '10px 0 0', paddingLeft: 10, borderLeft: `2px solid ${C.accent}` } },
+            React.createElement("b", { style: { color: C.text, fontWeight: 600 } }, "AI \uC694\uC57D"),
+            " ",
+            brief.text),
+        setting && React.createElement(Settings, { p: p, who: who, update: update }),
+        React.createElement(Rail, { p: p, k: k, onPick: props.setFocus }),
+        React.createElement("div", { className: "axw-main", style: { marginTop: 16 } },
+            React.createElement("div", { style: { minWidth: 0 } },
+                React.createElement(StageList, { p: p, k: k, pick: props.pick, setPick: props.setPick }),
+                React.createElement("div", { style: Object.assign(Object.assign({}, card), { marginTop: 16 }) },
+                    React.createElement("div", { style: { display: 'flex', gap: 2, borderBottom: `1px solid ${C.line}`, padding: '0 8px', overflowX: 'auto' } }, [['issue', '이슈·리스크', (p.issues || []).filter(i => !i.done).length], ['change', '사양 변경', (p.changes || []).length], ['ai', 'AI 사전 검토', (p.asks || []).filter(a => !a.answer).length], ['log', '기록', undefined]].map(t => React.createElement("button", { key: t[0], "data-ax-tab": t[0], onClick: () => setTab(t[0]), style: { border: 'none', background: 'transparent', padding: '12px 10px', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: tab === t[0] ? C.text : C.faint, boxShadow: tab === t[0] ? `inset 0 -2px 0 ${C.text}` : 'none', whiteSpace: 'nowrap' } },
+                        t[1],
+                        t[2] ? React.createElement("span", { style: { marginLeft: 5, color: C.faint } }, t[2]) : null))),
+                    React.createElement("div", { style: { padding: 14 } },
+                        tab === 'issue' && React.createElement(Issues, { p: p, who: who, update: update }),
+                        tab === 'change' && React.createElement(Changes, { p: p, who: who, update: update }),
+                        tab === 'ai' && React.createElement(Asks, { p: p, who: who, update: update }),
+                        tab === 'log' && React.createElement(Log, { p: p, who: who, update: update })))),
+            React.createElement("div", { className: 'axw-panel' + (props.pick ? ' sheet' : ''), style: Object.assign({}, card) }, props.pick === 'gate' && s.gate ? React.createElement(GatePanel, { key: 'g' + s.id, p: p, s: s, open: (0, work_1.unlocked)(p, k), who: who, update: update, onClose: () => props.setPick(undefined) })
+                : props.pick && s.docs.filter(d => d.key === props.pick).length ? React.createElement(ItemPanel, { key: props.pick, p: p, s: s, k: k, dkey: props.pick, who: who, update: update, onClose: () => props.setPick(undefined) })
+                    : React.createElement(StageSummary, { p: p, k: k })))));
 }
-// 위 일정 바 — 단계마다 계획일·실제일·늦은 날. 누르면 그 단계가 아래에 크게 열림
+// 일정 바 하나 — 단계마다 계획·실제·지연, 관문 G1~G3는 단계 끝에 작은 표시. 누르면 그 단계로
 function Rail(props) {
     const { p } = props;
-    return (React.createElement("div", { "data-ax-rail": true, style: { display: 'flex', gap: 4, marginTop: 16 } }, ax_1.AX_STAGES.map((s, i) => {
+    return (React.createElement("div", { "data-ax-rail": true, className: "axw-rail", style: Object.assign(Object.assign({}, card), { marginTop: 16, padding: 4 }) }, ax_1.AX_STAGES.map((s, i) => {
         const f = (0, work_1.perf)(p, i);
         const on = i === props.k;
-        const bar = f.state === 'done' ? C.brand : f.state === 'doing' ? (f.late ? C.red : C.blue) : C.line;
-        return (React.createElement("button", { key: s.id, "data-ax-rail-stage": s.id, onClick: () => props.onPick(i), style: { flex: i === props.k ? 1.6 : 1, minWidth: 0, textAlign: 'left', border: `2px solid ${on ? C.text : 'transparent'}`, background: on ? C.bg : 'transparent', borderRadius: 10, padding: '8px 8px 6px', cursor: 'pointer', fontFamily: font, transition: 'flex .2s' } },
-            React.createElement("div", { style: { height: 8, borderRadius: 4, background: bar } }),
-            React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: (0, work_1.unlocked)(p, i) ? C.text : C.lock, marginTop: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } },
+        const op = (0, work_1.unlocked)(p, i);
+        const bar = f.state === 'done' ? C.text : f.state === 'doing' ? (f.late ? C.late : C.accent) : C.line;
+        const g = s.gate ? (0, work_1.gateState)(p, s) : 'none';
+        return (React.createElement("button", { key: s.id, "data-ax-rail-stage": s.id, onClick: () => props.onPick(i), style: { flex: 1, minWidth: 0, textAlign: 'left', border: 'none', background: on ? C.hover : 'transparent', borderRadius: 7, padding: '10px 10px 9px', cursor: 'pointer', position: 'relative', boxShadow: on ? `inset 0 0 0 1px ${C.line2}` : 'none' } },
+            React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 4 } },
+                React.createElement("span", { style: { flex: 1, height: 4, borderRadius: 2, background: bar } }),
+                s.gate && React.createElement("span", { "data-ax-gate-mark": (0, work_1.gateKey)(s.gate), "data-ax-gate-state": g, title: `${s.gate} · ${g === 'approved' ? '승인됨' : g === 'requested' ? '승인 대기' : g === 'rejected' ? '반려됨' : '승인 전'}`, style: { fontSize: 10, fontWeight: 700, lineHeight: '14px', padding: '0 4px', borderRadius: 3, border: `1px solid ${g === 'approved' ? C.text : g === 'requested' ? C.soon : g === 'rejected' ? C.late : C.line2}`, color: g === 'approved' ? '#fff' : g === 'requested' ? C.soon : g === 'rejected' ? C.late : C.faint, background: g === 'approved' ? C.text : 'transparent' } }, (0, work_1.gateKey)(s.gate).toUpperCase())),
+            React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: op ? C.text : C.lock, marginTop: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } },
                 s.no,
                 " ",
-                s.name),
-            React.createElement("div", { style: { fontSize: 11.5, color: C.faint, whiteSpace: 'nowrap' } },
+                SHORT[i]),
+            React.createElement("div", { style: { fontSize: 11.5, color: C.faint, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', marginTop: 1 } },
                 "\uACC4\uD68D ",
                 md(f.plan),
                 f.actual ? ` · 실제 ${md(f.actual)}` : ''),
-            React.createElement("div", { style: { fontSize: 11.5, fontWeight: 800, color: f.late ? C.red : f.state === 'done' ? C.brand : f.state === 'doing' ? C.blue : C.lock } }, f.state === 'done' ? (f.late ? `완료 · ${f.late}일 늦음` : '완료') : f.state === 'doing' ? (f.late ? `진행 · ${f.late}일 늦음` : '진행 중') : '잠김')));
+            React.createElement("div", { style: { fontSize: 11.5, fontWeight: 600, marginTop: 1, whiteSpace: 'nowrap', color: f.late ? C.late : f.state === 'done' ? C.ok : f.state === 'doing' ? C.accent : C.lock } }, f.state === 'done' ? (f.late ? `완료 · ${f.late}일 늦음` : '완료') : f.state === 'doing' ? (f.late ? `${f.late}일 지연` : '진행 중') : '잠김')));
     })));
 }
-// 스킬 트리 — 단계 노드와 보스(관문). 앞 단계를 다 끝내야 다음 노드가 열림
-function Tree(props) {
-    const { p } = props;
-    const nodes = [];
-    ax_1.AX_STAGES.forEach((s, i) => {
-        const open = (0, work_1.unlocked)(p, i);
-        const clear = (0, work_1.stageClear)(p, s);
-        const n = (0, work_1.stageDocsOk)(p, s);
-        const on = i === props.k;
-        const col = clear ? C.brand : open ? HUE[i] : C.lock;
-        if (i)
-            nodes.push(React.createElement("div", { key: 'l' + i, style: { flex: 1, minWidth: 12, height: 4, borderRadius: 2, background: open ? C.brand : C.line, alignSelf: 'center' } }));
-        nodes.push(React.createElement("div", { key: s.id, "data-ax-node": s.id, "data-ax-node-state": clear ? 'clear' : open ? 'open' : 'locked', onClick: () => props.onPick(i), title: open ? `${s.name} — 산출물 ${n}/${s.docs.length}` : '앞 단계를 끝내면 열려요', style: { display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', width: 76 } },
-            React.createElement("div", { style: { width: 54, height: 54, borderRadius: '50%', border: `4px solid ${col}`, background: on ? col : clear ? C.brandBg : '#fff', color: on ? '#fff' : col, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: open ? 15 : 13, boxShadow: on ? `0 0 0 4px ${col}33` : 'none' } }, clear ? '완료' : open ? `${n}/${s.docs.length}` : '잠김'),
-            React.createElement("div", { style: { fontSize: 12, fontWeight: 800, marginTop: 4, color: open ? C.text : C.lock, textAlign: 'center', whiteSpace: 'nowrap' } },
-                s.no,
-                " ",
-                SHORT[i])));
-        if (s.gate) {
-            const g = (0, work_1.gateState)(p, s);
-            const gc = g === 'approved' ? C.brand : g === 'rejected' ? C.red : g === 'requested' ? C.gold : (0, work_1.stageDocsOk)(p, s) === s.docs.length ? C.gold : C.lock;
-            nodes.push(React.createElement("div", { key: 'gl' + i, style: { flex: 1, minWidth: 8, height: 4, borderRadius: 2, background: open && (0, work_1.stageDocsOk)(p, s) === s.docs.length ? C.brand : C.line, alignSelf: 'center' } }));
-            nodes.push(React.createElement("div", { key: 'g' + i, "data-ax-boss": (0, work_1.gateKey)(s.gate), "data-ax-boss-state": g, onClick: () => props.onPick(i), title: `${s.gate} — 승인받아야 다음 단계가 열려요`, style: { display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', width: 70 } },
-                React.createElement("div", { style: { width: 46, height: 46, transform: 'rotate(45deg)', border: `4px solid ${gc}`, background: g === 'approved' ? C.brandBg : g === 'requested' ? C.goldBg : '#fff', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' } },
-                    React.createElement("span", { style: { transform: 'rotate(-45deg)', fontWeight: 900, fontSize: 13, color: gc } }, (0, work_1.gateKey)(s.gate).toUpperCase())),
-                React.createElement("div", { style: { fontSize: 11.5, fontWeight: 800, marginTop: 8, color: gc, whiteSpace: 'nowrap' } }, g === 'approved' ? '승인됨' : g === 'requested' ? '승인 대기' : g === 'rejected' ? '반려됨' : '관문')));
-        }
-    });
-    return React.createElement("div", { "data-ax-tree": true, style: { display: 'flex', alignItems: 'flex-start', marginTop: 16, padding: '14px 8px 4px', borderTop: `1px solid ${C.line}`, overflowX: 'auto' } }, nodes);
-}
-function Settings(props) {
-    const { p } = props;
-    const [v, setV] = React.useState({ name: p.name, owner: p.owner || '', approver: p.approver || '', approverMail: p.approverMail || '', start: p.start || '', target: p.target || '' });
-    const f = (k, label, type = 'text', w = 150) => React.createElement("label", { style: { display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12, color: C.faint } },
-        label,
-        React.createElement("input", { "data-ax-set": k, type: type, value: v[k], onChange: e => setV(Object.assign(Object.assign({}, v), { [k]: e.target.value })), style: Object.assign(Object.assign({}, inp), { width: w }) }));
-    const save = () => props.update(x => {
-        const ch = [];
-        Object.keys(v).forEach(k => { if ((x[k] || '') !== v[k])
-            ch.push(k); });
-        const plan = (v.start && v.target && (v.start !== x.start || v.target !== x.target)) ? (0, ax_1.suggestPlan)(v.start, v.target) : x.plan;
-        return Object.assign(Object.assign({}, x), { name: v.name || x.name, owner: v.owner || undefined, approver: v.approver || undefined, approverMail: v.approverMail || undefined, start: v.start || undefined, target: v.target || undefined, plan, log: ch.length ? x.log.concat([{ at: nowIso(), who: props.who, kind: 'edit', what: `프로젝트 정보 바꿈 (${ch.join(', ')})` }]) : x.log });
-    });
-    const setPlan = (sid, d) => props.update(x => (Object.assign(Object.assign({}, x), { plan: Object.assign(Object.assign({}, (x.plan || {})), { [sid]: d }), log: x.log.concat([{ at: nowIso(), who: props.who, kind: 'edit', what: `${ax_1.AX_STAGES.filter(s => s.id === sid)[0].name} 계획일 ${d}` }]) })));
-    return (React.createElement("div", { "data-ax-settings": true, style: { marginTop: 12, padding: 14, background: C.bg, borderRadius: 12 } },
-        React.createElement("div", { style: { display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' } },
-            f('name', '프로젝트 이름', 'text', 220),
-            f('owner', 'PM'),
-            f('approver', '관문 승인자'),
-            f('approverMail', '승인자 메일 (Teams 알림)', 'email', 200),
-            f('start', '시작일', 'date'),
-            f('target', '출시 목표일', 'date'),
-            React.createElement("button", { "data-ax-set-save": true, onClick: save, style: primary }, "\uC800\uC7A5")),
-        React.createElement("div", { style: { fontSize: 12, color: C.faint, margin: '12px 0 4px' } }, "\uB2E8\uACC4\uBCC4 \uACC4\uD68D\uC77C (\uC2DC\uC791\uC77C\u00B7\uCD9C\uC2DC \uBAA9\uD45C\uC77C\uC744 \uBC14\uAFB8\uBA74 \uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uB098\uB214)"),
-        React.createElement("div", { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, ax_1.AX_STAGES.map(s => React.createElement("label", { key: s.id, style: { display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11.5, color: C.faint } },
-            s.no,
-            " ",
-            s.name.split('·')[0],
-            React.createElement("input", { "data-ax-plan": s.id, type: "date", value: (p.plan || {})[s.id] || '', onChange: e => e.target.value && setPlan(s.id, e.target.value), style: Object.assign(Object.assign({}, inp), { width: 140 }) }))))));
-}
-// 단계 상세 — 아이템(산출물) 카드 + 보스(관문) 카드
-function StageDetail(props) {
-    const { p, k, who, update } = props;
+// 산출물 한 줄 행 — 이름 · 담당 · 마감 · 상태 점 · 파일
+function StageList(props) {
+    const { p, k } = props;
     const s = ax_1.AX_STAGES[k];
-    const open = (0, work_1.unlocked)(p, k);
-    const f = (0, work_1.perf)(p, k);
-    return (React.createElement("div", { "data-ax-stage": s.id, style: Object.assign(Object.assign({}, card), { marginTop: 16, padding: '16px 18px', opacity: open ? 1 : 0.75 }) },
-        React.createElement("div", { style: { display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' } },
-            React.createElement("span", { style: { fontSize: 18, fontWeight: 900 } },
+    const op = (0, work_1.unlocked)(p, k);
+    const n = (0, work_1.stageDocsOk)(p, s);
+    const end = (p.plan || {})[s.id];
+    return (React.createElement("div", { "data-ax-stage": s.id, style: card },
+        React.createElement("div", { style: { display: 'flex', alignItems: 'baseline', gap: 10, padding: '12px 14px', borderBottom: `1px solid ${C.line}`, flexWrap: 'wrap' } },
+            React.createElement("span", { style: { fontSize: 15, fontWeight: 700 } },
                 s.no,
                 " ",
                 s.name),
-            React.createElement("span", { style: { fontSize: 13, color: C.sub } }, s.focus),
+            React.createElement("span", { style: { fontSize: 12.5, color: C.faint } },
+                "\uC0B0\uCD9C\uBB3C ",
+                n,
+                "/",
+                s.docs.length),
             React.createElement("span", { style: { flex: 1 } }),
-            React.createElement("span", { style: { fontSize: 13, color: C.sub } },
-                "\uACC4\uD68D ",
-                md(f.plan),
-                " \u00B7 \uC2E4\uC81C ",
-                md(f.actual)),
-            f.late > 0 && React.createElement(Tag, { c: C.red, bg: C.redBg },
-                f.late,
-                "\uC77C \uB2A6\uC74C")),
-        !open && React.createElement("div", { "data-ax-locked": true, style: { marginTop: 10, padding: '10px 14px', background: C.bg, borderRadius: 10, color: C.sub, fontSize: 13, fontWeight: 700 } }, "\uC7A0\uAE34 \uB2E8\uACC4\uC608\uC694. \uC55E \uB2E8\uACC4 \uC0B0\uCD9C\uBB3C\uC744 \uB2E4 \uCC44\uC6B0\uACE0 \uAD00\uBB38 \uC2B9\uC778\uC744 \uBC1B\uC73C\uBA74 \uC5F4\uB824\uC694. \uBBF8\uB9AC \uB2F4\uB2F9\u00B7\uAE30\uD55C\uC740 \uC815\uD574 \uB458 \uC218 \uC788\uC5B4\uC694."),
-        React.createElement("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12, marginTop: 14 } }, s.docs.map(d => React.createElement(Item, { key: d.key, p: p, s: s, dkey: d.key, label: d.label, proc: d.proc, hue: HUE[k], open: open, who: who, update: update }))),
-        s.gate && React.createElement(Boss, { p: p, s: s, open: open, who: who, update: update }),
-        React.createElement("div", { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 14 } },
-            React.createElement("div", { style: { fontSize: 13, color: C.sub } },
-                React.createElement("b", { style: { color: C.text } }, "\uC0AC\uB78C\uC774 \uD560 \uC77C"),
-                React.createElement("br", null),
-                (s.human || []).join(' · '),
-                React.createElement("br", null),
-                React.createElement("b", { style: { color: C.text } }, "AI\uAC00 \uB3C4\uC6B8 \uC77C"),
-                React.createElement("br", null),
-                (s.ai || []).join(' · ')),
-            React.createElement(RegRadar_1.default, { stage: s.id, stageLabel: `${s.no} ${s.name}` }))));
+            React.createElement("span", { className: "axw-hide-sm", style: { fontSize: 12.5, color: C.faint } }, s.focus)),
+        !op && React.createElement("div", { "data-ax-locked": true, style: { padding: '9px 14px', fontSize: 12.5, color: C.sub, borderBottom: `1px solid ${C.line}`, display: 'flex', gap: 8, alignItems: 'center', background: C.bg } },
+            React.createElement(Dot, { s: "lock", size: 7 }),
+            "\uC7A0\uAE34 \uB2E8\uACC4 \u2014 \uC55E \uB2E8\uACC4 \uC0B0\uCD9C\uBB3C\uACFC \uAD00\uBB38 \uC2B9\uC778\uC774 \uB05D\uB098\uBA74 \uC5F4\uB824\uC694. \uB2F4\uB2F9\u00B7\uB9C8\uAC10\uC740 \uBBF8\uB9AC \uC815\uD560 \uC218 \uC788\uC5B4\uC694."),
+        React.createElement("div", { className: "axw-hide-sm", style: { display: 'flex', gap: 12, padding: '7px 14px', fontSize: 11.5, color: C.faint, fontWeight: 600, borderBottom: `1px solid ${C.line}` } },
+            React.createElement("span", { style: { width: 8 } }),
+            React.createElement("span", { style: { flex: 1 } }, "\uC0B0\uCD9C\uBB3C"),
+            React.createElement("span", { style: { width: 84 } }, "\uB2F4\uB2F9"),
+            React.createElement("span", { style: { width: 118 } }, "\uB9C8\uAC10"),
+            React.createElement("span", { style: { width: 14 } })),
+        React.createElement("div", null,
+            s.docs.map(d => {
+                const st = p.docs[d.key] || {};
+                const ok = (0, work_1.docOk)(st);
+                const due = st.due || end;
+                const left = (0, ax_1.daysTo)(due);
+                const dot = st.done ? 'done' : st.skip ? 'skip' : !op ? 'lock' : left !== undefined && left < 0 ? 'late' : left !== undefined && left <= 7 ? 'soon' : 'open';
+                return (React.createElement("div", { key: d.key, className: 'axw-row' + (props.pick === d.key ? ' on' : ''), "data-ax-item": d.key, "data-ax-item-state": st.done ? 'done' : st.skip ? 'skip' : 'todo', onClick: () => props.setPick(d.key) },
+                    React.createElement(Dot, { s: dot }),
+                    React.createElement("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500, color: ok ? C.faint : C.text, textDecoration: st.skip ? 'line-through' : 'none' } }, d.label),
+                    React.createElement("span", { className: "axw-hide-sm", style: { width: 84, fontSize: 13, color: st.who ? C.sub : C.faint, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, st.who || '미정'),
+                    React.createElement("span", { style: { width: 118, flex: '0 0 auto', textAlign: 'right' } }, st.done ? React.createElement("span", { style: { fontSize: 12.5, color: C.ok, fontWeight: 600 } }, "\uC644\uB8CC") : st.skip ? React.createElement("span", { style: { fontSize: 12.5, color: C.faint } }, "\uD544\uC694 \uC5C6\uC74C") : React.createElement(Due, { due: due })),
+                    React.createElement(FileIcon, { on: !!st.link })));
+            }),
+            s.gate && (() => {
+                const g = (0, work_1.gateState)(p, s);
+                return (React.createElement("div", { className: 'axw-row' + (props.pick === 'gate' ? ' on' : ''), "data-ax-gate-row": (0, work_1.gateKey)(s.gate), onClick: () => props.setPick('gate'), style: { background: props.pick === 'gate' ? undefined : C.bg } },
+                    React.createElement(Dot, { s: g === 'approved' ? 'done' : g === 'requested' ? 'wait' : g === 'rejected' ? 'late' : 'open' }),
+                    React.createElement("span", { style: { flex: 1, fontWeight: 600 } }, s.gate),
+                    React.createElement("span", { style: { fontSize: 12.5, color: g === 'approved' ? C.ok : g === 'requested' ? C.soon : g === 'rejected' ? C.late : C.faint, fontWeight: 600 } }, g === 'approved' ? '승인됨' : g === 'requested' ? '승인 대기' : g === 'rejected' ? '반려됨' : n === s.docs.length ? '승인 요청 가능' : `산출물 ${s.docs.length - n}개 남음`)));
+            })())));
 }
-function ItemArt(props) {
-    const [ok, setOk] = React.useState(false); // 그림이 실제로 읽혔을 때만 보임, 아니면 기본 카드
-    return (React.createElement("div", { style: { position: 'relative', height: 96, borderRadius: 10, background: `linear-gradient(135deg, ${props.hue}22, ${props.hue}0D)`, display: 'flex', alignItems: 'center', justifyContent: 'center', filter: props.dim ? 'grayscale(1)' : 'none', opacity: props.dim ? 0.55 : 1 } },
-        React.createElement("img", { "data-ax-item-img": true, src: work_1.ITEM_IMG + props.dkey + '.png', alt: "", onLoad: () => setOk(true), onError: () => setOk(false), style: { maxHeight: 84, maxWidth: '80%', display: ok ? 'block' : 'none' } }),
-        !ok && React.createElement("span", { "data-ax-item-art": true, style: { width: 52, height: 64, borderRadius: 6, background: '#fff', border: `2px solid ${props.hue}`, boxShadow: `4px 4px 0 ${props.hue}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, color: props.hue, textAlign: 'center', lineHeight: 1.1, padding: 2 } }, props.label.replace(/[·(].*$/, '').slice(0, 6))));
+function PanelHead(props) {
+    return (React.createElement("div", { style: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: '14px 16px', borderBottom: `1px solid ${C.line}` } },
+        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+            React.createElement("div", { style: { fontWeight: 700, fontSize: 15 } }, props.title),
+            props.sub && React.createElement("div", { style: { fontSize: 12, color: C.faint, marginTop: 2 } }, props.sub)),
+        React.createElement("button", { "data-ax-panel-close": true, onClick: props.onClose, style: Object.assign(Object.assign({}, btn), { padding: '3px 9px' }) }, "\uB2EB\uAE30")));
 }
-function Item(props) {
-    const { p, dkey, label, who, update } = props;
+const Field = (props) => React.createElement("label", { style: { display: 'flex', flexDirection: 'column', gap: 5 } },
+    React.createElement("span", { style: label }, props.l),
+    props.children);
+// 오른쪽 패널 — 산출물 하나 고치기 (입력·버튼은 여기에만)
+function ItemPanel(props) {
+    const { p, s, dkey, who, update } = props;
+    const d = s.docs.filter(x => x.key === dkey)[0];
     const st = p.docs[dkey] || {};
-    const ok = (0, work_1.docOk)(st);
+    const op = (0, work_1.unlocked)(p, props.k);
+    const [owner, setOwner] = React.useState(st.who || '');
     const [link, setLink] = React.useState(st.link || '');
     const [skipping, setSkipping] = React.useState(false);
     const [why, setWhy] = React.useState('');
-    const set = (patch, what) => update(x => (Object.assign(Object.assign({}, x), { docs: Object.assign(Object.assign({}, x.docs), { [dkey]: Object.assign(Object.assign({}, (x.docs[dkey] || {})), patch) }), log: x.log.concat([{ at: nowIso(), who, kind: 'doc', what: `${label} — ${what}` }]) })));
-    const left = (0, ax_1.daysTo)(st.due || (p.plan || {})[props.s.id]);
-    return (React.createElement("div", { "data-ax-item": dkey, "data-ax-item-state": st.done ? 'done' : st.skip ? 'skip' : 'todo', style: { border: `2px solid ${st.done ? C.brand : C.line}`, borderRadius: 12, padding: 10, background: '#fff', display: 'flex', flexDirection: 'column', gap: 7 } },
-        React.createElement(ItemArt, { dkey: dkey, label: label, hue: props.hue, dim: !props.open }),
-        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 6 } },
-            React.createElement("span", { style: { fontWeight: 800, flex: 1, minWidth: 0 }, title: props.proc }, label),
-            st.done && React.createElement(Tag, { c: C.brand, bg: C.brandBg }, "\uC644\uB8CC"),
-            st.skip && React.createElement(Tag, { c: C.faint, bg: C.bg, title: st.skip }, "\uD544\uC694 \uC5C6\uC74C")),
-        React.createElement("div", { style: { display: 'flex', gap: 6 } },
-            React.createElement("input", { "data-ax-item-who": true, placeholder: "\uB2F4\uB2F9", defaultValue: st.who || '', onBlur: e => { const v = e.target.value.trim(); if (v !== (st.who || ''))
-                    set({ who: v || undefined }, `담당 ${v || '비움'}`); }, style: Object.assign(Object.assign({}, inp), { flex: 1, width: 0 }) }),
-            React.createElement("input", { "data-ax-item-due": true, type: "date", value: st.due || '', onChange: e => set({ due: e.target.value || undefined }, `기한 ${e.target.value || '비움'}`), style: Object.assign(Object.assign({}, inp), { width: 128 }) })),
-        !ok && left !== undefined && left < 0 && React.createElement("div", { style: { fontSize: 12, fontWeight: 800, color: C.red } },
-            -left,
-            "\uC77C \uB2A6\uC74C"),
-        React.createElement("div", { style: { display: 'flex', gap: 6 } },
-            React.createElement("input", { "data-ax-item-link": true, placeholder: "SharePoint \uD30C\uC77C \uB9C1\uD06C \uBD99\uC5EC\uB123\uAE30", value: link, onChange: e => setLink(e.target.value), onBlur: () => { const v = link.trim(); if (v !== (st.link || ''))
-                    set({ link: v || undefined, by: v ? who : undefined, at: v ? nowIso() : undefined }, v ? '파일 링크 붙임' : '파일 링크 뺌'); }, style: Object.assign(Object.assign({}, inp), { flex: 1, width: 0 }) }),
-            st.link && React.createElement("a", { "data-ax-item-open": true, href: st.link, target: "_blank", rel: "noopener noreferrer", style: Object.assign(Object.assign({}, btn), { textDecoration: 'none', padding: '6px 10px' }) }, "\uC5F4\uAE30")),
-        st.link && st.by && React.createElement("div", { style: { fontSize: 11.5, color: C.faint } },
-            "\uC62C\uB9B0 \uC0AC\uB78C ",
-            st.by,
-            " \u00B7 ",
-            (0, ax_1.fmt)(st.at)),
-        !skipping ? React.createElement("div", { style: { display: 'flex', gap: 6 } },
-            React.createElement("button", { "data-ax-item-done": true, disabled: !props.open || !!st.skip, onClick: () => set({ done: !st.done, by: st.by || who, at: st.at || nowIso() }, st.done ? '완료 취소' : '완료'), style: Object.assign(Object.assign({}, (st.done ? btn : primary)), { flex: 1, opacity: !props.open || st.skip ? 0.45 : 1, cursor: !props.open || st.skip ? 'not-allowed' : 'pointer' }) }, st.done ? '완료 취소' : '완료'),
-            React.createElement("button", { "data-ax-item-skip": true, disabled: !props.open || !!st.done, onClick: () => (st.skip ? set({ skip: undefined }, '필요 없음 취소') : setSkipping(true)), style: Object.assign(Object.assign({}, btn), { opacity: !props.open || st.done ? 0.45 : 1 }) }, st.skip ? '되돌리기' : '필요 없음')) : React.createElement("div", { style: { display: 'flex', gap: 6 } },
-            React.createElement("input", { "data-ax-item-why": true, autoFocus: true, placeholder: "\uD544\uC694 \uC5C6\uB294 \uC774\uC720", value: why, onChange: e => setWhy(e.target.value), style: Object.assign(Object.assign({}, inp), { flex: 1, width: 0 }) }),
-            React.createElement("button", { "data-ax-item-why-ok": true, disabled: !why.trim(), onClick: () => { set({ skip: why.trim() }, `필요 없음 — ${why.trim()}`); setSkipping(false); setWhy(''); }, style: Object.assign(Object.assign({}, primary), { opacity: why.trim() ? 1 : 0.45 }) }, "\uD655\uC778"),
-            React.createElement("button", { onClick: () => setSkipping(false), style: btn }, "\uCDE8\uC18C"))));
+    const set = (patch, what) => update(x => (Object.assign(Object.assign({}, x), { docs: Object.assign(Object.assign({}, x.docs), { [dkey]: Object.assign(Object.assign({}, (x.docs[dkey] || {})), patch) }), log: x.log.concat([{ at: nowIso(), who, kind: 'doc', what: `${d.label} — ${what}` }]) })));
+    const hist = p.log.filter(l => l.what.indexOf(d.label + ' — ') === 0).slice(-5).reverse();
+    return (React.createElement("div", { "data-ax-item-panel": dkey },
+        React.createElement(PanelHead, { title: d.label, sub: `${s.no} ${s.name} · ${d.proc}`, onClose: props.onClose }),
+        React.createElement("div", { style: { padding: 16, display: 'flex', flexDirection: 'column', gap: 14 } },
+            React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 } },
+                React.createElement(Dot, { s: st.done ? 'done' : st.skip ? 'skip' : op ? 'open' : 'lock' }),
+                st.done ? `완료 · ${st.by || ''} ${(0, ax_1.fmt)(st.at)}` : st.skip ? `필요 없음 — ${st.skip}` : op ? '진행 전' : '잠긴 단계'),
+            React.createElement("div", { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 } },
+                React.createElement(Field, { l: "\uB2F4\uB2F9" },
+                    React.createElement("input", { "data-ax-item-who": true, value: owner, placeholder: "\uC774\uB984", onChange: e => setOwner(e.target.value), onBlur: () => { const v = owner.trim(); if (v !== (st.who || ''))
+                            set({ who: v || undefined }, `담당 ${v || '비움'}`); }, style: inp })),
+                React.createElement(Field, { l: "\uB9C8\uAC10" },
+                    React.createElement("input", { "data-ax-item-due": true, type: "date", value: st.due || '', onChange: e => set({ due: e.target.value || undefined }, `마감 ${e.target.value || '비움'}`), style: inp }))),
+            React.createElement(Field, { l: "\uD30C\uC77C (SharePoint \uB9C1\uD06C)" },
+                React.createElement("div", { style: { display: 'flex', gap: 6 } },
+                    React.createElement("input", { "data-ax-item-link": true, value: link, placeholder: "\uB9C1\uD06C \uBD99\uC5EC\uB123\uAE30", onChange: e => setLink(e.target.value), onBlur: () => { const v = link.trim(); if (v !== (st.link || ''))
+                            set({ link: v || undefined, by: v ? who : undefined, at: v ? nowIso() : undefined }, v ? '파일 링크 붙임' : '파일 링크 뺌'); }, style: inp }),
+                    st.link && React.createElement("a", { "data-ax-item-open": true, href: st.link, target: "_blank", rel: "noopener noreferrer", style: Object.assign(Object.assign({}, btn), { textDecoration: 'none' }) }, "\uC5F4\uAE30")),
+                st.link && st.by && React.createElement("span", { style: { fontSize: 12, color: C.faint } },
+                    "\uC62C\uB9B0 \uC0AC\uB78C ",
+                    st.by,
+                    " \u00B7 ",
+                    (0, ax_1.fmt)(st.at))),
+            !skipping ? React.createElement("div", { style: { display: 'flex', gap: 8 } },
+                React.createElement("button", { "data-ax-item-done": true, disabled: !op || !!st.skip, onClick: () => set({ done: !st.done, by: st.by || who, at: st.at || nowIso() }, st.done ? '완료 취소' : '완료'), style: Object.assign(Object.assign({}, (st.done ? btn : primary)), { flex: 1, opacity: !op || st.skip ? 0.4 : 1, cursor: !op || st.skip ? 'not-allowed' : 'pointer' }) }, st.done ? '완료 취소' : '완료로 표시'),
+                React.createElement("button", { "data-ax-item-skip": true, disabled: !op || !!st.done, onClick: () => (st.skip ? set({ skip: undefined }, '필요 없음 취소') : setSkipping(true)), style: Object.assign(Object.assign({}, btn), { opacity: !op || st.done ? 0.4 : 1 }) }, st.skip ? '되돌리기' : '필요 없음')) : React.createElement("div", { style: { display: 'flex', gap: 6 } },
+                React.createElement("input", { "data-ax-item-why": true, autoFocus: true, placeholder: "\uD544\uC694 \uC5C6\uB294 \uC774\uC720", value: why, onChange: e => setWhy(e.target.value), style: inp }),
+                React.createElement("button", { "data-ax-item-why-ok": true, disabled: !why.trim(), onClick: () => { set({ skip: why.trim() }, `필요 없음 — ${why.trim()}`); setSkipping(false); setWhy(''); }, style: Object.assign(Object.assign({}, primary), { opacity: why.trim() ? 1 : 0.4 }) }, "\uD655\uC778"),
+                React.createElement("button", { onClick: () => setSkipping(false), style: btn }, "\uCDE8\uC18C")),
+            hist.length > 0 && React.createElement("div", null,
+                React.createElement("div", { style: Object.assign(Object.assign({}, label), { marginBottom: 4 }) }, "\uAE30\uB85D"),
+                hist.map((l, i) => React.createElement("div", { key: i, style: { fontSize: 12, color: C.sub, padding: '3px 0' } },
+                    React.createElement("span", { style: { color: C.faint } }, (0, ax_1.fmt)(l.at)),
+                    " ",
+                    l.who,
+                    " \u00B7 ",
+                    l.what.slice(d.label.length + 3)))))));
 }
-// 보스 노드 — 관문 승인 요청 → 승인/반려, 누가 언제 했는지 쌓임
-function Boss(props) {
+// 오른쪽 패널 — 관문 승인 요청 → 승인/반려, 누가 언제 했는지 쌓임
+function GatePanel(props) {
     const { p, s, who, update } = props;
     const gate = s.gate;
     const g = (0, work_1.gateState)(p, s);
@@ -514,37 +554,88 @@ function Boss(props) {
     const hist = (p.approvals || []).filter(a => a.gate === gate);
     const la = (0, work_1.lastApproval)(p, gate);
     const msg = `[AX-PLM] ${p.name} ${gate} 승인 부탁드려요. ${pageUrl()}`;
-    return (React.createElement("div", { "data-ax-boss-card": (0, work_1.gateKey)(gate), style: { marginTop: 14, border: `2px solid ${g === 'approved' ? C.brand : g === 'rejected' ? C.red : C.gold}`, background: g === 'approved' ? C.brandBg : C.goldBg, borderRadius: 14, padding: 14, display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' } },
-        React.createElement("div", { style: { width: 80, height: 80, borderRadius: 12, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' } },
-            React.createElement(BossArt, { k: (0, work_1.gateKey)(gate) })),
-        React.createElement("div", { style: { flex: 1, minWidth: 240 } },
-            React.createElement("div", { style: { fontSize: 16, fontWeight: 900 } },
-                gate,
-                " ",
-                React.createElement("span", { style: { fontSize: 12, color: C.sub, fontWeight: 700 } },
-                    "\u00B7 \uC2B9\uC778\uC790 ",
-                    p.approver || '아직 없음 (프로젝트 설정)')),
-            React.createElement("div", { style: { fontSize: 13, color: C.sub, marginTop: 3 } }, g === 'approved' ? `승인됨 — ${la ? `${la.who} · ${(0, ax_1.fmt)(la.at)}` : '이전 판에서 통과'}` : g === 'requested' ? `승인 대기 — ${la ? `${la.who}가 ${(0, ax_1.fmt)(la.at)} 요청` : ''}` : g === 'rejected' ? `반려됨 — ${la ? `${la.who} · ${la.note || '사유 없음'}` : ''}. 고친 뒤 다시 요청하세요.` : ready ? '산출물을 다 채웠어요. 승인을 요청하세요.' : `산출물 ${s.docs.length - (0, work_1.stageDocsOk)(p, s)}개를 더 채우면 승인을 요청할 수 있어요.`),
-            props.open && g !== 'approved' && React.createElement("div", { style: { display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' } },
-                React.createElement("input", { "data-ax-gate-note": true, placeholder: g === 'requested' ? '승인·반려 의견 (반려는 필수)' : '요청 메모', value: note, onChange: e => setNote(e.target.value), style: Object.assign(Object.assign({}, inp), { flex: 1, minWidth: 180 }) }),
-                (g === 'wait' || g === 'rejected') && React.createElement("button", { "data-ax-gate-request": true, disabled: !ready, onClick: () => act('request'), style: Object.assign(Object.assign({}, primary), { opacity: ready ? 1 : 0.45 }) }, "\uC2B9\uC778 \uC694\uCCAD"),
-                g === 'requested' && React.createElement("button", { "data-ax-gate-approve": true, disabled: !isApprover, title: isApprover ? '' : `승인자(${p.approver})만 승인할 수 있어요`, onClick: () => act('approve'), style: Object.assign(Object.assign({}, primary), { opacity: isApprover ? 1 : 0.45 }) }, "\uC2B9\uC778"),
-                g === 'requested' && React.createElement("button", { "data-ax-gate-reject": true, disabled: !isApprover || !note.trim(), onClick: () => act('reject'), style: Object.assign(Object.assign({}, btn), { color: C.red, opacity: isApprover && note.trim() ? 1 : 0.45 }) }, "\uBC18\uB824"),
-                g === 'requested' && (p.approverMail ? React.createElement("a", { "data-ax-gate-teams": true, href: teamsChat(p.approverMail, msg), target: "_blank", rel: "noopener noreferrer", style: Object.assign(Object.assign({}, btn), { textDecoration: 'none' }) }, "Teams\uB85C \uC54C\uB9AC\uAE30") : React.createElement("span", { style: { fontSize: 12, color: C.faint, alignSelf: 'center' } }, "\uC2B9\uC778\uC790 \uBA54\uC77C\uC744 \uB123\uC73C\uBA74 Teams\uB85C \uC54C\uB9B4 \uC218 \uC788\uC5B4\uC694"))),
-            g === 'approved' && props.open && React.createElement("button", { "data-ax-gate-undo": true, onClick: () => act('reject'), style: Object.assign(Object.assign({}, btn), { marginTop: 8, fontSize: 12 }), disabled: !isApprover }, "\uC2B9\uC778 \uCDE8\uC18C"),
-            hist.length > 0 && React.createElement("div", { style: { marginTop: 8, fontSize: 12, color: C.sub } }, hist.map((a, i) => React.createElement("div", { key: i },
-                (0, ax_1.fmt)(a.at),
-                " \u00B7 ",
-                a.who,
-                " \u00B7 ",
-                a.kind === 'request' ? '요청' : a.kind === 'approve' ? '승인' : '반려',
-                a.note ? ` — ${a.note}` : ''))))));
+    return (React.createElement("div", { "data-ax-boss-card": (0, work_1.gateKey)(gate), "data-ax-boss": (0, work_1.gateKey)(gate), "data-ax-boss-state": g },
+        React.createElement(PanelHead, { title: gate, sub: `승인자 ${p.approver || '없음 — 설정에서 지정'}`, onClose: props.onClose }),
+        React.createElement("div", { style: { padding: 16, display: 'flex', flexDirection: 'column', gap: 12 } },
+            React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 } },
+                React.createElement(Dot, { s: g === 'approved' ? 'done' : g === 'requested' ? 'wait' : g === 'rejected' ? 'late' : 'open' }),
+                g === 'approved' ? `승인됨${la ? ` · ${la.who} ${(0, ax_1.fmt)(la.at)}` : ''}` : g === 'requested' ? `승인 대기${la ? ` · ${la.who} ${(0, ax_1.fmt)(la.at)} 요청` : ''}` : g === 'rejected' ? `반려됨 — ${la && la.note ? la.note : '사유 없음'}` : ready ? '승인 요청할 수 있어요' : `산출물 ${s.docs.length - (0, work_1.stageDocsOk)(p, s)}개를 채우면 요청할 수 있어요`),
+            props.open && g !== 'approved' && React.createElement(React.Fragment, null,
+                React.createElement("input", { "data-ax-gate-note": true, placeholder: g === 'requested' ? '의견 (반려는 필수)' : '요청 메모', value: note, onChange: e => setNote(e.target.value), style: inp }),
+                React.createElement("div", { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
+                    (g === 'wait' || g === 'rejected') && React.createElement("button", { "data-ax-gate-request": true, disabled: !ready, onClick: () => act('request'), style: Object.assign(Object.assign({}, primary), { flex: 1, opacity: ready ? 1 : 0.4 }) }, "\uC2B9\uC778 \uC694\uCCAD"),
+                    g === 'requested' && React.createElement("button", { "data-ax-gate-approve": true, disabled: !isApprover, title: isApprover ? '' : `승인자(${p.approver})만 승인할 수 있어요`, onClick: () => act('approve'), style: Object.assign(Object.assign({}, primary), { flex: 1, opacity: isApprover ? 1 : 0.4 }) }, "\uC2B9\uC778"),
+                    g === 'requested' && React.createElement("button", { "data-ax-gate-reject": true, disabled: !isApprover || !note.trim(), onClick: () => act('reject'), style: Object.assign(Object.assign({}, btn), { color: C.late, opacity: isApprover && note.trim() ? 1 : 0.4 }) }, "\uBC18\uB824")),
+                g === 'requested' && (p.approverMail ? React.createElement("a", { "data-ax-gate-teams": true, href: teamsChat(p.approverMail, msg), target: "_blank", rel: "noopener noreferrer", style: Object.assign(Object.assign({}, btn), { textDecoration: 'none', textAlign: 'center' }) }, "Teams\uB85C \uC2B9\uC778\uC790\uC5D0\uAC8C \uC54C\uB9AC\uAE30") : React.createElement("span", { style: { fontSize: 12, color: C.faint } }, "\uC124\uC815\uC5D0 \uC2B9\uC778\uC790 \uBA54\uC77C\uC744 \uB123\uC73C\uBA74 Teams\uB85C \uC54C\uB9B4 \uC218 \uC788\uC5B4\uC694."))),
+            g === 'approved' && props.open && React.createElement("button", { "data-ax-gate-undo": true, disabled: !isApprover, onClick: () => act('reject'), style: Object.assign(Object.assign({}, btn), { alignSelf: 'flex-start', opacity: isApprover ? 1 : 0.4 }) }, "\uC2B9\uC778 \uCDE8\uC18C"),
+            hist.length > 0 && React.createElement("div", null,
+                React.createElement("div", { style: Object.assign(Object.assign({}, label), { marginBottom: 4 }) }, "\uC2B9\uC778 \uAE30\uB85D"),
+                hist.slice().reverse().map((a, i) => React.createElement("div", { key: i, style: { fontSize: 12.5, color: C.sub, padding: '4px 0', borderTop: i ? `1px solid ${C.line}` : 'none' } },
+                    React.createElement("span", { style: { color: C.faint, fontVariantNumeric: 'tabular-nums' } }, (0, ax_1.fmt)(a.at)),
+                    " ",
+                    a.who,
+                    " \u00B7 ",
+                    a.kind === 'request' ? '요청' : a.kind === 'approve' ? '승인' : '반려',
+                    a.note ? ` — ${a.note}` : ''))))));
 }
-function BossArt(props) {
-    const [ok, setOk] = React.useState(false);
-    return React.createElement(React.Fragment, null,
-        React.createElement("img", { src: work_1.ITEM_IMG + props.k + '.png', alt: "", onLoad: () => setOk(true), style: { maxWidth: 72, maxHeight: 72, display: ok ? 'block' : 'none' } }),
-        !ok && React.createElement("span", { style: { fontSize: 22, fontWeight: 900, color: C.gold } }, props.k.toUpperCase()));
+// 패널 기본 — 이 단계 요약(계획 대비 실적·사람/AI 할 일·규제)
+function StageSummary(props) {
+    const { p, k } = props;
+    const s = ax_1.AX_STAGES[k];
+    const f = (0, work_1.perf)(p, k);
+    const row = (a, b) => React.createElement("div", { style: { display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13, padding: '5px 0' } },
+        React.createElement("span", { style: { color: C.faint } }, a),
+        React.createElement("span", { style: { fontVariantNumeric: 'tabular-nums', textAlign: 'right' } }, b));
+    return (React.createElement("div", { "data-ax-summary": true },
+        React.createElement("div", { style: { padding: '14px 16px', borderBottom: `1px solid ${C.line}` } },
+            React.createElement("div", { style: { fontWeight: 700, fontSize: 15 } },
+                s.no,
+                " ",
+                s.name),
+            React.createElement("div", { style: { fontSize: 12, color: C.faint, marginTop: 2 } }, "\uC0B0\uCD9C\uBB3C \uD589\uC744 \uB204\uB974\uBA74 \uC5EC\uAE30\uC11C \uACE0\uCCD0\uC694")),
+        React.createElement("div", { style: { padding: '10px 16px 14px' } },
+            row('계획 완료일', md(f.plan)),
+            row('실제 완료일', md(f.actual)),
+            row('지연', f.late ? React.createElement("span", { style: { color: C.late, fontWeight: 700 } },
+                f.late,
+                "\uC77C") : '—'),
+            row('산출물', `${(0, work_1.stageDocsOk)(p, s)} / ${s.docs.length}`),
+            React.createElement("div", { style: Object.assign(Object.assign({}, label), { margin: '12px 0 4px' }) }, "\uC0AC\uB78C\uC774 \uD560 \uC77C"),
+            React.createElement("div", { style: { fontSize: 13, color: C.sub } }, (s.human || []).join(' · ')),
+            React.createElement("div", { style: Object.assign(Object.assign({}, label), { margin: '12px 0 4px' }) }, "AI\uAC00 \uB3C4\uC6B8 \uC77C"),
+            React.createElement("div", { style: { fontSize: 13, color: C.sub } }, (s.ai || []).join(' · ')),
+            React.createElement(RegRadar_1.default, { stage: s.id, stageLabel: `${s.no} ${s.name}` }))));
+}
+function Settings(props) {
+    const { p } = props;
+    const [v, setV] = React.useState({ name: p.name, owner: p.owner || '', approver: p.approver || '', approverMail: p.approverMail || '', start: p.start || '', target: p.target || '' });
+    const f = (k, l, type = 'text', w = 150) => React.createElement("label", { style: { display: 'flex', flexDirection: 'column', gap: 5, width: w } },
+        React.createElement("span", { style: label }, l),
+        React.createElement("input", { "data-ax-set": k, type: type, value: v[k], onChange: e => setV(Object.assign(Object.assign({}, v), { [k]: e.target.value })), style: inp }));
+    const save = () => props.update(x => {
+        const ch = [];
+        Object.keys(v).forEach(k => { if ((x[k] || '') !== v[k])
+            ch.push(k); });
+        const plan = (v.start && v.target && (v.start !== x.start || v.target !== x.target)) ? (0, ax_1.suggestPlan)(v.start, v.target) : x.plan;
+        return Object.assign(Object.assign({}, x), { name: v.name || x.name, owner: v.owner || undefined, approver: v.approver || undefined, approverMail: v.approverMail || undefined, start: v.start || undefined, target: v.target || undefined, plan, log: ch.length ? x.log.concat([{ at: nowIso(), who: props.who, kind: 'edit', what: `프로젝트 정보 바꿈 (${ch.join(', ')})` }]) : x.log });
+    });
+    const setPlan = (sid, d) => props.update(x => (Object.assign(Object.assign({}, x), { plan: Object.assign(Object.assign({}, (x.plan || {})), { [sid]: d }), log: x.log.concat([{ at: nowIso(), who: props.who, kind: 'edit', what: `${ax_1.AX_STAGES.filter(s => s.id === sid)[0].name} 계획일 ${d}` }]) })));
+    return (React.createElement("div", { "data-ax-settings": true, style: Object.assign(Object.assign({}, card), { marginTop: 14, padding: 16 }) },
+        React.createElement("div", { style: { display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' } },
+            f('name', '프로젝트 이름', 'text', 220),
+            f('owner', 'PM'),
+            f('approver', '관문 승인자'),
+            f('approverMail', '승인자 메일 (Teams 알림)', 'email', 210),
+            f('start', '시작일', 'date'),
+            f('target', '출시 목표일', 'date'),
+            React.createElement("button", { "data-ax-set-save": true, onClick: save, style: primary }, "\uC800\uC7A5")),
+        React.createElement("div", { style: Object.assign(Object.assign({}, label), { margin: '16px 0 6px' }) }, "\uB2E8\uACC4\uBCC4 \uACC4\uD68D \uC644\uB8CC\uC77C \u2014 \uC2DC\uC791\uC77C\u00B7\uCD9C\uC2DC \uBAA9\uD45C\uC77C\uC744 \uBC14\uAFB8\uBA74 \uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uB098\uB220\uC694"),
+        React.createElement("div", { style: { display: 'flex', gap: 10, flexWrap: 'wrap' } }, ax_1.AX_STAGES.map((s, i) => React.createElement("label", { key: s.id, style: { display: 'flex', flexDirection: 'column', gap: 4, width: 140 } },
+            React.createElement("span", { style: { fontSize: 11.5, color: C.faint } },
+                s.no,
+                " ",
+                SHORT[i]),
+            React.createElement("input", { "data-ax-plan": s.id, type: "date", value: (p.plan || {})[s.id] || '', onChange: e => e.target.value && setPlan(s.id, e.target.value), style: inp }))))));
 }
 function Issues(props) {
     const { p, who, update } = props;
@@ -558,32 +649,30 @@ function Issues(props) {
         update(x => (Object.assign(Object.assign({}, x), { issues: (x.issues || []).concat([i]), log: x.log.concat([{ at: nowIso(), who, kind: 'note', what: `${i.kind} 등록 — ${i.text}` }]) })));
         setV(Object.assign(Object.assign({}, v), { text: '', owner: '', due: '' }));
     };
-    const toggle = (id) => update(x => (Object.assign(Object.assign({}, x), { issues: (x.issues || []).map(i => (i.id === id ? Object.assign(Object.assign({}, i), { done: !i.done, doneAt: i.done ? undefined : nowIso() }) : i)), log: x.log.concat([{ at: nowIso(), who, kind: 'note', what: `${((x.issues || []).filter(i => i.id === id)[0] || { text: '' }).text} — ${((x.issues || []).filter(i => i.id === id)[0] || { done: false }).done ? '다시 열림' : '해결'}` }]) })));
+    const toggle = (id) => update(x => {
+        const it = (x.issues || []).filter(i => i.id === id)[0];
+        return Object.assign(Object.assign({}, x), { issues: (x.issues || []).map(i => (i.id === id ? Object.assign(Object.assign({}, i), { done: !i.done, doneAt: i.done ? undefined : nowIso() }) : i)), log: x.log.concat([{ at: nowIso(), who, kind: 'note', what: `${it ? it.text : ''} — ${it && it.done ? '다시 열림' : '해결'}` }]) });
+    });
     return (React.createElement("div", { "data-ax-issues": true },
-        React.createElement("div", { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 } },
-            React.createElement("select", { "data-ax-issue-kind": true, value: v.kind, onChange: e => setV(Object.assign(Object.assign({}, v), { kind: e.target.value })), style: inp },
+        React.createElement("div", { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 } },
+            React.createElement("select", { "data-ax-issue-kind": true, value: v.kind, onChange: e => setV(Object.assign(Object.assign({}, v), { kind: e.target.value })), style: Object.assign(Object.assign({}, inp), { width: 80 }) },
                 React.createElement("option", null, "\uC774\uC288"),
                 React.createElement("option", null, "\uB9AC\uC2A4\uD06C")),
-            React.createElement("input", { "data-ax-issue-text": true, placeholder: "\uBB34\uC2A8 \uBB38\uC81C\uC778\uC9C0", value: v.text, onChange: e => setV(Object.assign(Object.assign({}, v), { text: e.target.value })), onKeyDown: e => e.key === 'Enter' && addI(), style: Object.assign(Object.assign({}, inp), { flex: 1, minWidth: 220 }) }),
-            React.createElement("input", { "data-ax-issue-owner": true, placeholder: "\uB2F4\uB2F9", value: v.owner, onChange: e => setV(Object.assign(Object.assign({}, v), { owner: e.target.value })), style: Object.assign(Object.assign({}, inp), { width: 100 }) }),
+            React.createElement("input", { "data-ax-issue-text": true, placeholder: "\uBB34\uC2A8 \uBB38\uC81C\uC778\uC9C0", value: v.text, onChange: e => setV(Object.assign(Object.assign({}, v), { text: e.target.value })), onKeyDown: e => { if (e.key === 'Enter')
+                    addI(); }, style: Object.assign(Object.assign({}, inp), { flex: 1, minWidth: 180, width: 'auto' }) }),
+            React.createElement("input", { "data-ax-issue-owner": true, placeholder: "\uB2F4\uB2F9", value: v.owner, onChange: e => setV(Object.assign(Object.assign({}, v), { owner: e.target.value })), style: Object.assign(Object.assign({}, inp), { width: 90 }) }),
             React.createElement("input", { "data-ax-issue-due": true, type: "date", value: v.due, onChange: e => setV(Object.assign(Object.assign({}, v), { due: e.target.value })), style: Object.assign(Object.assign({}, inp), { width: 140 }) }),
-            React.createElement("button", { "data-ax-issue-add": true, onClick: addI, style: primary }, "\uB4F1\uB85D"),
-            React.createElement("label", { style: { fontSize: 12, color: C.faint, alignSelf: 'center' } },
-                React.createElement("input", { type: "checkbox", checked: showDone, onChange: e => setShowDone(e.target.checked) }),
-                " \uD574\uACB0\uB41C \uAC83\uB3C4")),
-        !list.length && React.createElement("div", { style: { color: C.faint, fontSize: 13 } }, "\uC5F4\uB9B0 \uC774\uC288\u00B7\uB9AC\uC2A4\uD06C\uAC00 \uC5C6\uC5B4\uC694."),
-        list.map(i => {
-            const left = (0, ax_1.daysTo)(i.due);
-            return (React.createElement("div", { key: i.id, "data-ax-issue": i.id, style: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: `1px solid ${C.line}`, opacity: i.done ? 0.55 : 1 } },
-                React.createElement("input", { "data-ax-issue-done": true, type: "checkbox", checked: !!i.done, onChange: () => toggle(i.id) }),
-                React.createElement(Tag, { c: i.kind === '리스크' ? C.amber : C.red, bg: i.kind === '리스크' ? C.amberBg : C.redBg }, i.kind),
-                React.createElement("span", { style: { flex: 1, textDecoration: i.done ? 'line-through' : 'none' } }, i.text),
-                React.createElement("span", { style: { fontSize: 12, color: C.faint } },
-                    ax_1.AX_STAGES.filter(s => s.id === i.stage).map(s => s.no)[0],
-                    " \u00B7 ",
-                    i.owner || '담당 없음'),
-                !i.done && React.createElement(DueTag, { left: left, due: i.due })));
-        })));
+            React.createElement("button", { "data-ax-issue-add": true, onClick: addI, style: primary }, "\uB4F1\uB85D")),
+        React.createElement("label", { style: { fontSize: 12, color: C.faint, display: 'inline-flex', gap: 5, alignItems: 'center', marginBottom: 4 } },
+            React.createElement("input", { type: "checkbox", checked: showDone, onChange: e => setShowDone(e.target.checked) }),
+            "\uD574\uACB0\uB41C \uAC83\uB3C4 \uBCF4\uAE30"),
+        !list.length && React.createElement("div", { style: { color: C.faint, fontSize: 13, padding: '8px 0' } }, "\uC5F4\uB9B0 \uC774\uC288\u00B7\uB9AC\uC2A4\uD06C\uAC00 \uC5C6\uC5B4\uC694."),
+        list.map(i => (React.createElement("div", { key: i.id, "data-ax-issue": i.id, style: { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: `1px solid ${C.line}`, opacity: i.done ? 0.5 : 1 } },
+            React.createElement("input", { "data-ax-issue-done": true, type: "checkbox", checked: !!i.done, onChange: () => toggle(i.id) }),
+            React.createElement("span", { style: { fontSize: 12, color: C.faint, width: 38 } }, i.kind),
+            React.createElement("span", { style: { flex: 1, minWidth: 0, textDecoration: i.done ? 'line-through' : 'none' } }, i.text),
+            React.createElement("span", { className: "axw-hide-sm", style: { fontSize: 12.5, color: C.sub, width: 70, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, i.owner || '미정'),
+            !i.done && React.createElement(Due, { due: i.due }))))));
 }
 function Changes(props) {
     const { p, who, update } = props;
@@ -598,18 +687,17 @@ function Changes(props) {
         setWhy('');
     };
     return (React.createElement("div", { "data-ax-changes": true },
-        React.createElement("div", { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 } },
-            React.createElement("input", { "data-ax-change-what": true, placeholder: "\uBB34\uC5C7\uC744 \uBC14\uAFE8\uB098 (\uC608: \uC6A9\uB7C9 2L \u2192 2.5L)", value: what, onChange: e => setWhat(e.target.value), style: Object.assign(Object.assign({}, inp), { flex: 1, minWidth: 220 }) }),
-            React.createElement("input", { "data-ax-change-why": true, placeholder: "\uC65C", value: why, onChange: e => setWhy(e.target.value), style: Object.assign(Object.assign({}, inp), { flex: 1, minWidth: 180 }) }),
-            React.createElement("button", { "data-ax-change-add": true, disabled: !what.trim() || !why.trim(), onClick: addC, style: Object.assign(Object.assign({}, primary), { opacity: what.trim() && why.trim() ? 1 : 0.45 }) }, "\uAE30\uB85D")),
-        !(p.changes || []).length && React.createElement("div", { style: { color: C.faint, fontSize: 13 } }, "\uC0AC\uC591 \uBCC0\uACBD \uAE30\uB85D\uC774 \uC5C6\uC5B4\uC694."),
-        (p.changes || []).slice().reverse().map(c => (React.createElement("div", { key: c.id, "data-ax-change": c.id, style: { padding: '8px 0', borderTop: `1px solid ${C.line}` } },
-            React.createElement("div", { style: { fontWeight: 700 } }, c.what),
-            React.createElement("div", { style: { fontSize: 12.5, color: C.sub } },
-                "\uC774\uC720: ",
+        React.createElement("div", { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 } },
+            React.createElement("input", { "data-ax-change-what": true, placeholder: "\uBB34\uC5C7\uC744 \uBC14\uAFE8\uB098 (\uC608: \uC6A9\uB7C9 2L \u2192 2.5L)", value: what, onChange: e => setWhat(e.target.value), style: Object.assign(Object.assign({}, inp), { flex: 1, minWidth: 200, width: 'auto' }) }),
+            React.createElement("input", { "data-ax-change-why": true, placeholder: "\uC65C", value: why, onChange: e => setWhy(e.target.value), style: Object.assign(Object.assign({}, inp), { flex: 1, minWidth: 160, width: 'auto' }) }),
+            React.createElement("button", { "data-ax-change-add": true, disabled: !what.trim() || !why.trim(), onClick: addC, style: Object.assign(Object.assign({}, primary), { opacity: what.trim() && why.trim() ? 1 : 0.4 }) }, "\uAE30\uB85D")),
+        !(p.changes || []).length && React.createElement("div", { style: { color: C.faint, fontSize: 13, padding: '8px 0' } }, "\uC0AC\uC591 \uBCC0\uACBD \uAE30\uB85D\uC774 \uC5C6\uC5B4\uC694."),
+        (p.changes || []).slice().reverse().map(c => (React.createElement("div", { key: c.id, "data-ax-change": c.id, style: { padding: '9px 0', borderTop: `1px solid ${C.line}` } },
+            React.createElement("div", { style: { fontWeight: 600 } }, c.what),
+            React.createElement("div", { style: { fontSize: 12.5, color: C.faint } },
                 c.why,
                 " \u00B7 ",
-                ax_1.AX_STAGES.filter(s => s.id === c.stage).map(s => `${s.no} ${s.name}`)[0],
+                ax_1.AX_STAGES.filter(s => s.id === c.stage).map(s => s.no)[0],
                 " \u00B7 ",
                 c.who,
                 " \u00B7 ",
@@ -626,15 +714,12 @@ function Asks(props) {
         setT('');
     };
     return (React.createElement("div", { "data-ax-asks": true },
-        React.createElement("div", { style: { fontSize: 13, color: C.sub, marginBottom: 8 } },
-            "\uBBF8\uB9AC \uD655\uC778\uD560 \uAC83\uC744 \uC801\uC5B4 \uB450\uBA74 AI \uB3C4\uC6B0\uBBF8(",
-            p.aiHelper || 'PC-곽두팔',
-            ")\uAC00 \uB2F5\uC744 \uB2EC\uC544\uC694."),
-        React.createElement("div", { style: { display: 'flex', gap: 6, marginBottom: 10 } },
-            React.createElement("input", { "data-ax-ask": true, placeholder: "\uC608: UV \uC0B4\uADE0 \uB123\uC73C\uBA74 \uAD11\uACE0\uC5D0 99.9% \uC368\uB3C4 \uB3FC?", value: t, onChange: e => setT(e.target.value), onKeyDown: e => e.key === 'Enter' && ask(), style: Object.assign(Object.assign({}, inp), { flex: 1 }) }),
-            React.createElement("button", { "data-ax-ask-send": true, onClick: ask, style: primary }, "\uAC80\uD1A0 \uC694\uCCAD")),
-        (p.asks || []).slice().reverse().map(a => (React.createElement("div", { key: a.id, style: { padding: '8px 0', borderTop: `1px solid ${C.line}` } },
-            React.createElement("div", { style: { fontWeight: 700 } },
+        React.createElement("div", { style: { display: 'flex', gap: 6, marginBottom: 8 } },
+            React.createElement("input", { "data-ax-ask": true, placeholder: "\uBBF8\uB9AC \uD655\uC778\uD560 \uAC83 (\uC608: UV \uC0B4\uADE0 \uB123\uC73C\uBA74 \uAD11\uACE0\uC5D0 99.9% \uC368\uB3C4 \uB3FC?)", value: t, onChange: e => setT(e.target.value), onKeyDown: e => { if (e.key === 'Enter')
+                    ask(); }, style: inp }),
+            React.createElement("button", { "data-ax-ask-send": true, onClick: ask, style: primary }, "\uC694\uCCAD")),
+        (p.asks || []).slice().reverse().map(a => (React.createElement("div", { key: a.id, style: { padding: '9px 0', borderTop: `1px solid ${C.line}` } },
+            React.createElement("div", { style: { fontWeight: 600 } },
                 a.text,
                 " ",
                 React.createElement("span", { style: { fontSize: 12, color: C.faint, fontWeight: 400 } },
@@ -642,35 +727,38 @@ function Asks(props) {
                     a.who,
                     " \u00B7 ",
                     (0, ax_1.fmt)(a.at))),
-            React.createElement("div", { style: { fontSize: 13, color: a.answer ? C.text : C.amber, marginTop: 2 } }, a.answer ? `${a.answeredBy || 'AI'}: ${a.answer}` : '답 기다리는 중'))))));
+            React.createElement("div", { style: { fontSize: 13, color: a.answer ? C.sub : C.soon, marginTop: 3 } }, a.answer ? `${a.answeredBy || 'AI'} — ${a.answer}` : '답 기다리는 중'))))));
 }
 function Log(props) {
     const [t, setT] = React.useState('');
     const addL = () => { if (!t.trim())
         return; const v = t.trim(); props.update(x => (Object.assign(Object.assign({}, x), { next: v, log: x.log.concat([{ at: nowIso(), who: props.who, kind: 'note', what: v }]) }))); setT(''); };
     return (React.createElement("div", { "data-ax-log": true },
-        React.createElement("div", { style: { display: 'flex', gap: 6, marginBottom: 10 } },
-            React.createElement("input", { "data-ax-note": true, placeholder: "\uC9C4\uD589 \uC0C1\uD669 \uD55C \uC904", value: t, onChange: e => setT(e.target.value), onKeyDown: e => e.key === 'Enter' && addL(), style: Object.assign(Object.assign({}, inp), { flex: 1 }) }),
+        React.createElement("div", { style: { display: 'flex', gap: 6, marginBottom: 8 } },
+            React.createElement("input", { "data-ax-note": true, placeholder: "\uC9C4\uD589 \uC0C1\uD669 \uD55C \uC904", value: t, onChange: e => setT(e.target.value), onKeyDown: e => { if (e.key === 'Enter')
+                    addL(); }, style: inp }),
             React.createElement("button", { "data-ax-note-add": true, onClick: addL, style: primary }, "\uB0A8\uAE30\uAE30")),
-        props.p.log.slice().sort((x, y) => (x.at < y.at ? 1 : x.at > y.at ? -1 : 0)).slice(0, 80).map((l, i) => (React.createElement("div", { key: i, style: { display: 'flex', gap: 10, padding: '6px 0', borderTop: `1px solid ${C.line}`, fontSize: 13 } },
-            React.createElement("span", { style: { color: C.faint, width: 80, flex: '0 0 80px' } }, (0, ax_1.fmt)(l.at)),
-            React.createElement("span", { style: { width: 110, flex: '0 0 110px', fontWeight: 700, color: l.ai ? '#6D28D9' : C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, l.who),
-            React.createElement("span", { style: { flex: 1 } }, l.what))))));
+        props.p.log.slice().sort((x, y) => (x.at < y.at ? 1 : x.at > y.at ? -1 : 0)).slice(0, 80).map((l, i) => (React.createElement("div", { key: i, style: { display: 'flex', gap: 10, padding: '7px 0', borderTop: `1px solid ${C.line}`, fontSize: 13 } },
+            React.createElement("span", { style: { color: C.faint, width: 78, flex: '0 0 78px', fontVariantNumeric: 'tabular-nums' } }, (0, ax_1.fmt)(l.at)),
+            React.createElement("span", { className: "axw-hide-sm", style: { width: 100, flex: '0 0 100px', fontWeight: 600, color: l.ai ? C.accent : C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, l.who),
+            React.createElement("span", { style: { flex: 1, minWidth: 0, color: C.sub } }, l.what))))));
 }
 function NewForm(props) {
     const [v, setV] = React.useState({ name: '', owner: props.who, approver: '', start: (0, ax_1.today)(), target: '' });
-    const f = (k, label, type = 'text', w = 150) => React.createElement("label", { style: { display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12, color: C.faint } },
-        label,
-        React.createElement("input", { "data-ax-new-f": k, type: type, value: v[k], onChange: e => setV(Object.assign(Object.assign({}, v), { [k]: e.target.value })), style: Object.assign(Object.assign({}, inp), { width: w }) }));
-    return (React.createElement("div", { "data-ax-newform": true, style: Object.assign(Object.assign({}, card), { margin: '12px 24px 0', padding: 16, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }) },
-        f('name', '제품·프로젝트 이름', 'text', 240),
-        f('owner', 'PM'),
-        f('approver', '관문 승인자'),
-        f('start', '시작일', 'date'),
-        f('target', '출시 목표일', 'date'),
-        React.createElement("button", { "data-ax-new-ok": true, disabled: !v.name.trim(), onClick: () => props.onAdd(v.name.trim(), v.owner, v.approver, v.start, v.target), style: Object.assign(Object.assign({}, primary), { opacity: v.name.trim() ? 1 : 0.45 }) }, "\uB9CC\uB4E4\uAE30"),
-        React.createElement("button", { onClick: props.onCancel, style: btn }, "\uCDE8\uC18C"),
-        React.createElement("div", { style: { width: '100%', fontSize: 12, color: C.faint } }, "\uCD9C\uC2DC \uBAA9\uD45C\uC77C\uC744 \uB123\uC73C\uBA74 \uB2E8\uACC4\uBCC4 \uACC4\uD68D\uC77C\uC774 \uC790\uB3D9\uC73C\uB85C \uB098\uB258\uC5B4\uC694.")));
+    const f = (k, l, type = 'text', w = 150) => React.createElement("label", { style: { display: 'flex', flexDirection: 'column', gap: 5, width: w } },
+        React.createElement("span", { style: label }, l),
+        React.createElement("input", { "data-ax-new-f": k, type: type, value: v[k], onChange: e => setV(Object.assign(Object.assign({}, v), { [k]: e.target.value })), style: inp }));
+    return (React.createElement("div", { "data-ax-newform": true, style: Object.assign(Object.assign({}, card), { marginBottom: 16, padding: 16 }) },
+        React.createElement("div", { style: { fontWeight: 700, marginBottom: 12 } }, "\uC0C8 \uD504\uB85C\uC81D\uD2B8"),
+        React.createElement("div", { style: { display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' } },
+            f('name', '제품·프로젝트 이름', 'text', 240),
+            f('owner', 'PM'),
+            f('approver', '관문 승인자'),
+            f('start', '시작일', 'date'),
+            f('target', '출시 목표일', 'date'),
+            React.createElement("button", { "data-ax-new-ok": true, disabled: !v.name.trim(), onClick: () => props.onAdd(v.name.trim(), v.owner, v.approver, v.start, v.target), style: Object.assign(Object.assign({}, primary), { opacity: v.name.trim() ? 1 : 0.4 }) }, "\uB9CC\uB4E4\uAE30"),
+            React.createElement("button", { onClick: props.onCancel, style: btn }, "\uCDE8\uC18C")),
+        React.createElement("div", { style: { fontSize: 12, color: C.faint, marginTop: 10 } }, "\uCD9C\uC2DC \uBAA9\uD45C\uC77C\uC744 \uB123\uC73C\uBA74 \uB2E8\uACC4\uBCC4 \uACC4\uD68D \uC644\uB8CC\uC77C\uC774 \uC790\uB3D9\uC73C\uB85C \uB098\uB258\uC5B4\uC694.")));
 }
 
 };
