@@ -103,6 +103,8 @@ const RegRadar_1 = __importDefault(require("src/webparts/huromAxPlm/components/R
 const Items_1 = require("src/webparts/huromAxPlm/components/Items.js");
 const Dash_1 = require("src/webparts/huromAxPlm/components/Dash.js");
 const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
+const auto_1 = require("src/webparts/huromAxPlm/model/auto.js");
+const Dash_2 = require("src/webparts/huromAxPlm/components/Dash.js");
 const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
 const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
 function AxWork(props) {
@@ -120,7 +122,11 @@ function AxWork(props) {
     itemsRef.current = items;
     const [online, setOnline] = React.useState(undefined);
     const [aiOpen, setAiOpen] = React.useState(undefined);
-    React.useEffect(() => { (0, ai_1.aiOnline)().then(setOnline, () => setOnline(false)); }, []);
+    React.useEffect(() => { const chk = () => { (0, ai_1.aiOnline)().then(setOnline, () => setOnline(false)); }; chk(); const t = setInterval(chk, 30000); return () => clearInterval(t); }, []);
+    const onlineRef = React.useRef(undefined);
+    onlineRef.current = online;
+    const busy = React.useRef(false);
+    const [tick, setTick] = React.useState(0);
     const queue = React.useMemo(() => new store_1.SaveQueue(props.store), [props.store]);
     React.useEffect(() => {
         props.store.list().then(xs => { const open = xs.filter(x => !x.closed); if (!xs.length) {
@@ -135,7 +141,7 @@ function AxWork(props) {
         const cur = (itemsRef.current || []).filter(x => x.id === id)[0]; // 1.0.134 AI 답이 늦게 와도 최신 행에 붙도록 ref에서 읽음
         if (!cur)
             return;
-        const apply = (x) => (Object.assign(Object.assign({}, (0, work_1.settle)(fn(x), who)), { updated: (0, ui_1.nowIso)() }));
+        const apply = (x) => { const y = Object.assign(Object.assign({}, (0, work_1.settle)(fn(x), who)), { updated: (0, ui_1.nowIso)() }); const ts = (0, auto_1.eventTasks)(x, y); return ts.length ? (0, auto_1.addJobs)(y, ts, who, onlineRef.current) : y; };
         const next = apply(cur);
         itemsRef.current = (itemsRef.current || []).map(x => (x.id === id ? next : x));
         setItems(xs => (xs || []).map(x => (x.id === id ? next : x)));
@@ -159,25 +165,62 @@ function AxWork(props) {
     const open = (id, k, key) => { setSel(id); setFocus(k); setPick(key); setView('project'); };
     // 1.0.134 AI에게 맡기기 — 진행 중 → 확인 대기(또는 AI 연결 전), 반영은 사람이
     const setJob = (pid, id, patch) => update(pid, p => (Object.assign(Object.assign({}, p), { aiJobs: (p.aiJobs || []).map(j => (j.id === id ? Object.assign(Object.assign({}, j), patch) : j)) })));
+    // 1.0.135 자동 실행 — 줄 선 일(queued)을 오래된 것부터 하나씩. 중계가 꺼지면 'AI 연결 전'으로 두고, 다시 켜지면 그것부터
+    const enqueue = (pid, kind, input, why) => update(pid, p => (0, auto_1.addJobs)(p, [{ kind, input, why: why || '', owner: why ? undefined : who }], who, onlineRef.current));
     const runAi = (pid, kind, input, reuse) => {
-        const p = (itemsRef.current || []).filter(x => x.id === pid)[0];
-        if (!p)
-            return;
-        const id = reuse || (0, ui_1.uid)('ai');
-        const at = (0, ui_1.nowIso)();
         if (reuse)
-            setJob(pid, id, { state: 'running', at, result: undefined, note: undefined, who });
+            setJob(pid, reuse, { state: onlineRef.current === false ? 'offline' : 'queued', at: (0, ui_1.nowIso)(), result: undefined, note: undefined });
         else
-            update(pid, x => (Object.assign(Object.assign({}, x), { aiJobs: (x.aiJobs || []).concat([{ id, kind, label: (0, ai_1.kindInfo)(kind).label, input, at, who, state: 'running' }]) })));
-        const ask = (0, ai_1.buildAsk)(kind, p, (itemsRef.current || []), input);
-        (0, ai_1.askAi)(ai_1.SYSTEM, ask).then(t => { setOnline(true); setJob(pid, id, { state: 'review', result: t, doneAt: (0, ui_1.nowIso)() }); }, e => { const m = String((e && e.message) || e); if (m === 'offline') {
+            enqueue(pid, kind, input);
+    };
+    React.useEffect(() => {
+        if (busy.current || online === false || !items)
+            return;
+        const all = [];
+        items.forEach(p => (p.aiJobs || []).forEach(j => { if (j.state === 'queued' || (j.state === 'offline' && online))
+            all.push({ p: p, j }); }));
+        if (!all.length)
+            return;
+        all.sort((a, b) => (a.j.at < b.j.at ? -1 : 1));
+        const { p, j } = all[0];
+        busy.current = true;
+        const done = (patch) => { setJob(p.id, j.id, patch); busy.current = false; setTimeout(() => setTick(x => x + 1), 2500); };
+        setJob(p.id, j.id, { state: 'running', at: j.state === 'offline' ? (0, ui_1.nowIso)() : j.at });
+        if (j.kind === 'j_back') { // 출시 목표에서 거꾸로 — 계산은 규칙, 반영은 사람이
+            if (!p.target) {
+                done({ state: 'error', note: '출시 목표일이 없어요 — 설정에서 넣어 주세요' });
+                return;
+            }
+            const bp = (0, sched_1.backPlan)(p.target, (0, devtype_1.typeOf)(p));
+            done({ state: 'review', doneAt: (0, ui_1.nowIso)(), result: [`출시 목표 ${p.target} · ${(0, devtype_1.typeInfo)((0, devtype_1.typeOf)(p)).tag} 표준 ${(0, sched_1.stdTotal)((0, devtype_1.typeOf)(p))}일 기준 단계 계획 (시작 ${bp.start})`].concat((0, work_1.stagesOf)(p).map(s => `- ${s.no} ${s.name}: ${bp.plan[s.id]}`)).concat(['근거: 개발 유형별 표준 일수(①~⑥)와 출시 후 90일']).join('\n') });
+            return;
+        }
+        (0, ai_1.askAi)(ai_1.SYSTEM, (0, ai_1.buildAsk)(j.kind, p, items, j.input)).then(t => { setOnline(true); done({ state: 'review', result: t, doneAt: (0, ui_1.nowIso)() }); }, e => { const m = String((e && e.message) || e); if (m === 'offline') {
             setOnline(false);
-            setJob(pid, id, { state: 'offline' });
+            done({ state: 'offline' });
         }
         else
-            setJob(pid, id, { state: 'error', note: m }); });
+            done({ state: 'error', note: m }); });
+    }, [items, online, tick]);
+    // 매일 아침·금요일·지금 단계 AI 일 — 처음 열 때 밀린 것부터 (예시만 있을 땐 프로젝트를 열 때 그 프로젝트만)
+    const autoDone = React.useRef({});
+    const runDaily = (p) => {
+        if (autoDone.current[p.id])
+            return;
+        autoDone.current[p.id] = true;
+        const r = (0, auto_1.dailyTasks)(p, (0, Dash_2.vendorWaits)([p], '*').length > 0);
+        if (r.tasks.length)
+            update(p.id, x => (0, auto_1.addJobs)(Object.assign(Object.assign({}, x), { aiAuto: r.mark }), r.tasks, who, onlineRef.current));
     };
-    const aiApi = { run: (pid, kind, input) => runAi(pid, kind, input), open: (pid, id) => setAiOpen({ pid, id }), online };
+    React.useEffect(() => { if (items && !demo)
+        items.forEach(runDaily); }, [items && items.length, demo]);
+    React.useEffect(() => { if (items && demo && view === 'project') {
+        const c = items.filter(x => x.id === sel)[0] || items[0];
+        if (c)
+            runDaily(c);
+    } }, [view, sel, demo, items && items.length]);
+    const aiApi = { run: (pid, kind, input) => runAi(pid, kind, input), open: (pid, id) => setAiOpen({ pid, id }), online,
+        kinds: (pid) => { const p = (items || []).filter(x => x.id === pid)[0]; return p ? (0, ai_1.kindsFor)((0, ai_1.branchOf)((0, devtype_1.typeOf)(p))) : []; } };
     const aiP = aiOpen ? (items || []).filter(x => x.id === aiOpen.pid)[0] : undefined;
     const aiJ = aiP && aiOpen ? (aiP.aiJobs || []).filter(j => j.id === aiOpen.id)[0] : undefined;
     if (!items)
@@ -389,6 +432,7 @@ function ProjectView(props) {
         mode === 'work' && React.createElement("div", { className: "axw-main", style: { marginTop: 16 } },
             React.createElement("div", { style: { minWidth: 0 } },
                 React.createElement(StageList, { p: p, k: k, pick: props.pick, setPick: props.setPick }),
+                React.createElement(Dash_1.StageAi, { p: p, k: k }),
                 React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { marginTop: 16 }) },
                     React.createElement("div", { style: { display: 'flex', gap: 2, borderBottom: `1px solid ${ui_1.C.line}`, padding: '0 8px', overflowX: 'auto' } }, [['issue', '이슈·리스크', (p.issues || []).filter(i => !i.done).length], ['change', '사양 변경', (p.changes || []).length], ['ai', '사전 검토', (p.asks || []).filter(a => !a.answer).length], ['log', '기록', undefined]].map(t => React.createElement("button", { key: t[0], "data-ax-tab": t[0], onClick: () => setTab(t[0]), style: { border: 'none', background: 'transparent', padding: '12px 10px', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: tab === t[0] ? ui_1.C.text : ui_1.C.faint, boxShadow: tab === t[0] ? `inset 0 -2px 0 ${ui_1.C.text}` : 'none', whiteSpace: 'nowrap' } },
                         t[1],
@@ -2792,12 +2836,13 @@ function stageElapsed(p, now = (0, exports.today)()) {
 };
 __m["src/webparts/huromAxPlm/model/work.js"]=function(module,exports,require){"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.projLate = exports.stageClear = exports.lastApproval = exports.stageDocsOk = exports.docOk = exports.gateKey = exports.ITEM_IMG = exports.stagesOf = void 0;
+exports.docLate = exports.projLate = exports.stageClear = exports.lastApproval = exports.stageDocsOk = exports.docOk = exports.gateKey = exports.ITEM_IMG = exports.stagesOf = void 0;
 exports.gateState = gateState;
 exports.unlocked = unlocked;
 exports.curIdx = curIdx;
 exports.settle = settle;
 exports.perf = perf;
+exports.lateItems = lateItems;
 exports.todos = todos;
 exports.workSamples = workSamples;
 // AX-PLM 1.0.128 — PM이 매일 쓰는 기능 (심준보 2026-11-17 #ax-plm msg 10389967 '실제 사용에도 문제없게 AX팀용 PLM' · 10389890/10389907 '게임 스킬 트리처럼 단계별로')
@@ -2880,8 +2925,26 @@ function perf(p, k, now = (0, ax_1.today)()) {
     }
     return { plan, actual, late, state };
 }
-const projLate = (p) => perf(p, curIdx(p)).late;
+// 1.0.135 지연은 한 규칙 (곽두팔 msg 10484801): 계획일이 지났는데 안 끝난 것 — 단계 끝 계획일 또는 산출물 마감. 대시보드 문구·일정 판 색·지금 해야 할 것·전체 일정이 모두 이 값을 씀
+function lateItems(p, now = (0, ax_1.today)()) {
+    const out = [];
+    (0, devtype_1.stagesOf)(p).forEach((s, k) => {
+        if ((0, exports.stageClear)(p, s))
+            return;
+        const pl = (p.plan || {})[s.id];
+        const d0 = (0, ax_1.daysTo)(pl, now);
+        if (d0 !== undefined && d0 < 0)
+            out.push({ k, days: -d0 });
+        s.docs.forEach(x => { const st = p.docs[x.key] || {}; if ((0, exports.docOk)(st))
+            return; const d = (0, ax_1.daysTo)(st.due, now); if (d !== undefined && d < 0)
+            out.push({ k, key: x.key, days: -d }); });
+    });
+    return out;
+}
+const projLate = (p, now = (0, ax_1.today)()) => lateItems(p, now).reduce((a, x) => Math.max(a, x.days), 0);
 exports.projLate = projLate;
+const docLate = (p, key, now = (0, ax_1.today)()) => { const st = p.docs[key] || {}; const d = (0, ax_1.daysTo)(st.due, now); return !(0, exports.docOk)(st) && d !== undefined && d < 0; };
+exports.docLate = docLate;
 function todos(items, who, now = (0, ax_1.today)()) {
     const out = [];
     const me = (n) => who === '*' || (!!n && !!who && n.replace(/\s/g, '') === who.replace(/\s/g, '')); // 1.0.134 '*' = 팀 전체
@@ -2889,11 +2952,21 @@ function todos(items, who, now = (0, ax_1.today)()) {
         const k = curIdx(p);
         const s = (0, devtype_1.stagesOf)(p)[k];
         const pm = me(p.owner);
-        s.docs.forEach(d => { const st = p.docs[d.key] || {}; if ((0, exports.docOk)(st))
-            return; if (me(st.who) || (pm && !st.who)) {
-            const due = st.due || (p.plan || {})[s.id];
-            out.push({ pid: p.id, project: p.name, kind: '산출물', text: d.label, stage: k, due, left: (0, ax_1.daysTo)(due, now), key: d.key });
-        } });
+        (0, devtype_1.stagesOf)(p).forEach((s2, k2) => {
+            if (k2 < k)
+                return;
+            s2.docs.forEach(d => {
+                const st = p.docs[d.key] || {};
+                if ((0, exports.docOk)(st))
+                    return;
+                const due = st.due || (p.plan || {})[s2.id];
+                const left = (0, ax_1.daysTo)(due, now);
+                if (k2 !== k && !(left !== undefined && left < 0))
+                    return;
+                if (me(st.who) || (pm && !st.who))
+                    out.push({ pid: p.id, project: p.name, kind: '산출물', text: d.label, stage: k2, due, left, key: d.key });
+            });
+        });
         if (s.gate && gateState(p, s) === 'requested' && me(p.approver))
             out.push({ pid: p.id, project: p.name, kind: '승인', text: `${s.gate} 승인 요청`, stage: k, due: (p.plan || {})[s.id], left: (0, ax_1.daysTo)((p.plan || {})[s.id], now) });
         (p.issues || []).filter(i => !i.done && (me(i.owner) || (pm && !i.owner))).forEach(i => out.push({ pid: p.id, project: p.name, kind: i.kind, text: i.text, stage: (0, ax_1.stageIdx)(i.stage), due: i.due, left: (0, ax_1.daysTo)(i.due, now) }));
@@ -3723,11 +3796,13 @@ exports.Dashboard = Dashboard;
 exports.AiStatus = AiStatus;
 exports.AllSchedule = AllSchedule;
 exports.ProjectSchedule = ProjectSchedule;
+exports.StageAi = StageAi;
 const React = __importStar(require("react"));
 const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
 const work_1 = require("src/webparts/huromAxPlm/model/work.js");
 const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
 const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
+const auto_1 = require("src/webparts/huromAxPlm/model/auto.js");
 const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
 const Gantt_1 = require("src/webparts/huromAxPlm/components/Gantt.js");
 const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
@@ -3742,7 +3817,7 @@ function AiButton(props) {
     const [text, setText] = React.useState('');
     if (!api || !props.pid)
         return null;
-    const list = ai_1.AI_KINDS.filter(k => !props.kinds || props.kinds.indexOf(k.id) >= 0);
+    const list = props.kinds ? ai_1.AI_KINDS.filter(k => props.kinds.indexOf(k.id) >= 0) : api.kinds ? api.kinds(props.pid) : ai_1.AI_KINDS;
     const go = (k, input) => { api.run(props.pid, k, input); setOpen(false); setAsk(undefined); setText(''); };
     const pick = (k) => { const info = (0, ai_1.kindInfo)(k); if (info.ask) {
         setAsk(k);
@@ -3755,10 +3830,12 @@ function AiButton(props) {
             "\u2726 ",
             props.label || 'AI에게 맡기기',
             api.online === false && React.createElement("span", { style: { marginLeft: 6, color: ui_1.C.faint, fontWeight: 500 } }, "(\uC5F0\uACB0 \uC804)")),
-        open && React.createElement("div", { "data-ax-ai-menu": true, style: Object.assign(Object.assign({}, ui_1.card), { position: 'absolute', right: 0, top: '110%', zIndex: 40, width: 300, maxWidth: '86vw', boxShadow: '0 12px 30px rgba(0,0,0,.14)', padding: 6 }) },
+        open && React.createElement("div", { "data-ax-ai-menu": true, style: Object.assign(Object.assign({}, ui_1.card), { position: 'absolute', right: 0, top: '110%', zIndex: 40, width: 320, maxWidth: '86vw', maxHeight: '62vh', overflowY: 'auto', boxShadow: '0 12px 30px rgba(0,0,0,.14)', padding: 6 }) },
             !ask && list.map((k, i) => React.createElement("div", { key: k.id },
                 (i === 0 || list[i - 1].group !== k.group) && React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { padding: '8px 8px 4px', fontSize: 11 }) }, k.group),
-                React.createElement("button", { "data-ax-ai-kind": k.id, onClick: () => pick(k.id), style: { display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'transparent', padding: '7px 8px', fontSize: 13, borderRadius: 6, cursor: 'pointer', color: ui_1.C.text } }, k.label))),
+                React.createElement("button", { "data-ax-ai-kind": k.id, disabled: !!k.nodata, title: k.nodata || '', onClick: () => pick(k.id), style: { display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'transparent', padding: '7px 8px', fontSize: 13, borderRadius: 6, cursor: k.nodata ? 'default' : 'pointer', color: k.nodata ? ui_1.C.faint : ui_1.C.text } },
+                    k.label,
+                    k.nodata ? ` · ${k.nodata}` : ''))),
             ask && React.createElement("div", { style: { padding: 6, display: 'flex', flexDirection: 'column', gap: 8 } },
                 React.createElement("div", { style: { fontSize: 13, fontWeight: 700 } }, (0, ai_1.kindInfo)(ask).label),
                 React.createElement("textarea", { "data-ax-ai-input": true, autoFocus: true, rows: ask === 'minutes' ? 6 : 2, placeholder: (0, ai_1.kindInfo)(ask).ask, value: text, onChange: e => setText(e.target.value), style: Object.assign(Object.assign({}, ui_1.inp), { resize: 'vertical' }) }),
@@ -3767,13 +3844,13 @@ function AiButton(props) {
                     React.createElement("button", { onClick: () => setAsk(undefined), style: ui_1.btn }, "\uB4A4\uB85C"))),
             React.createElement("div", { style: { fontSize: 11.5, color: ui_1.C.faint, padding: '6px 8px 4px', borderTop: `1px solid ${ui_1.C.line}`, marginTop: 4 } }, "\uACB0\uACFC\uB294 \u300C\uD655\uC778 \uB300\uAE30\u300D\uB85C \uB4E4\uC5B4\uC624\uACE0, \uBC18\uC601\uC744 \uB20C\uB7EC\uC57C \uB370\uC774\uD130\uC5D0 \uB4E4\uC5B4\uAC00\uC694."))));
 }
-const STATE_DOT = { running: 'soon', review: 'soon', applied: 'done', dismissed: 'lock', offline: 'lock', error: 'late' };
+const STATE_DOT = { running: 'soon', queued: 'open', review: 'soon', applied: 'done', dismissed: 'lock', offline: 'lock', error: 'late', nodata: 'lock' };
 function AiJobs(props) {
     const api = React.useContext(exports.AiCtx);
     const rows = [];
     props.items.filter(p => !props.pid || p.id === props.pid).forEach(p => (p.aiJobs || []).forEach(j => rows.push({ p: p, j })));
     rows.sort((a, b) => (a.j.at < b.j.at ? 1 : -1));
-    const live = rows.filter(r => ['running', 'review', 'offline', 'error'].indexOf((0, ai_1.jobState)(r.j)) >= 0);
+    const live = rows.filter(r => ['running', 'queued', 'review', 'offline', 'error'].indexOf((0, ai_1.jobState)(r.j)) >= 0);
     const past = rows.filter(r => live.indexOf(r) < 0);
     const show = live.concat(past.slice(0, 3)).slice(0, props.limit || 20);
     return (React.createElement("div", { "data-ax-ai-jobs": true },
@@ -3790,17 +3867,21 @@ function AiJobs(props) {
                         j.input ? React.createElement("span", { style: { color: ui_1.C.faint, fontWeight: 500 } },
                             " \u2014 ",
                             j.input.slice(0, 40)) : null),
-                    React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint } },
-                        p.name,
+                    React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+                        j.auto ? React.createElement("b", { style: { color: ui_1.C.accent, fontWeight: 600 } },
+                            "\uC790\uB3D9 \u00B7 ",
+                            j.auto) : `${j.who} 맡김`,
+                        " \u00B7 ",
+                        p.name.split(' (')[0],
                         " \u00B7 ",
                         fmtAt(j.at),
-                        " \uC2DC\uC791 \u00B7 ",
-                        j.who)),
+                        j.owner ? ` · 확인 ${j.owner}` : '')),
                 React.createElement("span", { style: { fontSize: 12.5, fontWeight: 700, color: s === 'review' ? ui_1.C.soon : s === 'error' ? ui_1.C.late : s === 'running' ? ui_1.C.accent : ui_1.C.faint, whiteSpace: 'nowrap' } }, s === 'running' ? '진행 중…' : ai_1.AI_STATE_LABEL[s]),
                 React.createElement("button", { "data-ax-ai-see": true, onClick: e => { e.stopPropagation(); if (api)
                         api.open(p.id, j.id); }, style: Object.assign(Object.assign({}, ui_1.btn), { padding: '3px 9px' }) }, "\uACB0\uACFC \uD655\uC778")));
         })));
 }
+const mailto = (t) => { const ls = t.split('\n'); const sub = (ls.filter(l => /^\s*(-\s*)?제목\s*[:：]/.test(l))[0] || ls[0] || '').replace(/^\s*(-\s*)?제목\s*[:：]\s*/, ''); return `mailto:?subject=${encodeURIComponent(sub.slice(0, 120))}&body=${encodeURIComponent(t.slice(0, 1800))}`; };
 // 결과 확인 창 — 반영 / 버리기 / 다시
 function AiResult(props) {
     const { job } = props;
@@ -3812,7 +3893,16 @@ function AiResult(props) {
                 job.input && React.createElement("div", { style: { fontSize: 12.5, color: ui_1.C.sub, marginBottom: 10, whiteSpace: 'pre-wrap' } },
                     React.createElement("span", { style: ui_1.label }, "\uC694\uCCAD "),
                     job.input),
+                job.auto && React.createElement("div", { style: { fontSize: 12.5, color: ui_1.C.accent, marginBottom: 8, fontWeight: 600 } },
+                    "\uC790\uB3D9 \uC2E4\uD589 \u2014 ",
+                    job.auto),
                 s === 'running' && React.createElement("div", { style: { fontSize: 13.5, color: ui_1.C.sub } }, "AI\uAC00 \uC791\uC5C5 \uC911\uC774\uC5D0\uC694. \uBCF4\uD1B5 10~40\uCD08 \uAC78\uB824\uC694. \uCC3D\uC744 \uB2EB\uC544\uB3C4 \uACC4\uC18D\uB3FC\uC694."),
+                s === 'queued' && React.createElement("div", { style: { fontSize: 13.5, color: ui_1.C.sub } }, "\uCC28\uB840\uB97C \uAE30\uB2E4\uB9AC\uB294 \uC911\uC774\uC5D0\uC694. \uC55E\uC758 \uC77C\uC774 \uB05D\uB098\uBA74 \uBC14\uB85C \uC2DC\uC791\uD574\uC694."),
+                s === 'nodata' && React.createElement("div", { "data-ax-ai-nodata": true, style: { fontSize: 13.5, color: ui_1.C.sub } },
+                    React.createElement("b", null, "\uB370\uC774\uD130 \uC5F0\uACB0 \uC804"),
+                    " \u2014 ",
+                    job.note || '필요한 데이터가 아직 연결되지 않았어요',
+                    ". \uACB0\uACFC\uB97C \uB9CC\uB4E4\uC9C0 \uC54A\uC558\uC5B4\uC694."),
                 s === 'offline' && React.createElement("div", { "data-ax-ai-offline": true, style: { fontSize: 13.5, color: ui_1.C.sub } },
                     React.createElement("b", null, "AI \uC5F0\uACB0 \uC804"),
                     " \u2014 AI \uC911\uACC4\uC5D0 \uC5F0\uACB0\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694. \uACB0\uACFC\uB97C \uB9CC\uB4E4\uC9C0 \uC54A\uC558\uC5B4\uC694. \uC5F0\uACB0\uB418\uBA74 \u300C\uB2E4\uC2DC\u300D\uB97C \uB20C\uB7EC \uC8FC\uC138\uC694."),
@@ -3825,11 +3915,9 @@ function AiResult(props) {
                 s === 'review' && React.createElement("button", { "data-ax-ai-apply": true, onClick: props.onApply, style: ui_1.primary }, "\uBC18\uC601"),
                 s === 'review' && React.createElement("button", { "data-ax-ai-dismiss": true, onClick: props.onDismiss, style: ui_1.btn }, "\uBC84\uB9AC\uAE30"),
                 (s === 'offline' || s === 'error' || s === 'dismissed') && React.createElement("button", { "data-ax-ai-retry": true, onClick: props.onRetry, style: ui_1.primary }, "\uB2E4\uC2DC"),
-                s === 'review' && job.result && React.createElement("button", { onClick: () => { try {
-                        navigator.clipboard.writeText(job.result || '');
-                    }
-                    catch (e) { /* 복사 못 함 */ } }, style: ui_1.btn }, "\uBCF5\uC0AC"),
-                React.createElement("span", { style: { fontSize: 12, color: ui_1.C.faint, flex: 1, minWidth: 160 } }, s === 'review' ? (ai_1.APPLY_NOTE[job.kind] || '프로젝트 기록에 남아요') + ' · AI가 직접 고치지 않아요' : '')))));
+                s === 'review' && job.result && (0, ai_1.kindInfo)(job.kind).mail && React.createElement("a", { "data-ax-ai-mail": true, href: mailto(job.result), style: Object.assign(Object.assign({}, ui_1.btn), { textDecoration: 'none' }) }, "\uBA54\uC77C \uC571\uC73C\uB85C \uC5F4\uAE30"),
+                s === 'review' && job.result && React.createElement("button", { onClick: () => { navigator.clipboard.writeText(job.result || '').then(() => undefined, () => undefined); }, style: ui_1.btn }, "\uBCF5\uC0AC"),
+                React.createElement("span", { style: { fontSize: 12, color: ui_1.C.faint, flex: 1, minWidth: 160 } }, s === 'review' ? (ai_1.APPLY_NOTE[job.kind] || '프로젝트 기록에 남아요') + ((0, ai_1.kindInfo)(job.kind).mail ? ' · 메일은 초안만, 보내기는 사람이' : '') + ' · AI가 직접 고치지 않아요' : '')))));
 }
 // ───────── 일정 줄 만들기
 function stageSegs(p, onOpen, short) {
@@ -3901,8 +3989,19 @@ function Dashboard(props) {
     const meWho = whose === 'all' ? '*' : who;
     const list = (0, work_1.todos)(items, meWho).filter(t => t.kind === '승인' || t.left === undefined || t.left <= 14);
     const vw = vendorWaits(items, meWho);
+    const api = React.useContext(exports.AiCtx);
+    const nm = (n) => (n || '').replace(/\s/g, '');
+    const rv = [];
+    const stale = [];
+    items.forEach(p => {
+        (p.aiJobs || []).forEach(j => { if ((0, ai_1.jobState)(j) === 'review' && (meWho === '*' || nm(j.owner || p.owner) === nm(who)))
+            rv.push({ p: p, j }); });
+        const st = (0, auto_1.staleReviews)(p);
+        if (st.length && (meWho === '*' || nm(p.owner) === nm(who)))
+            stale.push({ p: p, n: st.length });
+    });
     const late = list.filter(t => t.left !== undefined && t.left < 0).length;
-    const live = items.reduce((a, p) => a + (p.aiJobs || []).filter(j => ['running', 'review'].indexOf((0, ai_1.jobState)(j)) >= 0).length, 0);
+    const live = items.reduce((a, p) => a + (p.aiJobs || []).filter(j => ['running', 'queued', 'review'].indexOf((0, ai_1.jobState)(j)) >= 0).length, 0);
     const lateP = items.filter(p => (0, sched_1.lateDays)(p) > 0);
     const head = lateP.length ? `${lateP.length}개 프로젝트가 늦어지고 있어요 — ${lateP.map(p => `${p.name.split(' (')[0]} ${(0, sched_1.lateDays)(p)}일`).join(', ')}` : '모든 프로젝트가 계획대로예요';
     return (React.createElement("div", { "data-ax-dash": true },
@@ -3923,14 +4022,35 @@ function Dashboard(props) {
                 React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', borderBottom: `1px solid ${ui_1.C.line}` } },
                     React.createElement("b", { style: { fontSize: 15 } }, "\uC9C0\uAE08 \uD574\uC57C \uD560 \uAC83"),
                     React.createElement("span", { style: { fontSize: 12.5, color: late ? ui_1.C.late : ui_1.C.faint, fontWeight: 600 } },
-                        list.length + vw.length,
+                        list.length + vw.length + rv.length + stale.length,
                         "\uAC74",
                         late ? ` · 지연 ${late}` : ''),
                     React.createElement("span", { style: { flex: 1 } }),
                     React.createElement("span", { style: { display: 'inline-flex', border: `1px solid ${ui_1.C.line2}`, borderRadius: 6, overflow: 'hidden' } }, ['me', 'all'].map(w => React.createElement("button", { key: w, "data-ax-now-whose": w, onClick: () => setWhose(w), style: Object.assign(Object.assign({}, ui_1.btn), { border: 'none', borderRadius: 0, padding: '3px 9px', fontSize: 12, background: whose === w ? ui_1.C.text : ui_1.C.card, color: whose === w ? '#fff' : ui_1.C.sub }) }, w === 'me' ? '내 담당' : '전체')))),
-                !list.length && !vw.length && React.createElement("div", { style: { padding: '18px 14px', fontSize: 13, color: ui_1.C.faint } },
+                !list.length && !vw.length && !rv.length && React.createElement("div", { style: { padding: '18px 14px', fontSize: 13, color: ui_1.C.faint } },
                     "2\uC8FC \uC548\uC5D0 \uB9C8\uAC10\uB418\uB294 \uAC83\uC774 \uC5C6\uC5B4\uC694.",
                     whose === 'me' ? ' 「전체」로 팀 전체를 볼 수 있어요.' : ''),
+                stale.map(x => React.createElement("div", { key: 's' + x.p.id, className: "axw-row", "data-ax-now-row": "AI 2\uC77C", onClick: () => props.onOpen(x.p.id) },
+                    React.createElement(ui_1.Dot, { s: "late" }),
+                    React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 700, color: ui_1.C.late } },
+                            "AI \uD655\uC778 \uB300\uAE30 ",
+                            x.n,
+                            "\uAC74\uC774 2\uC77C \uB118\uAC8C \uC313\uC600\uC5B4\uC694"),
+                        React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint } },
+                            x.p.name.split(' (')[0],
+                            " \u00B7 PM \uD655\uC778 \uD544\uC694")))),
+                rv.map(({ p, j }) => React.createElement("div", { key: 'r' + j.id, className: "axw-row", "data-ax-now-row": "AI \uD655\uC778", onClick: () => api && api.open(p.id, j.id) },
+                    React.createElement(ui_1.Dot, { s: "soon" }),
+                    React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+                            "AI \uD655\uC778 \uB300\uAE30 \u2014 ",
+                            j.label),
+                        React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+                            p.name.split(' (')[0],
+                            " \u00B7 ",
+                            j.auto ? `자동 · ${j.auto}` : `${j.who} 맡김`)),
+                    React.createElement("span", { style: { fontSize: 12.5, fontWeight: 700, color: ui_1.C.soon, whiteSpace: 'nowrap' } }, "\uD655\uC778"))),
                 list.map((t, i) => React.createElement("div", { key: 't' + i, className: "axw-row", "data-ax-now-row": t.kind, onClick: () => props.onOpen(t.pid, t.stage, t.key || (t.kind === '승인' ? 'gate' : undefined)) },
                     React.createElement(ui_1.Dot, { s: t.left !== undefined && t.left < 0 ? 'late' : t.kind === '승인' || (t.left !== undefined && t.left <= 7) ? 'soon' : 'open' }),
                     React.createElement("div", { style: { flex: 1, minWidth: 0 } },
@@ -4056,11 +4176,48 @@ function ProjectSchedule(props) {
         noPlan ? React.createElement("div", { style: { padding: 24, fontSize: 13, color: ui_1.C.faint, borderTop: `1px solid ${ui_1.C.line}` } }, "\uACC4\uD68D\uC77C\uC774 \uC5C6\uC5B4\uC694. \u300C\uCD9C\uC2DC \uBAA9\uD45C\uB85C \uB2E4\uC2DC \uCC44\uC6B0\uAE30\u300D\uB97C \uB204\uB974\uAC70\uB098 \uC124\uC815\uC5D0\uC11C \uB0A0\uC9DC\uB97C \uB123\uC5B4 \uC8FC\uC138\uC694.")
             : React.createElement(Gantt_1.Gantt, { name: "project", rows: rows, scale: scale, labelW: 210 })));
 }
+// 이 단계 AI 일 — 갈래(원액기/상품)·단계별로 AI가 무엇을 하는지, 어디까지 했는지 (설계 맵 곽두팔 msg 10485552)
+function StageAi(props) {
+    const api = React.useContext(exports.AiCtx);
+    const { p, k } = props;
+    const br = (0, ai_1.branchOf)((0, devtype_1.typeOf)(p));
+    const ks = (0, ai_1.kindsFor)(br, k + 1);
+    const common = (0, ai_1.kindsFor)(br, 0).filter(x => x.id !== 'docchk');
+    const jobs = p.aiJobs || [];
+    const last = (id) => jobs.filter(j => j.kind === id).slice(-1)[0];
+    const row = (x) => {
+        const j = last(x.id);
+        const s = j ? (0, ai_1.jobState)(j) : undefined;
+        return React.createElement("div", { key: x.id, className: "axw-row", "data-ax-stage-ai": x.id, "data-ax-stage-ai-state": s || 'none', onClick: () => { if (j && api)
+                api.open(p.id, j.id); }, style: { cursor: j ? 'pointer' : 'default' } },
+            React.createElement(ui_1.Dot, { s: s ? STATE_DOT[s] : 'open' }),
+            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                React.createElement("div", { style: { fontSize: 13, fontWeight: 600 } }, x.label),
+                React.createElement("div", { style: { fontSize: 11.5, color: ui_1.C.faint } }, x.nodata ? x.nodata : s ? `${ai_1.AI_STATE_LABEL[s]}${j && j.auto ? ` · 자동 · ${j.auto}` : ''}` : x.ask && !x.autoInput ? '입력이 있어야 해요 — 맡기기' : '아직 안 돌았어요')),
+            !x.nodata && React.createElement("span", { onClick: e => e.stopPropagation() },
+                React.createElement(AiButton, { pid: p.id, kinds: [x.id], label: j ? '다시' : '맡기기', small: true })));
+    };
+    return (React.createElement("div", { "data-ax-stage-ai-card": true, style: Object.assign(Object.assign({}, ui_1.card), { marginTop: 16 }) },
+        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', borderBottom: `1px solid ${ui_1.C.line}`, flexWrap: 'wrap' } },
+            React.createElement("b", { style: { fontSize: 14 } }, "\uC774 \uB2E8\uACC4 AI \uC77C"),
+            React.createElement("span", { style: { fontSize: 12, color: ui_1.C.faint } },
+                ai_1.BRANCH_LABEL[br],
+                " \u00B7 ",
+                (0, work_1.stagesOf)(p)[k].no,
+                " \u00B7 ",
+                ks.length,
+                "\uAC1C \u2014 \uB2E8\uACC4\uAC00 \uC5F4\uB9AC\uBA74 \uC790\uB3D9\uC73C\uB85C \uB3CC\uC544\uC694"),
+            React.createElement("span", { style: { flex: 1 } }),
+            React.createElement(AiStatus, null)),
+        ks.map(row),
+        React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { padding: '10px 14px 4px', fontSize: 11 }) }, "\uD56D\uC0C1 \uB3C4\uB294 AI"),
+        common.map(row)));
+}
 
 };
 __m["src/webparts/huromAxPlm/model/ai.js"]=function(module,exports,require){"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.APPLY_NOTE = exports.SYSTEM = exports.jobState = exports.AI_STATE_LABEL = exports.kindInfo = exports.AI_KINDS = void 0;
+exports.APPLY_NOTE = exports.SYSTEM = exports.jobState = exports.AI_STATE_LABEL = exports.kindInfo = exports.kindsFor = exports.BRANCH_LABEL = exports.branchOf = exports.AI_KINDS = void 0;
 exports.aiOnline = aiOnline;
 exports.askAi = askAi;
 exports.buildAsk = buildAsk;
@@ -4073,24 +4230,69 @@ const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
 const item_1 = require("src/webparts/huromAxPlm/model/item.js");
 const work_1 = require("src/webparts/huromAxPlm/model/work.js");
 const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
+const K = (id, label, branch, stage, x = {}) => (Object.assign({ id, label, branch, stage, group: stage ? `${'①②③④⑤⑥⑦'[stage - 1]} 단계` : '공통' }, x));
 exports.AI_KINDS = [
-    { id: 'delay', label: '지연 예측·뒤 단계 영향', group: '일정' },
-    { id: 'replan', label: '다시 짠 계획 제안', group: '일정' },
-    { id: 'draft', label: '산출물 초안', group: '산출물', ask: '어떤 산출물 초안? (예: 요구 사양서, 시사출 결과 보고서, 검토서 요약)' },
-    { id: 'gate', label: '관문 승인 기준 점검·요청 글 초안', group: '관문' },
-    { id: 'ecr', label: '설계 변경 영향 부품·도면 찾기', group: '설계 변경' },
-    { id: 'bomdiff', label: '파생 모델 BOM 차이', group: '설계 변경' },
-    { id: 'oldrev', label: '업체에 옛 판 나간 도면 찾기', group: '도면' },
-    { id: 'vendor', label: '샘플·인증서 만료 점검', group: '협력사' },
-    { id: 'chase', label: '회신 독촉 메일 초안', group: '협력사' },
-    { id: 'certlist', label: '나라별 필요 인증 목록', group: '인증', ask: '어느 나라에 팔아요? (예: 한국, 유럽, 미국, 독일)' },
-    { id: 'minutes', label: '회의록 → 이슈·할 일 등록', group: '회의·보고', ask: '회의록을 붙여 넣어 주세요' },
-    { id: 'weekly', label: '주간 보고 작성', group: '회의·보고' },
-    { id: 'similar', label: '비슷한 과거 이슈 찾기', group: '회의·보고', ask: '어떤 문제와 비슷한 걸 찾을까요?' },
+    // ── 원액기 (23)
+    K('j_voc', 'VOC·리뷰 분석 — 불만 TOP·원하는 기능', 'juicer', 1, { ask: 'VOC·리뷰 내용을 붙여 넣어 주세요', do: '붙여 넣은 VOC·리뷰를 분류해 불만 TOP5와 원하는 기능 TOP5를 건수와 함께 정리하고, 기획에 넣을 것 3가지를 제안해라.' }),
+    K('j_comp', '경쟁 스펙 비교표', 'juicer', 1, { ask: '비교할 경쟁 제품 (모델명·알고 있는 스펙)', autoInput: '데이터에 있는 경쟁 정보만', do: '경쟁 원액기 스펙(착즙 방식·RPM·모터 W·용량·소음·가격)을 비교표처럼 목록으로 정리하고 우리 차별점을 3줄로. 모르는 수치는 「확인 필요」.' }),
+    K('j_plan', '기획서 초안', 'juicer', 1, { do: '신제품 기획서 초안: 배경·타깃·핵심 가치(USP)·주요 사양 목표·목표 원가/판가·일정·리스크. 데이터에 없는 수치는 「확인 필요」.' }),
+    K('j_dup', '중복 확인 — 휴롬 개발승인원에 이미 한 것', 'juicer', 1, { nodata: '휴롬 개발승인원 데이터 연결 전' }),
+    K('j_req', '요구 사양서 초안 — 착즙률·소음·RPM 목표', 'juicer', 2, { do: '요구 사양서 초안: 착즙률·소음(dB)·RPM·모터·용량·재질·안전·인증 목표를 항목별로. 목표 수치가 데이터에 없으면 「확인 필요」와 함께 일반적 범위를 참고로.' }),
+    K('j_back', '일정 거꾸로 채우기 — 출시일 → 단계', 'juicer', 2, { local: true }),
+    K('j_risk', '리스크 목록 — 과거 이슈 기반', 'juicer', 2, { others: true, do: '이 프로젝트와 다른 프로젝트의 이슈·설계 변경 이력을 근거로 이 제품에서 생길 리스크 목록(리스크·근거·미리 할 일)을 써라.' }),
+    K('j_juice', '착즙 성능 DB 비교 — 스크류·드럼 사양별 착즙률', 'juicer', 3, { nodata: '착즙 성능 데이터(정경임 님) 연결 전' }),
+    K('j_food', '식품 접촉 재질 점검 — 재질·용출 기준', 'juicer', 3, { item: true, do: 'BOM에서 식품(즙·물) 접촉 가능 부품을 골라 재질별 식품용 기구 기준(국내 식품위생법 기구·용기 규격, 유럽 10/2011·LFGB, 미국 FDA 21 CFR) 확인 항목과 빠진 재질 정보를 정리해라.' }),
+    K('j_bom', 'BOM 초안·원가 합산', 'juicer', 3, { item: true, do: 'BOM을 보고 빠진 구성(체결·포장·라벨 등)을 짚고, 단가 정보가 있으면 원가를 합산해라. 단가가 없으면 「확인 필요」 목록.' }),
+    K('j_dr', 'DR 체크리스트', 'juicer', 3, { item: true, others: true, do: '설계 DR 체크리스트를 이 제품(원액기 구조: 스크류·드럼·브러시·모터·하우징)에 맞춰 만들고, 과거 이슈에서 반드시 볼 항목을 표시해라.' }),
+    K('ecr', '설계 변경 영향 — 바뀌는 부품·도면', 'juicer', 3, { item: true }),
+    K('j_trial', '시사출 결과 요약 — 결함·수정 LIST 분류', 'juicer', 4, { item: true, do: '금형별 시사출 기록을 요약하고 결함을 수정 LIST(치수·외관·변형·기타)로 분류, 다음 차수에서 볼 것을 적어라.' }),
+    K('j_t1', 'T1 합격 점검 — 금형별', 'juicer', 4, { item: true, do: '금형마다 T1 이상 합격 여부를 점검해 합격/미합격/기록 없음으로 나누고, G2(모든 금형 T1 합격)까지 남은 것을 적어라.' }),
+    K('j_aprv', '승인원 대조 — 도면 판 vs 승인원', 'juicer', 4, { item: true, do: '도면·문서의 현재 판과 협력사 승인원 Rev를 대조해 어긋난 것과 승인원이 없는 부품을 찾아라.' }),
+    K('bomdiff', '파생: BOM 차이 — 기반 모델 대비', 'juicer', 4, { item: true }),
+    K('certlist', '나라별 필요 인증 — KC·CE·UL·FDA·LFGB', 'both', 5, { item: true, ask: '어느 나라에 팔아요? (예: 한국, 유럽, 미국, 독일)', autoInput: '한국, 유럽, 미국' }),
+    K('j_manual', '매뉴얼·인쇄물 다국어 초안', 'juicer', 5, { ask: '어느 언어로? (예: 영어, 독일어, 일본어)', autoInput: '한국어, 영어', do: '사용설명서·인쇄물에 들어갈 핵심 문구(안전 경고·사용법·세척·보증)를 요청 언어로 초안 작성. 규제 문구는 「확인 필요」 표시.' }),
+    K('j_launch', '출시 준비 보고서 초안', 'juicer', 5, { item: true, do: '출시 준비 보고서 초안: 제품 개요·USP·인증 현황·생산 준비·출시 일정·남은 리스크.' }),
+    K('j_iqc', '초도·수입검사 불량 분석 — 부품·업체별', 'juicer', 6, { item: true, do: '초도품·수입검사 관련 기록(이슈·승인원·샘플)을 부품·업체별로 묶어 불량 경향과 조치 우선순위를 정리해라. 검사 데이터가 없으면 무엇을 받아야 하는지 적어라.' }),
+    K('j_late', '납기 지연 감지 → 독촉 메일 초안', 'juicer', 6, { item: true, mail: true, do: '마감이 지났거나 임박한 협력사 일을 찾아 업체별 독촉 메일 초안(제목 1줄 + 본문 4~6문장)을 써라. 첫 줄은 "제목: ..."' }),
+    K('j_as', 'AS·VOC 원인 분류 — 스크류 파손·누수 등', 'juicer', 7, { ask: 'AS 이력·상담 내용을 붙여 넣어 주세요', do: '붙여 넣은 AS·VOC를 원인(스크류 파손·누수·모터·소음·사용 미숙 등)별로 분류해 건수·대표 사례·설계 개선 후보를 정리해라.' }),
+    K('j_next', '다음 파생 제안 — 개선 부품 목록', 'juicer', 7, { item: true, others: true, do: '이 제품의 이슈·설계 변경·VOC 기록을 근거로 다음 파생 모델 제안(바꿀 부품·이유·예상 효과)을 써라.' }),
+    // ── 상품 (18)
+    K('g_market', '시장·리뷰 분석', 'goods', 1, { ask: '시장·리뷰 내용을 붙여 넣어 주세요', do: '붙여 넣은 시장·리뷰 자료를 정리해 고객 불만 TOP5·원하는 기능·가격대를 요약하고 상품 정의에 넣을 것 3가지를 제안해라.' }),
+    K('g_def', '상품 정의서 초안', 'goods', 1, { do: '상품 정의서 초안: 대상 고객·핵심 기능·필수 사양·가격대·판매 채널·인증 범위·출시 시점.' }),
+    K('g_cost', '목표 원가 추정', 'goods', 1, { item: true, do: '판가·협력사 단가·MOQ 정보로 목표 원가(제품·포장·물류·관세·인증비) 구조를 추정해라. 없는 값은 「확인 필요」와 계산식만.' }),
+    K('g_vendor', '업체 후보 추천 — 협력사 DB·평가', 'goods', 2, { item: true, others: true, do: '이 프로젝트와 다른 프로젝트의 협력사 기록(역할·나라·평가 점수·샘플 결과)을 근거로 업체 후보 순위와 이유를 써라.' }),
+    K('g_quote', '견적 비교표 — 단가·MOQ·납기', 'goods', 2, { item: true, do: '협력사별 단가·MOQ·납기·금형비를 비교표처럼 목록으로 정리하고 추천 1곳과 협상 포인트를 적어라. 없는 값은 「확인 필요」.' }),
+    K('g_req', '요구 사양서 초안 (ODM)', 'goods', 2, { do: 'ODM 업체에 보낼 요구 사양서 초안(기능·성능·재질·식품 접촉부·안전·인증·포장·검사 기준)을 써라. 영어 업체면 영어 병기.' }),
+    K('g_sample', '샘플 평가표 초안', 'goods', 3, { item: true, do: '샘플 평가표 초안: 평가 항목(외관·치수·기능·성능·안전·식품 접촉·포장)·판정 기준·지난 차수 지적 사항 재확인 칸.' }),
+    K('vendor', '업체 인증서 점검 — 만료·누락', 'goods', 3, { item: true }),
+    K('chase', '보완 요청·독촉 메일 초안', 'goods', 3, { item: true, mail: true }),
+    K('g_aprv', '승인원 대조 — 사양서 vs 승인원', 'goods', 4, { item: true, do: '요구 사양서·샘플 평가 결과와 업체 승인원(제목·Rev·상태)을 대조해 어긋나거나 빠진 항목을 찾아라.' }),
+    K('oldrev', '옛 도면 판 감지 (OEM)', 'goods', 4, { item: true }),
+    K('g_fai', '초도품 검사 기준 초안', 'goods', 4, { item: true, do: '초도품 검사 기준서 초안: 검사 항목·방법·기준·샘플링·불합격 처리. 주요 부품·식품 접촉부는 꼭 포함.' }),
+    K('g_pack', '포장·매뉴얼·라벨 문구 초안', 'goods', 5, { ask: '판매 나라·언어 (예: 한국, 미국)', autoInput: '한국', do: '포장·매뉴얼·라벨 필수 표시 문구(제품명·모델·정격·제조원/수입원·KC 등 인증 표시·주의 문구·분리배출)를 초안으로. 규제 문구는 「확인 필요」.' }),
+    K('g_iqc', '수입검사 불량 경향 — 업체별', 'goods', 6, { item: true, do: '업체별 샘플·승인원·이슈 기록에서 불량 경향을 정리하고 수입검사에서 강화할 항목을 적어라.' }),
+    K('g_late', '입고 지연 감지', 'goods', 6, { item: true, mail: true, do: '입고·발주 일정 대비 늦어지는 것을 찾고 업체별 확인 메일 초안을 써라. 첫 줄은 "제목: ..."' }),
+    K('g_review', '리뷰·AS 분석', 'goods', 7, { ask: '리뷰·AS 내용을 붙여 넣어 주세요', do: '붙여 넣은 리뷰·AS를 원인별로 분류해 건수·대표 사례·업체에 요구할 개선을 정리해라.' }),
+    K('g_rescore', '업체 재평가 점수 — 품질·납기', 'goods', 7, { item: true, do: '협력사별 품질(샘플 결과·이슈)·납기·대응 기록으로 재평가 점수(5점)와 근거를 써라.' }),
+    // ── 공통 (6) — 항상 도는 AI
+    K('delay', '일정: 지연 예측·뒤 단계 영향', 'common', 0),
+    K('replan', '일정: 다시 짠 계획 제안', 'common', 0),
+    K('gate', '관문: 승인 기준 점검·요청 글 초안', 'common', 0, { item: true }),
+    K('minutes', '회의록 → 이슈·할 일 등록', 'common', 0, { ask: '회의록을 붙여 넣어 주세요' }),
+    K('weekly', '주간 보고 작성', 'common', 0),
+    K('similar', '비슷한 과거 이슈 찾기', 'common', 0, { ask: '어떤 문제와 비슷한 걸 찾을까요?', others: true }),
+    K('ask', '질문 — 근거와 함께 답', 'common', 0, { ask: '무엇이 궁금해요? (예: G2 왜 막혔어?)', item: true, others: true, do: '아래 질문에 이 데이터만 근거로 답하고, 근거가 된 줄을 「근거:」로 적어라.' }),
+    K('draft', '산출물 초안·점검', 'common', 0, { ask: '어떤 산출물? (예: 요구 사양서, 시사출 결과 보고서)', item: true }),
+    K('docchk', '산출물 점검·요약 (올라오면 자동)', 'common', 0, { ask: '어떤 산출물?', item: true, do: '방금 완료된 아래 산출물을 이 단계 목표·관문 기준·남은 산출물과 대조해 ① 요약 3줄 ② 빠졌거나 확인할 것 ③ 다음 할 일을 써라. 파일 내용은 볼 수 없으니 이름·링크·기록만 근거로.' }),
 ];
-const kindInfo = (k) => exports.AI_KINDS.filter(x => x.id === k)[0];
+const branchOf = (t) => (t === 'own' || t === 'derive' ? 'juicer' : 'goods');
+exports.branchOf = branchOf;
+exports.BRANCH_LABEL = { juicer: '원액기', goods: '상품' };
+const kindsFor = (b, stage) => exports.AI_KINDS.filter(k => (k.branch === b || k.branch === 'both' || k.branch === 'common') && (stage === undefined || k.stage === stage));
+exports.kindsFor = kindsFor;
+const kindInfo = (k) => exports.AI_KINDS.filter(x => x.id === k)[0] || { id: k, label: k, group: '', branch: 'common' };
 exports.kindInfo = kindInfo;
-exports.AI_STATE_LABEL = { running: '진행 중', review: '확인 대기', applied: '반영됨', dismissed: '버림', offline: 'AI 연결 전', error: '실패' };
+exports.AI_STATE_LABEL = { running: '진행 중', review: '확인 대기', applied: '반영됨', dismissed: '버림', offline: 'AI 연결 전', error: '실패', nodata: '데이터 연결 전', queued: '대기 중' };
 // 페이지를 닫아 '진행 중'으로 남은 것은 3분 지나면 중단으로 봄
 const jobState = (j) => (j.state === 'running' && Date.now() - new Date(j.at).getTime() > 180000 ? 'error' : j.state);
 exports.jobState = jobState;
@@ -4107,8 +4309,9 @@ async function relay() {
     const j = await r.json();
     if (!j || !j.url)
         throw new Error('offline');
-    relayUrl = String(j.url).replace(/\/$/, '');
-    return relayUrl;
+    const u = String(j.url).replace(/\/$/, '');
+    relayUrl = relayUrl || u; // eslint require-atomic-updates
+    return u;
 }
 async function aiOnline() {
     try {
@@ -4158,7 +4361,7 @@ async function askAi(system, user) {
 }
 // ───────── 프롬프트 — 화면에 있는 사실만 넘기고, 없는 건 지어내지 말라고 함
 const ST_KO = { done: '완료', doing: '진행 중', late: '지연', wait: '대기' };
-const SYS = '너는 휴롬 AX팀 PLM(AX-PLM)의 업무 도우미다. 아래 「프로젝트 데이터」에 있는 사실만 근거로 한국어로 짧고 바로 쓸 수 있게 답한다. 데이터에 없는 숫자·날짜·업체명은 지어내지 말고 「확인 필요」라고 적는다. 머리말·인사 없이 본문만. 목록은 "- "로 시작한다.';
+const SYS = '너는 휴롬 AX팀 PLM(AX-PLM)의 업무 도우미다. 아래 「프로젝트 데이터」에 있는 사실만 근거로 한국어로 짧고 바로 쓸 수 있게 답한다. 데이터에 없는 숫자·날짜·업체명은 지어내지 말고 「확인 필요」라고 적는다. 머리말·인사 없이 본문만. 목록은 "- "로 시작한다. 마지막 줄에 「근거: 」로 어느 데이터 줄(단계·산출물·BOM·협력사·이슈 등)을 봤는지 적는다.';
 function facts(p, now) {
     const ss = (0, work_1.stagesOf)(p);
     const ck = (0, work_1.curIdx)(p);
@@ -4207,13 +4410,14 @@ const ASK = {
 };
 function buildAsk(kind, p, items, input, now = (0, ax_1.today)()) {
     const parts = ['프로젝트 데이터:', facts(p, now)];
-    if (['ecr', 'bomdiff', 'oldrev', 'vendor', 'chase', 'certlist', 'draft', 'gate'].indexOf(kind) >= 0)
+    const info = (0, exports.kindInfo)(kind);
+    if (info.item || ['ecr', 'bomdiff', 'oldrev', 'vendor', 'chase', 'certlist', 'draft', 'gate'].indexOf(kind) >= 0)
         parts.push(itemFacts(p, now));
-    if (kind === 'similar')
+    if (info.others || kind === 'similar')
         parts.push('다른 프로젝트 이슈·변경: ' + items.filter(x => x.id !== p.id).map(x => `${x.name}: ` + (x.issues || []).map(i => `${i.kind} ${i.text}${i.done ? '(해결)' : ''}`).concat((x.changes || []).map(c => `변경 ${c.what}(${c.why})`)).concat((x.ecrs || []).map(e => `${e.no} ${e.title}`)).join(' / ')).join('\n'));
     if (kind === 'bomdiff' && p.baseItem)
         parts.push('기반 모델: ' + p.baseItem);
-    parts.push('', '할 일: ' + ASK[kind]);
+    parts.push('', '할 일: ' + (info.do || ASK[kind] || info.label));
     if (input)
         parts.push('', '요청 내용:', input);
     return parts.join('\n');
@@ -4239,7 +4443,7 @@ function applyJob(p, j, who) {
         });
         next.issues = (p.issues || []).concat(add);
     }
-    if (j.kind === 'replan') {
+    if (j.kind === 'replan' || j.kind === 'j_back') {
         const plan = Object.assign({}, (p.plan || {}));
         const ss = (0, work_1.stagesOf)(p);
         text.split('\n').forEach(ln => { ss.forEach(s => { if (ln.indexOf(s.no) >= 0) {
@@ -4253,12 +4457,12 @@ function applyJob(p, j, who) {
     next.log = (p.log || []).concat([{ at, who, kind: 'note', ai: true, what: `AI 결과 반영 — ${j.label}: ${text.split('\n')[0].slice(0, 120)}` }]);
     return next;
 }
-exports.APPLY_NOTE = { weekly: '「이번 주 요약」에 들어가요', minutes: '이슈·할 일로 등록돼요', replan: '단계 계획일이 바뀌어요' };
+exports.APPLY_NOTE = { weekly: '「이번 주 요약」에 들어가요', minutes: '이슈·할 일로 등록돼요', replan: '단계 계획일이 바뀌어요', j_back: '단계 계획일이 바뀌어요' };
 
 };
 __m["src/webparts/huromAxPlm/model/sched.js"]=function(module,exports,require){"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.typeDays = exports.laneOf = exports.LANES = exports.stdTotal = exports.AFTER_DAYS = exports.STD_DAYS = exports.diffDays = exports.addDays = void 0;
+exports.typeDays = exports.lateDays = exports.laneOf = exports.LANES = exports.stdTotal = exports.AFTER_DAYS = exports.STD_DAYS = exports.diffDays = exports.addDays = void 0;
 exports.backPlan = backPlan;
 exports.planSpan = planSpan;
 exports.stageState = stageState;
@@ -4268,7 +4472,6 @@ exports.docSpan = docSpan;
 exports.gems = gems;
 exports.laneCells = laneCells;
 exports.projRange = projRange;
-exports.lateDays = lateDays;
 // AX-PLM 1.0.134 — 일정표(간트)·메인 대시보드 계산 (심준보 2026-11-18 #ax-plm msg 10483430 '스케쥴링표가 없냐' · 10483498 '메인대시보드, 업무구분 세로·일정 단계 가로'; 곽두팔 msg 10483490·10483554)
 // 단계 계획 = plan[S1..S7] (단계 끝 날짜), 단계 시작 = 앞 단계 끝(첫 단계는 start). 실제 = actual[...] 같은 방식
 const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
@@ -4317,11 +4520,10 @@ function stageState(p, k, now = (0, ax_1.today)()) {
     if ((0, work_1.stageClear)(p, s) && (k < ck || k === (0, work_1.stagesOf)(p).length - 1))
         return 'done';
     const sp = planSpan(p, k);
-    if (k === ck)
-        return sp && sp.b < now ? 'late' : 'doing';
-    if (sp && sp.b < now)
+    const late = (sp && sp.b < now) || s.docs.some(d => (0, work_1.docLate)(p, d.key, now));
+    if (late)
         return 'late';
-    return 'wait';
+    return k === ck ? 'doing' : 'wait';
 }
 function actualSpan(p, k, now = (0, ax_1.today)()) {
     const ids = (0, work_1.stagesOf)(p).map(s => s.id);
@@ -4408,16 +4610,121 @@ function projRange(p) {
     const b = plan[ids[5]] || plan[ids[ids.length - 1]];
     return p.start && b ? { a: p.start, b } : undefined;
 }
-function lateDays(p, now = (0, ax_1.today)()) {
-    const k = (0, work_1.curIdx)(p);
-    const sp = planSpan(p, k);
-    if (!sp || stageState(p, k, now) === 'done')
-        return 0;
-    const d = (0, ax_1.daysTo)(sp.b, now);
-    return d !== undefined && d < 0 ? -d : 0;
-}
+const lateDays = (p, now = (0, ax_1.today)()) => (0, work_1.projLate)(p, now);
+exports.lateDays = lateDays;
 const typeDays = (p) => (0, exports.stdTotal)((0, devtype_1.typeOf)(p));
 exports.typeDays = typeDays;
+
+};
+__m["src/webparts/huromAxPlm/model/auto.js"]=function(module,exports,require){"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.staleReviews = void 0;
+exports.stageTasks = stageTasks;
+exports.eventTasks = eventTasks;
+exports.kstNow = kstNow;
+exports.dailyTasks = dailyTasks;
+exports.addJobs = addJobs;
+// AX-PLM 1.0.135 — AI 자동 실행 (곽두팔 msg 10485780 '버튼 말고 저희가 알아서 돌리는 방식', 심준보 msg 10485749 '웬만한 거 다 자동화')
+// 일이 생기면 바로 / 매일 아침(평일 08:30) / 금요일 주간 보고 / 단계가 열리면 그 단계 AI 일. 결과는 확인 대기 → 사람이 반영
+// 사람만 하는 것: 관문 승인, 업체 결정, 샘플·시사출 합격 판정, 메일 발송 (메일은 초안까지)
+const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
+const len = (x) => (x ? x.length : 0);
+const sum = (xs) => xs.reduce((a, b) => a + b, 0);
+// 단계가 열리면 — 그 단계의 AI 일 (입력이 꼭 필요한 것은 빼고, 데이터 연결 전인 것은 표시만)
+function stageTasks(p, k) {
+    const b = (0, ai_1.branchOf)((0, devtype_1.typeOf)(p));
+    const s = (0, work_1.stagesOf)(p)[k];
+    return (0, ai_1.kindsFor)(b, k + 1).filter(x => (!x.ask || x.autoInput) && !(x.id === 'j_back' && Object.keys(p.plan || {}).length))
+        .map(x => ({ kind: x.id, why: `${s.no} ${s.short || s.name} 단계 열림`, input: x.autoInput }));
+}
+// 일이 생기면 바로 — 바뀐 것을 비교해서
+function eventTasks(a, b) {
+    const out = [];
+    const pa = a;
+    const pb = b;
+    const br = (0, ai_1.branchOf)((0, devtype_1.typeOf)(b));
+    const ka = (0, work_1.curIdx)(a);
+    const kb = (0, work_1.curIdx)(b);
+    if (kb > ka)
+        stageTasks(b, kb).forEach(t => out.push(t));
+    (0, work_1.stagesOf)(b).forEach((s, k) => {
+        s.docs.forEach(d => { if (!(0, work_1.docOk)(a.docs[d.key]) && (b.docs[d.key] || {}).done)
+            out.push({ kind: 'docchk', why: `산출물 올라옴 — ${d.label}`, input: d.label, owner: (b.docs[d.key] || {}).who || b.owner }); });
+        if (s.gate && k === kb && (0, work_1.gateState)(b, s) === 'wait' && s.docs.every(d => (0, work_1.docOk)(b.docs[d.key])) && !s.docs.every(d => (0, work_1.docOk)(a.docs[d.key])))
+            out.push({ kind: 'gate', why: `${s.gate.split(' ')[0]} 기준 채워짐 — 승인 요청 글 초안`, owner: b.owner });
+    });
+    if (JSON.stringify(pa.parts || []) !== JSON.stringify(pb.parts || [])) {
+        if (br === 'juicer')
+            out.push({ kind: 'j_food', why: 'BOM 바뀜 — 식품 접촉 재질 점검' }, { kind: 'j_bom', why: 'BOM 바뀜 — 원가 합산' });
+        else
+            out.push({ kind: 'g_cost', why: 'BOM 바뀜 — 목표 원가 다시' });
+    }
+    if (len(pb.ecrs) > len(pa.ecrs))
+        out.push({ kind: 'ecr', why: '설계 변경 등록 — 영향 부품·도면' });
+    const smp = (p) => sum((p.vendors || []).map(v => v.samples.length));
+    const apr = (p) => sum((p.vendors || []).map(v => v.aprvs.length));
+    if (smp(pb) > smp(pa))
+        out.push(br === 'goods' ? { kind: 'g_sample', why: '샘플 결과 올라옴 — 평가 요약' } : { kind: 'j_iqc', why: '샘플 결과 올라옴 — 불량 경향' });
+    if (apr(pb) > apr(pa))
+        out.push({ kind: br === 'goods' ? 'g_aprv' : 'j_aprv', why: '승인원 올라옴 — 대조' });
+    if (len(pb.releases) > len(pa.releases))
+        out.push({ kind: 'oldrev', why: '업체에 도면 배포 — 옛 판 감지' });
+    const tr = (p) => sum((p.molds || []).map(m => m.trials.length));
+    if (tr(pb) > tr(pa))
+        out.push({ kind: 'j_trial', why: '시사출 결과 올라옴 — 요약' }, { kind: 'j_t1', why: '시사출 결과 올라옴 — T1 점검' });
+    return out;
+}
+// 매일 아침(평일 08:30 한국 시간) · 금요일 주간 보고 — 페이지가 열려 있거나 그 뒤 처음 열 때 밀린 것부터
+function kstNow() {
+    const t = new Date(Date.now() + 9 * 3600000);
+    return { ymd: `${t.getUTCFullYear()}-${('0' + (t.getUTCMonth() + 1)).slice(-2)}-${('0' + t.getUTCDate()).slice(-2)}`, dow: t.getUTCDay(), hm: t.getUTCHours() * 100 + t.getUTCMinutes() };
+}
+function dailyTasks(p, hasWaits) {
+    const m = Object.assign({}, (p.aiAuto || {}));
+    const n = kstNow();
+    const out = [];
+    const work = n.dow >= 1 && n.dow <= 5 && n.hm >= 830;
+    if (work && m.daily !== n.ymd) {
+        out.push({ kind: 'delay', why: '매일 아침 08:30 — 일정 지연 예측' });
+        if ((p.vendors || []).length)
+            out.push({ kind: 'vendor', why: '매일 아침 — 업체 인증서 만료 점검' });
+        if (hasWaits)
+            out.push({ kind: 'chase', why: '매일 아침 — 회신 없는 협력사 독촉 메일 초안' });
+        m.daily = n.ymd;
+    }
+    if (n.dow === 5 && n.hm >= 830 && m.weekly !== n.ymd) {
+        out.push({ kind: 'weekly', why: '금요일 — 주간 보고' });
+        m.weekly = n.ymd;
+    }
+    const k = (0, work_1.curIdx)(p);
+    const sid = (0, work_1.stagesOf)(p)[k].id;
+    if (!(m.st || {})[sid]) {
+        stageTasks(p, k).forEach(t => out.push(t));
+        m.st = Object.assign(Object.assign({}, (m.st || {})), { [sid]: n.ymd });
+    }
+    return { tasks: out, mark: m };
+}
+// 같은 일이 이미 줄 서 있거나 오늘 확인 대기면 또 만들지 않음
+function addJobs(p, tasks, who, online) {
+    const jobs = (p.aiJobs || []).slice();
+    const td = (0, ax_1.today)();
+    let n = 0;
+    tasks.forEach(t => {
+        if (jobs.some(j => j.kind === t.kind && (j.input || '') === (t.input || '') && (['queued', 'running'].indexOf((0, ai_1.jobState)(j)) >= 0 || (j.at.slice(0, 10) === td && ['review', 'nodata', 'offline'].indexOf((0, ai_1.jobState)(j)) >= 0))))
+            return;
+        const info = (0, ai_1.kindInfo)(t.kind);
+        const job = { id: 'ai' + Date.now().toString(36) + (n++) + Math.floor(Math.random() * 1e4).toString(36), kind: t.kind, label: info.label, input: t.input, at: new Date().toISOString(), who: t.why ? 'AI 자동' : who, auto: t.why || undefined, owner: t.owner || p.owner,
+            state: info.nodata ? 'nodata' : online === false ? 'offline' : 'queued', note: info.nodata };
+        jobs.push(job);
+    });
+    return n ? Object.assign(Object.assign({}, p), { aiJobs: jobs }) : p;
+}
+// 확인 대기가 2일 넘게 쌓인 것 — PM에게
+const staleReviews = (p, now = Date.now()) => (p.aiJobs || []).filter(j => (0, ai_1.jobState)(j) === 'review' && now - new Date(j.doneAt || j.at).getTime() > 2 * 86400000);
+exports.staleReviews = staleReviews;
 
 };
 __m["src/webparts/huromAxPlm/components/Gantt.js"]=function(module,exports,require){"use strict";
@@ -4539,7 +4846,7 @@ function Gantt(props) {
     const scroller = React.useRef(null);
     const dragRef = React.useRef(undefined);
     React.useEffect(() => { const el = scroller.current; if (el)
-        el.scrollLeft = Math.max(0, x(now) - (el.clientWidth - LW) / 3); }, [props.scale]);
+        el.scrollLeft = Math.max(0, x(now) - (el.clientWidth - LW) * 2 / 3); }, [props.scale]);
     const tk = ticks(a0, b0, props.scale);
     const rowH = (r) => (r.depth ? 30 : 38);
     const bar = (s, st, kind, extra = {}) => {
