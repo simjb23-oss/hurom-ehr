@@ -2017,6 +2017,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-a="no"],[d
 function wireReset(){const rs=$('#reset');if(rs)rs.onclick=()=>{const b=$('#reset');if(b.dataset.c){localStorage.removeItem(KEY);st=blank();draft={type:'연차'};b.textContent='처음부터 다시';delete b.dataset.c;location.hash='#dash';render();toast('처음 상태로 돌렸습니다');return}
  b.dataset.c=1;b.textContent='정말 지울까요? 한 번 더 누르기';b.classList.add('no');setTimeout(()=>{b.textContent='처음부터 다시';delete b.dataset.c;b.classList.remove('no')},4000)}}
 window.EHRX={get st(){return st},V,RG,MENUS,S,act,now,ymd,esc,save,render,switchRole,person,addMove,head,sec,toast,$,orgInit,ORG_BASE,get guide(){return guide},set guide(f){guide=f},get wire(){return wire},set wire(f){wire=f},get wireReorg(){return wireReorg},set wireReorg(f){wireReorg=f}}; // orgx.js(조직 개편 회사별·끌어 놓기·직원 조회)가 쓰는 문
+Object.assign(window.EHRX,{tbl,stB,evalQ,GR,nid,won,dl,csv,twice,today}); // comp.js(평가 항목 점수·일용직)가 쓰는 문
 window.addEventListener('hashchange',render);render();
 window.EHR={get st(){return st},save,render,switchRole,person,bal,absentOn,today,V,MENUS,esc,TYPES,workdays,chatAnswer,viewerNo,WD,get RULES(){return RULES}}; // 휴글 AI(ai.js)가 쓰는 문
 })();
@@ -2027,4 +2028,5 @@ window.EHR={get st(){return st},save,render,switchRole,person,bal,absentOn,today
 <script src="polish.js"></script>
 <script src="ai.js"></script>
 <script src="orgx.js"></script>
+<script src="comp.js"></script>
 </body></html>
