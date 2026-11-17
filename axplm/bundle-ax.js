@@ -3193,6 +3193,8 @@ function ListHead(props) {
         props.cols && React.createElement("div", { className: "axw-hide-sm", style: { display: 'flex', gap: 12, padding: '7px 14px', fontSize: 11.5, color: ui_1.C.faint, fontWeight: 600, borderBottom: `1px solid ${ui_1.C.line}` } }, props.cols)));
 }
 const Empty = (props) => React.createElement("div", { style: { padding: '18px 14px', fontSize: 13, color: ui_1.C.faint } }, props.t);
+// 재질 표기 대상 — 상태색이 아닌 회색 테두리 작은 표시 (곽두팔 msg 10413522: 주황은 지연·만료 임박에만)
+const MarkTag = () => React.createElement("span", { "data-ax-mark": true, title: "\uD50C\uB77C\uC2A4\uD2F1 25 g \uC774\uC0C1 \u2014 \uC7AC\uC9C8 \uD45C\uAE30 \uB300\uC0C1", style: { marginLeft: 6, flex: '0 0 auto', fontSize: 10.5, fontWeight: 600, lineHeight: '15px', padding: '0 5px', borderRadius: 4, border: `1px solid ${ui_1.C.line2}`, color: ui_1.C.sub, background: ui_1.C.card } }, "\uD45C\uAE30");
 function Bom(props) {
     const rows = (0, item_1.bomTree)(props.p.parts || []);
     const mark = (props.p.parts || []).filter(item_1.needMark).length;
@@ -3209,14 +3211,19 @@ function Bom(props) {
             const x = r.part;
             return (React.createElement("div", { key: x.no, className: 'axw-row' + (props.pick === x.no ? ' on' : ''), "data-ax-part": x.no, onClick: () => props.setPick(x.no) },
                 React.createElement("span", { style: { width: 92, fontVariantNumeric: 'tabular-nums', fontSize: 13, color: ui_1.C.sub, flex: '0 0 92px' } }, x.no),
-                React.createElement("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: r.depth * 16, fontWeight: r.depth ? 500 : 700 } },
-                    r.depth ? '└ ' : '',
-                    x.name,
-                    x.qty && x.qty > 1 ? ` ×${x.qty}` : ''),
-                React.createElement("span", { className: "axw-hide-sm", style: { width: 120, fontSize: 13, color: ui_1.C.sub, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5 } },
-                    (0, item_1.needMark)(x) && React.createElement("span", { title: "\uD50C\uB77C\uC2A4\uD2F1 25 g \uC774\uC0C1 \u2014 \uC7AC\uC9C8 \uD45C\uAE30 \uB300\uC0C1" },
-                        React.createElement(ui_1.Dot, { s: "soon", size: 6 })),
-                    x.material || '—'),
+                React.createElement("span", { style: { flex: 1, minWidth: 0, textAlign: 'left', paddingLeft: r.depth * 14 } },
+                    React.createElement("span", { style: { display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: r.depth ? 500 : 700 } },
+                        r.depth ? React.createElement("span", { style: { color: ui_1.C.lock } }, "\u2514 ") : '',
+                        x.name,
+                        x.qty && x.qty > 1 ? ` ×${x.qty}` : ''),
+                    (x.material || x.weight) && React.createElement("span", { className: "axw-show-sm", "data-ax-part-sub": true, style: { fontSize: 12, color: ui_1.C.faint, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: r.depth ? 14 : 0 } },
+                        x.material || '재질 —',
+                        " \u00B7 ",
+                        x.weight ? `${x.weight} g` : '무게 —',
+                        (0, item_1.needMark)(x) && React.createElement(MarkTag, null))),
+                React.createElement("span", { className: "axw-hide-sm", style: { width: 120, fontSize: 13, color: ui_1.C.sub, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' } },
+                    React.createElement("span", { style: { overflow: 'hidden', textOverflow: 'ellipsis' } }, x.material || '—'),
+                    (0, item_1.needMark)(x) && React.createElement(MarkTag, null)),
                 React.createElement("span", { className: "axw-hide-sm", style: { width: 56, fontSize: 13, color: ui_1.C.sub, textAlign: 'right', fontVariantNumeric: 'tabular-nums' } }, x.weight ? `${x.weight} g` : '—'),
                 React.createElement("span", { className: "axw-hide-sm", style: { width: 110, fontSize: 13, color: ui_1.C.sub, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, x.supplier || '—'),
                 React.createElement("span", { style: { width: 34, fontSize: 13, fontWeight: 700 } }, x.rev)));
@@ -3354,8 +3361,8 @@ function PartPanel(props) {
                         x.no,
                         " ",
                         x.name)))),
-            Number(v.weight) >= 25 && /PP|PE|ABS|PC|POM|PA|PET|PBT|PS|SAN|Tritan|트라이탄|TPE|PMMA/i.test(v.material) && React.createElement("div", { style: { fontSize: 12.5, color: ui_1.C.soon, display: 'flex', gap: 6, alignItems: 'center' } },
-                React.createElement(ui_1.Dot, { s: "soon", size: 6 }),
+            Number(v.weight) >= 25 && /PP|PE|ABS|PC|POM|PA|PET|PBT|PS|SAN|Tritan|트라이탄|TPE|PMMA/i.test(v.material) && React.createElement("div", { style: { fontSize: 12.5, color: ui_1.C.sub, display: 'flex', gap: 6, alignItems: 'center' } },
+                React.createElement(MarkTag, null),
                 "\uD50C\uB77C\uC2A4\uD2F1 25 g \uC774\uC0C1 \u2014 \uC7AC\uC9C8 \uD45C\uAE30 \uB300\uC0C1\uC774\uC5D0\uC694"),
             dup && React.createElement("div", { style: { fontSize: 12.5, color: ui_1.C.late } }, "\uAC19\uC740 \uD488\uBC88\uC774 \uC774\uBBF8 \uC788\uC5B4\uC694."),
             React.createElement("button", { "data-ax-part-save": true, disabled: !ok, onClick: save, style: Object.assign(Object.assign({}, ui_1.primary), { opacity: ok ? 1 : 0.4 }) }, cur ? '저장' : '추가'),
@@ -3608,6 +3615,7 @@ exports.CSS = `
 .axw-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .axw-panel{position:sticky;top:72px}
 .axw-x{display:none}
+.axw-show-sm{display:none}
 .axw-rail{display:flex;gap:2px}
 @media (max-width:820px){
   .axw-main,.axw-todo{grid-template-columns:minmax(0,1fr)}
@@ -3616,6 +3624,7 @@ exports.CSS = `
   .axw-panel.sheet{position:fixed;left:0;right:0;bottom:0;top:auto;max-height:80vh;overflow:auto;z-index:30;border-radius:14px 14px 0 0 !important;box-shadow:0 -8px 30px rgba(0,0,0,.15)}
   .axw-x{display:inline-block}
   .axw-hide-sm{display:none !important}
+  .axw-show-sm{display:block}
   .axw-rail{overflow-x:auto}
   .axw-rail > button{min-width:108px !important;flex:0 0 108px !important}
   .axw-pad{padding-left:14px !important;padding-right:14px !important}
