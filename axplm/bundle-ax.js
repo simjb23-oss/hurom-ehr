@@ -2869,7 +2869,7 @@ function workSamples() { return workSamples0().map(p => (0, samples_1.typeTheTwo
 };
 __m["src/webparts/huromAxPlm/model/item.js"]=function(module,exports,require){"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.bomNote = exports.roleFor = exports.VENDOR_ROLES = exports.mainVendor = exports.avgScore = exports.lastSample = exports.lastAprv = exports.changedParts = exports.moldT1ok = exports.lastTrial = exports.docsOfPart = exports.certsOfPart = exports.ecrsOfPart = exports.children = exports.needMark = exports.uid = void 0;
+exports.sampleOk = exports.bomNote = exports.roleFor = exports.VENDOR_ROLES = exports.mainVendor = exports.avgScore = exports.lastSample = exports.lastAprv = exports.changedParts = exports.moldT1ok = exports.lastTrial = exports.docsOfPart = exports.certsOfPart = exports.ecrsOfPart = exports.children = exports.needMark = exports.uid = void 0;
 exports.nextRev = nextRev;
 exports.bomTree = bomTree;
 exports.certState = certState;
@@ -3062,10 +3062,12 @@ function gateChecks(p0, s) {
         const sm = v && (0, exports.lastSample)(v);
         out.push({ label: `생산 업체 초도품 검사 합격${sm ? ` (${sm.round} ${sm.result})` : ''}`, ok: !!sm && sm.result === '합격' });
     }
-    if (t === 'odm' && g === 'G2') {
-        const v = (0, exports.mainVendor)(p, 'ODM');
+    if (t === 'odm' && g === 'G2') { // 1.0.133 순서: 최종 샘플 합격 → 승인원 승인 (곽두팔 msg 10430179)
+        const v = (p.vendors || []).filter(x => x.role === 'ODM' && x.aprvs.length)[0] || (0, exports.mainVendor)(p, 'ODM');
+        const sm = v && (0, exports.lastSample)(v);
         const a = v && (0, exports.lastAprv)(v);
-        out.push({ label: `ODM 업체 승인원 승인${a ? ` (${a.title} Rev ${a.rev} ${a.status})` : ' — 아직 없음'}`, ok: !!a && a.status === '승인' });
+        out.push({ label: `최종 샘플 합격${sm ? ` (${sm.round} ${sm.result})` : ' — 아직 없음'}`, ok: !!sm && sm.result === '합격' });
+        out.push({ label: `ODM 업체 승인원 승인${a ? ` (${a.title} Rev ${a.rev} ${a.status})` : ' — 아직 없음'}`, ok: !!a && a.status === '승인' && !!sm && sm.result === '합격' });
     }
     if (t === 'sourcing' && g === 'G2') {
         const v = (0, exports.mainVendor)(p, '완제품 공급');
@@ -3103,6 +3105,9 @@ function startItem(p, t, code, base, who) {
     }
     return x;
 }
+// 승인원은 마지막 샘플이 합격이어야 제출·승인 가능
+const sampleOk = (v) => { const x = (0, exports.lastSample)(v); return !!x && x.result === '합격'; };
+exports.sampleOk = sampleOk;
 
 };
 __m["src/webparts/huromAxPlm/model/devtype.js"]=function(module,exports,require){"use strict";
@@ -3579,6 +3584,7 @@ function VendorPanel(props) {
                     React.createElement("input", { "data-ax-sample-note": true, placeholder: `${v.samples.length + 1}차 평가 메모`, value: sm.note, onChange: e => setSm(Object.assign(Object.assign({}, sm), { note: e.target.value })), style: ui_1.inp }),
                     React.createElement("button", { "data-ax-sample-add": true, onClick: () => { const x = { id: (0, item_1.uid)('s'), round: `${v.samples.length + 1}차`, at: (0, ui_1.nowIso)(), result: sm.result, note: sm.note.trim() || undefined, who }; put(y => (Object.assign(Object.assign({}, y), { samples: y.samples.concat([x]) })), `${x.round} 샘플 ${x.result}`); setSm({ result: '합격', note: '' }); }, style: ui_1.btn }, "\uAE30\uB85D"))),
             React.createElement(Sec, { t: "\uC2B9\uC778\uC6D0" },
+                !(0, item_1.sampleOk)(v) && React.createElement("div", { "data-ax-aprv-lock": true, style: { fontSize: 12, color: ui_1.C.faint, marginBottom: 4 } }, "\uB9C8\uC9C0\uB9C9 \uC0D8\uD50C\uC774 \uD569\uACA9\uD574\uC57C \uC2B9\uC778\uC6D0\uC744 \uBC1B\uACE0 \uC2B9\uC778\uD560 \uC218 \uC788\uC5B4\uC694."),
                 v.aprvs.map(x => React.createElement(Line, { key: x.id },
                     React.createElement(ui_1.Dot, { s: x.status === '승인' ? 'done' : x.status === '제출' ? 'wait' : 'late', size: 7 }),
                     React.createElement("span", { style: { flex: 1, color: ui_1.C.text } },
@@ -3590,13 +3596,13 @@ function VendorPanel(props) {
                         x.note ? ` — ${x.note}` : ''),
                     x.link && React.createElement("a", { href: x.link, target: "_blank", rel: "noopener noreferrer", style: { color: ui_1.C.accent } }, "\uC5F4\uAE30"),
                     x.status === '제출' && React.createElement(React.Fragment, null,
-                        React.createElement("button", { "data-ax-aprv-ok": true, disabled: !isApprover, title: isApprover ? '' : `승인자(${p.approver})만`, onClick: () => put(y => (Object.assign(Object.assign({}, y), { aprvs: y.aprvs.map(z => (z.id === x.id ? Object.assign(Object.assign({}, z), { status: '승인', note: `${who} 승인 ${(0, ax_1.fmt)((0, ui_1.nowIso)())}` }) : z)) })), `${x.title} Rev ${x.rev} 승인`), style: Object.assign(Object.assign({}, ui_1.btn), { padding: '2px 8px', opacity: isApprover ? 1 : 0.4 }) }, "\uC2B9\uC778"),
+                        React.createElement("button", { "data-ax-aprv-ok": true, disabled: !isApprover || !(0, item_1.sampleOk)(v), title: isApprover ? '' : `승인자(${p.approver})만`, onClick: () => put(y => (Object.assign(Object.assign({}, y), { aprvs: y.aprvs.map(z => (z.id === x.id ? Object.assign(Object.assign({}, z), { status: '승인', note: `${who} 승인 ${(0, ax_1.fmt)((0, ui_1.nowIso)())}` }) : z)) })), `${x.title} Rev ${x.rev} 승인`), style: Object.assign(Object.assign({}, ui_1.btn), { padding: '2px 8px', opacity: isApprover && (0, item_1.sampleOk)(v) ? 1 : 0.4 }) }, "\uC2B9\uC778"),
                         React.createElement("button", { "data-ax-aprv-no": true, disabled: !isApprover, onClick: () => put(y => (Object.assign(Object.assign({}, y), { aprvs: y.aprvs.map(z => (z.id === x.id ? Object.assign(Object.assign({}, z), { status: '반려', note: `${who} 반려 ${(0, ax_1.fmt)((0, ui_1.nowIso)())}` }) : z)) })), `${x.title} Rev ${x.rev} 반려`), style: Object.assign(Object.assign({}, ui_1.btn), { padding: '2px 8px', color: ui_1.C.late, opacity: isApprover ? 1 : 0.4 }) }, "\uBC18\uB824")))),
                 React.createElement("div", { style: { display: 'flex', gap: 6, marginTop: 4 } },
                     React.createElement("input", { "data-ax-aprv-title": true, value: ap.title, onChange: e => setAp(Object.assign(Object.assign({}, ap), { title: e.target.value })), style: ui_1.inp }),
                     React.createElement("input", { "data-ax-aprv-rev": true, value: ap.rev, onChange: e => setAp(Object.assign(Object.assign({}, ap), { rev: e.target.value })), style: Object.assign(Object.assign({}, ui_1.inp), { width: 64, flex: '0 0 64px' }) }),
                     React.createElement("input", { "data-ax-aprv-link": true, placeholder: "\uB9C1\uD06C", value: ap.link, onChange: e => setAp(Object.assign(Object.assign({}, ap), { link: e.target.value })), style: ui_1.inp }),
-                    React.createElement("button", { "data-ax-aprv-add": true, disabled: !ap.title.trim(), onClick: () => { const x = { id: (0, item_1.uid)('a'), title: ap.title.trim(), rev: ap.rev.trim() || '01', at: (0, ui_1.nowIso)(), status: '제출', who, link: ap.link.trim() || undefined }; put(y => (Object.assign(Object.assign({}, y), { aprvs: y.aprvs.concat([x]) })), `${x.title} Rev ${x.rev} 제출받음`); setAp({ title: '승인원', rev: ('0' + (Number(ap.rev) + 1)).slice(-2), link: '' }); }, style: ui_1.btn }, "\uC81C\uCD9C\uBC1B\uC74C"))),
+                    React.createElement("button", { "data-ax-aprv-add": true, disabled: !ap.title.trim() || !(0, item_1.sampleOk)(v), onClick: () => { const x = { id: (0, item_1.uid)('a'), title: ap.title.trim(), rev: ap.rev.trim() || '01', at: (0, ui_1.nowIso)(), status: '제출', who, link: ap.link.trim() || undefined }; put(y => (Object.assign(Object.assign({}, y), { aprvs: y.aprvs.concat([x]) })), `${x.title} Rev ${x.rev} 제출받음`); setAp({ title: '승인원', rev: ('0' + (Number(ap.rev) + 1)).slice(-2), link: '' }); }, style: Object.assign(Object.assign({}, ui_1.btn), { opacity: ap.title.trim() && (0, item_1.sampleOk)(v) ? 1 : 0.4 }) }, "\uC81C\uCD9C\uBC1B\uC74C"))),
             React.createElement(Sec, { t: `평가 ${(0, item_1.avgScore)(v) !== undefined ? `평균 ${(0, item_1.avgScore)(v)} / 5` : ''}` },
                 v.evals.map((x, i) => React.createElement(Line, { key: i },
                     React.createElement("b", { style: { color: ui_1.C.text, width: 24 } }, x.score),
