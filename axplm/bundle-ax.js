@@ -101,18 +101,26 @@ const item_1 = require("src/webparts/huromAxPlm/model/item.js");
 const Vendors_1 = require("src/webparts/huromAxPlm/components/Vendors.js");
 const RegRadar_1 = __importDefault(require("src/webparts/huromAxPlm/components/RegRadar.js"));
 const Items_1 = require("src/webparts/huromAxPlm/components/Items.js");
+const Dash_1 = require("src/webparts/huromAxPlm/components/Dash.js");
+const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
+const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
 const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
 function AxWork(props) {
     const who = props.userDisplayName || '나';
     const [items, setItems] = React.useState(undefined);
     const [demo, setDemo] = React.useState(false);
     const [err, setErr] = React.useState('');
-    const [view, setView] = React.useState('todo');
+    const [view, setView] = React.useState('dash');
     const [sel, setSel] = React.useState(undefined);
     const [focus, setFocus] = React.useState(undefined);
     const [pick, setPick] = React.useState(undefined); // 오른쪽 패널에 연 산출물 키 또는 'gate'
     const [adding, setAdding] = React.useState(false);
     const [itemSel, setItemSel] = React.useState(undefined); // 품목 상세로 연 프로젝트 id (없으면 품목 목록)
+    const itemsRef = React.useRef(undefined);
+    itemsRef.current = items;
+    const [online, setOnline] = React.useState(undefined);
+    const [aiOpen, setAiOpen] = React.useState(undefined);
+    React.useEffect(() => { (0, ai_1.aiOnline)().then(setOnline, () => setOnline(false)); }, []);
     const queue = React.useMemo(() => new store_1.SaveQueue(props.store), [props.store]);
     React.useEffect(() => {
         props.store.list().then(xs => { const open = xs.filter(x => !x.closed); if (!xs.length) {
@@ -124,18 +132,20 @@ function AxWork(props) {
     }, [props.store]);
     React.useEffect(() => (0, store_1.guardLeave)(() => queue.busy()), [queue]);
     const update = (id, fn) => {
-        const cur = (items || []).filter(x => x.id === id)[0];
+        const cur = (itemsRef.current || []).filter(x => x.id === id)[0]; // 1.0.134 AI 답이 늦게 와도 최신 행에 붙도록 ref에서 읽음
         if (!cur)
             return;
         const apply = (x) => (Object.assign(Object.assign({}, (0, work_1.settle)(fn(x), who)), { updated: (0, ui_1.nowIso)() }));
         const next = apply(cur);
+        itemsRef.current = (itemsRef.current || []).map(x => (x.id === id ? next : x));
         setItems(xs => (xs || []).map(x => (x.id === id ? next : x)));
         if (demo)
             return;
         queue.save(next, apply).then(r => setItems(xs => (xs || []).map(x => (x.id === id ? Object.assign(Object.assign(Object.assign({}, x), { spId: r.saved.spId, spVer: r.saved.spVer }), (r.merged ? r.saved : {})) : x))), e => setErr(`저장 못 했어요 — ${String((e && e.message) || e)}`));
     };
     const add = (name, owner, approver, start, target, t, code, base) => {
-        const p0 = Object.assign(Object.assign({}, (0, ax_1.newProject)(name, who, owner.trim() || who, target || undefined, start || undefined)), { approver: approver.trim() || undefined });
+        const bp = target ? (0, sched_1.backPlan)(target, t) : undefined; // 1.0.134 출시 목표일에서 유형별 표준 일수로 거꾸로
+        const p0 = Object.assign(Object.assign(Object.assign({}, (0, ax_1.newProject)(name, who, owner.trim() || who, target || undefined, bp ? bp.start : start || undefined)), { approver: approver.trim() || undefined }), (bp ? { start: bp.start, plan: bp.plan } : {}));
         const p = (0, item_1.startItem)(p0, t, code, (items || []).filter(x => x.id === base)[0], who);
         setItems(xs => [p].concat(demo ? [] : (xs || [])));
         setDemo(false);
@@ -147,41 +157,68 @@ function AxWork(props) {
         props.store.save(p).then(s => setItems(xs => (xs || []).map(x => (x.id === p.id ? Object.assign(Object.assign({}, x), { spId: s.spId, spVer: s.spVer }) : x))), e => setErr(`저장 못 했어요 — ${String((e && e.message) || e)}`));
     };
     const open = (id, k, key) => { setSel(id); setFocus(k); setPick(key); setView('project'); };
+    // 1.0.134 AI에게 맡기기 — 진행 중 → 확인 대기(또는 AI 연결 전), 반영은 사람이
+    const setJob = (pid, id, patch) => update(pid, p => (Object.assign(Object.assign({}, p), { aiJobs: (p.aiJobs || []).map(j => (j.id === id ? Object.assign(Object.assign({}, j), patch) : j)) })));
+    const runAi = (pid, kind, input, reuse) => {
+        const p = (itemsRef.current || []).filter(x => x.id === pid)[0];
+        if (!p)
+            return;
+        const id = reuse || (0, ui_1.uid)('ai');
+        const at = (0, ui_1.nowIso)();
+        if (reuse)
+            setJob(pid, id, { state: 'running', at, result: undefined, note: undefined, who });
+        else
+            update(pid, x => (Object.assign(Object.assign({}, x), { aiJobs: (x.aiJobs || []).concat([{ id, kind, label: (0, ai_1.kindInfo)(kind).label, input, at, who, state: 'running' }]) })));
+        const ask = (0, ai_1.buildAsk)(kind, p, (itemsRef.current || []), input);
+        (0, ai_1.askAi)(ai_1.SYSTEM, ask).then(t => { setOnline(true); setJob(pid, id, { state: 'review', result: t, doneAt: (0, ui_1.nowIso)() }); }, e => { const m = String((e && e.message) || e); if (m === 'offline') {
+            setOnline(false);
+            setJob(pid, id, { state: 'offline' });
+        }
+        else
+            setJob(pid, id, { state: 'error', note: m }); });
+    };
+    const aiApi = { run: (pid, kind, input) => runAi(pid, kind, input), open: (pid, id) => setAiOpen({ pid, id }), online };
+    const aiP = aiOpen ? (items || []).filter(x => x.id === aiOpen.pid)[0] : undefined;
+    const aiJ = aiP && aiOpen ? (aiP.aiJobs || []).filter(j => j.id === aiOpen.id)[0] : undefined;
     if (!items)
         return React.createElement("div", { "data-axplm": true, className: "axw", style: { padding: 32, color: ui_1.C.sub } },
             React.createElement("style", null, ui_1.CSS),
             err || '불러오는 중…');
     const mine = (0, work_1.todos)(items, who);
     const cur = items.filter(x => x.id === sel)[0] || items[0];
-    const tabs = [['todo', '내 할 일', mine.length], ['project', '프로젝트', undefined], ['item', '품목', items.length], ['vendor', '협력사', undefined], ['all', '전체 현황', items.length]];
-    return (React.createElement("div", { "data-axplm": true, "data-ax-v": "132", className: "axw" },
-        React.createElement("style", null, ui_1.CSS),
-        React.createElement("div", { className: "axw-pad axw-top", style: { background: ui_1.C.card, borderBottom: `1px solid ${ui_1.C.line}`, padding: '0 24px', display: 'flex', alignItems: 'center', gap: 20, position: 'sticky', top: 0, zIndex: 10, height: 56 } },
-            React.createElement("span", { style: { fontSize: 15, fontWeight: 800, letterSpacing: '-.01em', whiteSpace: 'nowrap' } }, "AX-PLM"),
-            React.createElement("nav", { style: { display: 'flex', gap: 2, height: '100%' } }, tabs.map(t => React.createElement("button", { key: t[0], "data-ax-view": t[0], onClick: () => { setView(t[0]); if (t[0] === 'item')
-                    setItemSel(undefined); }, style: { border: 'none', background: 'transparent', padding: '0 10px', fontSize: 14, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', color: view === t[0] ? ui_1.C.text : ui_1.C.faint, boxShadow: view === t[0] ? `inset 0 -2px 0 ${ui_1.C.text}` : 'none' } },
-                t[1],
-                t[2] !== undefined && React.createElement("span", { className: "axw-cnt", style: { marginLeft: 5, fontSize: 12, color: ui_1.C.faint, fontWeight: 600 } }, t[2])))),
-            React.createElement("span", { "data-flex": true, style: { flex: 1 } }),
-            React.createElement("span", { className: "axw-hide-sm", style: { fontSize: 12.5, color: ui_1.C.faint } }, who),
-            React.createElement("button", { "data-ax-new": true, onClick: () => setAdding(true), style: ui_1.primary },
-                "+ \uC0C8",
-                React.createElement("span", { className: "axw-cnt" }, " \uD504\uB85C\uC81D\uD2B8"))),
-        React.createElement("div", { className: "axw-pad", style: { padding: '20px 24px 48px', maxWidth: 1360, margin: '0 auto' } },
-            err && React.createElement("div", { "data-ax-err": true, style: Object.assign(Object.assign({}, ui_1.card), { marginBottom: 12, padding: '9px 14px', fontSize: 13, color: ui_1.C.late, display: 'flex', gap: 8, alignItems: 'center' }) },
-                React.createElement(ui_1.Dot, { s: "late" }),
-                err,
-                React.createElement("span", { style: { flex: 1 } }),
-                React.createElement("button", { onClick: () => setErr(''), style: ui_1.btn }, "\uB2EB\uAE30")),
-            demo && React.createElement("div", { "data-ax-demo": true, style: Object.assign(Object.assign({}, ui_1.card), { marginBottom: 12, padding: '9px 14px', fontSize: 13, color: ui_1.C.sub }) }, "\uB4F1\uB85D\uB41C \uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4 \uAC1C\uBC1C \uC720\uD615\uB9C8\uB2E4 \uC608\uC2DC \uD558\uB098\uC529(5\uAC1C) \uBCF4\uC5EC \uB4DC\uB824\uC694. \uC608\uC2DC\uB294 \uC800\uC7A5\uB418\uC9C0 \uC54A\uACE0, \uC0C8 \uD504\uB85C\uC81D\uD2B8\uB97C \uB9CC\uB4E4\uBA74 \uC0AC\uB77C\uC838\uC694."),
-            adding && React.createElement(NewForm, { who: who, items: items, onCancel: () => setAdding(false), onAdd: add }),
-            view === 'todo' && React.createElement(TodoView, { list: mine, items: items, who: who, onOpen: open }),
-            view === 'all' && React.createElement(AllView, { items: items, onOpen: open }),
-            view === 'vendor' && React.createElement(Vendors_1.VendorsView, { items: items, who: who, update: update, onItem: id => { setItemSel(id); setView('item'); } }),
-            view === 'item' && !items.filter(x => x.id === itemSel).length && React.createElement(Items_1.ItemsList, { items: items, onOpen: setItemSel }),
-            view === 'item' && items.filter(x => x.id === itemSel).map(x => React.createElement(Items_1.ItemDetail, { key: x.id, p: x, items: items, who: who, update: fn => update(x.id, fn), onPick: setItemSel, onProject: () => open(x.id) })),
-            view === 'project' && cur && React.createElement(ProjectView, { key: cur.id, p: cur, items: items, who: who, focus: focus, setFocus: k => { setFocus(k); setPick(undefined); }, pick: pick, setPick: setPick, onPick: id => { setSel(id); setFocus(undefined); setPick(undefined); }, update: fn => update(cur.id, fn), onItem: () => { setItemSel(cur.id); setView('item'); } }),
-            view === 'project' && !cur && React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { padding: 32, color: ui_1.C.faint, textAlign: 'center' }) }, "\uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4\uC694. \uC0C8 \uD504\uB85C\uC81D\uD2B8\uB85C \uC2DC\uC791\uD558\uC138\uC694."))));
+    const tabs = [['dash', '대시보드', undefined], ['todo', '내 할 일', mine.length], ['project', '프로젝트', undefined], ['sched', '전체 일정', undefined], ['item', '품목', items.length], ['vendor', '협력사', undefined], ['all', '전체 현황', items.length]];
+    return (React.createElement(Dash_1.AiCtx.Provider, { value: aiApi },
+        React.createElement("div", { "data-axplm": true, "data-ax-v": "134", className: "axw" },
+            React.createElement("style", null, ui_1.CSS),
+            React.createElement("div", { className: "axw-pad axw-top", style: { background: ui_1.C.card, borderBottom: `1px solid ${ui_1.C.line}`, padding: '0 24px', display: 'flex', alignItems: 'center', gap: 20, position: 'sticky', top: 0, zIndex: 10, height: 56 } },
+                React.createElement("span", { style: { fontSize: 15, fontWeight: 800, letterSpacing: '-.01em', whiteSpace: 'nowrap' } }, "AX-PLM"),
+                React.createElement("nav", { style: { display: 'flex', gap: 2, height: '100%' } }, tabs.map(t => React.createElement("button", { key: t[0], "data-ax-view": t[0], onClick: () => { setView(t[0]); if (t[0] === 'item')
+                        setItemSel(undefined); }, style: { border: 'none', background: 'transparent', padding: '0 10px', fontSize: 14, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', color: view === t[0] ? ui_1.C.text : ui_1.C.faint, boxShadow: view === t[0] ? `inset 0 -2px 0 ${ui_1.C.text}` : 'none' } },
+                    t[1],
+                    t[2] !== undefined && React.createElement("span", { className: "axw-cnt", style: { marginLeft: 5, fontSize: 12, color: ui_1.C.faint, fontWeight: 600 } }, t[2])))),
+                React.createElement("span", { "data-flex": true, style: { flex: 1 } }),
+                React.createElement("span", { className: "axw-hide-sm", style: { fontSize: 12.5, color: ui_1.C.faint } }, who),
+                React.createElement("button", { "data-ax-new": true, onClick: () => setAdding(true), style: ui_1.primary },
+                    "+ \uC0C8",
+                    React.createElement("span", { className: "axw-cnt" }, " \uD504\uB85C\uC81D\uD2B8"))),
+            React.createElement("div", { className: "axw-pad", style: { padding: '20px 24px 48px', maxWidth: 1360, margin: '0 auto' } },
+                err && React.createElement("div", { "data-ax-err": true, style: Object.assign(Object.assign({}, ui_1.card), { marginBottom: 12, padding: '9px 14px', fontSize: 13, color: ui_1.C.late, display: 'flex', gap: 8, alignItems: 'center' }) },
+                    React.createElement(ui_1.Dot, { s: "late" }),
+                    err,
+                    React.createElement("span", { style: { flex: 1 } }),
+                    React.createElement("button", { onClick: () => setErr(''), style: ui_1.btn }, "\uB2EB\uAE30")),
+                demo && React.createElement("div", { "data-ax-demo": true, style: Object.assign(Object.assign({}, ui_1.card), { marginBottom: 12, padding: '9px 14px', fontSize: 13, color: ui_1.C.sub }) }, "\uB4F1\uB85D\uB41C \uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4 \uAC1C\uBC1C \uC720\uD615\uB9C8\uB2E4 \uC608\uC2DC \uD558\uB098\uC529(5\uAC1C) \uBCF4\uC5EC \uB4DC\uB824\uC694. \uC608\uC2DC\uB294 \uC800\uC7A5\uB418\uC9C0 \uC54A\uACE0, \uC0C8 \uD504\uB85C\uC81D\uD2B8\uB97C \uB9CC\uB4E4\uBA74 \uC0AC\uB77C\uC838\uC694."),
+                adding && React.createElement(NewForm, { who: who, items: items, onCancel: () => setAdding(false), onAdd: add }),
+                view === 'dash' && React.createElement(Dash_1.Dashboard, { items: items, who: who, onOpen: open, onVendor: () => setView('vendor') }),
+                view === 'sched' && React.createElement(Dash_1.AllSchedule, { items: items, onOpen: open }),
+                view === 'todo' && React.createElement(TodoView, { list: mine, items: items, who: who, onOpen: open }),
+                view === 'all' && React.createElement(AllView, { items: items, onOpen: open }),
+                view === 'vendor' && React.createElement(Vendors_1.VendorsView, { items: items, who: who, update: update, onItem: id => { setItemSel(id); setView('item'); } }),
+                view === 'item' && !items.filter(x => x.id === itemSel).length && React.createElement(Items_1.ItemsList, { items: items, onOpen: setItemSel }),
+                view === 'item' && items.filter(x => x.id === itemSel).map(x => React.createElement(Items_1.ItemDetail, { key: x.id, p: x, items: items, who: who, update: fn => update(x.id, fn), onPick: setItemSel, onProject: () => open(x.id) })),
+                view === 'project' && cur && React.createElement(ProjectView, { key: cur.id, p: cur, items: items, who: who, focus: focus, setFocus: k => { setFocus(k); setPick(undefined); }, pick: pick, setPick: setPick, onPick: id => { setSel(id); setFocus(undefined); setPick(undefined); }, update: fn => update(cur.id, fn), onItem: () => { setItemSel(cur.id); setView('item'); } }),
+                view === 'project' && !cur && React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { padding: 32, color: ui_1.C.faint, textAlign: 'center' }) }, "\uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4\uC694. \uC0C8 \uD504\uB85C\uC81D\uD2B8\uB85C \uC2DC\uC791\uD558\uC138\uC694.")),
+            aiP && aiJ && React.createElement(Dash_1.AiResult, { p: aiP, job: aiJ, onClose: () => setAiOpen(undefined), onApply: () => { update(aiP.id, x => (0, ai_1.applyJob)(x, aiJ, who)); setAiOpen(undefined); }, onDismiss: () => { setJob(aiP.id, aiJ.id, { state: 'dismissed', by: who }); setAiOpen(undefined); }, onRetry: () => runAi(aiP.id, aiJ.kind, aiJ.input, aiJ.id) }))));
 }
 // 내 할 일 — 결론 한 줄 → 숫자 4칸 → 목록, 오른쪽은 프로젝트별 진행 막대
 function TodoView(props) {
@@ -308,12 +345,13 @@ function ProjectView(props) {
     const s = (0, work_1.stagesOf)(p)[k];
     const [tab, setTab] = React.useState('issue');
     const [setting, setSetting] = React.useState(false);
+    const [mode, setMode] = React.useState('work');
     const brief = (p.brief || []).slice(-1)[0];
     const lt = (0, work_1.projLate)(p);
     return (React.createElement("div", { "data-ax-project": p.id },
         React.createElement("div", { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 } }, props.items.map(x => React.createElement("button", { key: x.id, "data-ax-pick": x.id, onClick: () => props.onPick(x.id), style: Object.assign(Object.assign({}, ui_1.btn), { background: x.id === p.id ? ui_1.C.text : ui_1.C.card, color: x.id === p.id ? '#fff' : ui_1.C.sub, borderColor: x.id === p.id ? ui_1.C.text : ui_1.C.line2 }) }, x.name))),
         React.createElement("div", { style: { display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: 6 } },
-            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+            React.createElement("div", { style: { flex: '1 1 260px', minWidth: 0 } },
                 React.createElement("h1", { style: { fontSize: 22, fontWeight: 700, letterSpacing: '-.01em', margin: 0 } },
                     React.createElement(ui_1.TypeTag, { p: p }),
                     p.name),
@@ -333,6 +371,7 @@ function ProjectView(props) {
                         React.createElement(ui_1.Dot, { s: "late", size: 7 }),
                         lt,
                         "\uC77C \uC9C0\uC5F0"))),
+            React.createElement(Dash_1.AiButton, { pid: p.id }),
             React.createElement("button", { "data-ax-to-item": true, onClick: props.onItem, style: ui_1.btn },
                 "\uD488\uBAA9 ",
                 p.itemCode || '',
@@ -343,8 +382,11 @@ function ProjectView(props) {
             " ",
             brief.text),
         setting && React.createElement(Settings, { p: p, who: who, update: update }),
-        React.createElement(Rail, { p: p, k: k, onPick: props.setFocus }),
-        React.createElement("div", { className: "axw-main", style: { marginTop: 16 } },
+        React.createElement(Rail, { p: p, k: k, onPick: k2 => { setMode('work'); props.setFocus(k2); } }),
+        React.createElement("div", { "data-ax-mode": mode, style: { display: 'flex', gap: 2, marginTop: 14, borderBottom: `1px solid ${ui_1.C.line}` } }, [['work', '단계·산출물'], ['gantt', '일정표']].map(t => React.createElement("button", { key: t[0], "data-ax-mode-btn": t[0], onClick: () => setMode(t[0]), style: { border: 'none', background: 'transparent', padding: '9px 12px', fontSize: 14, fontWeight: 600, cursor: 'pointer', color: mode === t[0] ? ui_1.C.text : ui_1.C.faint, boxShadow: mode === t[0] ? `inset 0 -2px 0 ${ui_1.C.text}` : 'none' } }, t[1]))),
+        mode === 'gantt' && React.createElement(Dash_1.ProjectSchedule, { p: p, who: who, update: update, onOpen: (k2, key) => { setMode('work'); props.setFocus(k2); if (key)
+                props.setPick(key); } }),
+        mode === 'work' && React.createElement("div", { className: "axw-main", style: { marginTop: 16 } },
             React.createElement("div", { style: { minWidth: 0 } },
                 React.createElement(StageList, { p: p, k: k, pick: props.pick, setPick: props.setPick }),
                 React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { marginTop: 16 }) },
@@ -451,6 +493,8 @@ function ItemPanel(props) {
     const set = (patch, what) => update(x => (Object.assign(Object.assign({}, x), { docs: Object.assign(Object.assign({}, x.docs), { [dkey]: Object.assign(Object.assign({}, (x.docs[dkey] || {})), patch) }), log: x.log.concat([{ at: (0, ui_1.nowIso)(), who, kind: 'doc', what: `${d.label} — ${what}` }]) })));
     const hist = p.log.filter(l => l.what.indexOf(d.label + ' — ') === 0).slice(-5).reverse();
     return (React.createElement("div", { "data-ax-item-panel": dkey },
+        React.createElement("div", { style: { padding: '10px 16px 0', display: 'flex', justifyContent: 'flex-end' } },
+            React.createElement(Dash_1.AiButton, { pid: p.id, kinds: ['draft'], label: "AI \uCD08\uC548", preset: s.docs.filter(x => x.key === dkey).map(x => x.label)[0], small: true })),
         React.createElement(ui_1.PanelHead, { title: d.label, sub: `${s.no} ${s.name} · ${d.proc}`, onClose: props.onClose }),
         React.createElement("div", { style: { padding: 16, display: 'flex', flexDirection: 'column', gap: 14 } },
             React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 } },
@@ -510,6 +554,8 @@ function GatePanel(props) {
             React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 } },
                 React.createElement(ui_1.Dot, { s: g === 'approved' ? 'done' : g === 'requested' ? 'wait' : g === 'rejected' ? 'late' : 'open' }),
                 g === 'approved' ? `승인됨${la ? ` · ${la.who} ${(0, ax_1.fmt)(la.at)}` : ''}` : g === 'requested' ? `승인 대기${la ? ` · ${la.who} ${(0, ax_1.fmt)(la.at)} 요청` : ''}` : g === 'rejected' ? `반려됨 — ${la && la.note ? la.note : '사유 없음'}` : ready ? '승인 요청할 수 있어요' : !docsReady ? `산출물 ${s.docs.length - (0, work_1.stageDocsOk)(p, s)}개를 채우면 요청할 수 있어요` : '아래 승인 기준을 채우면 요청할 수 있어요'),
+            React.createElement("div", { style: { display: 'flex', justifyContent: 'flex-end' } },
+                React.createElement(Dash_1.AiButton, { pid: p.id, kinds: ['gate'], label: "AI \uAE30\uC900 \uC810\uAC80\u00B7\uC694\uCCAD \uAE00", small: true })),
             React.createElement("div", { "data-ax-gate-rule": true, style: { fontSize: 12.5, color: ui_1.C.sub } },
                 React.createElement("span", { style: Object.assign({}, ui_1.label) },
                     (0, devtype_1.typeInfo)((0, devtype_1.typeOf)(p)).tag,
@@ -755,8 +801,19 @@ function NewForm(props) {
                 f('target', '출시 목표일', 'date'),
                 React.createElement("button", { "data-ax-new-ok": true, disabled: !ok, onClick: () => t && props.onAdd(v.name.trim(), v.owner, v.approver, v.start, v.target, t, v.code, v.base || undefined), style: Object.assign(Object.assign({}, ui_1.primary), { opacity: ok ? 1 : 0.4 }) }, "\uB9CC\uB4E4\uAE30"),
                 React.createElement("button", { onClick: props.onCancel, style: ui_1.btn }, "\uCDE8\uC18C")),
+            v.target && React.createElement("div", { "data-ax-new-back": true, style: { fontSize: 12.5, color: ui_1.C.accent, marginTop: 10, fontWeight: 600 } },
+                (0, devtype_1.typeInfo)(t).tag,
+                " \uD45C\uC900 ",
+                (0, sched_1.stdTotal)(t),
+                "\uC77C \u2192 \uC2DC\uC791 ",
+                (0, sched_1.backPlan)(v.target, t).start,
+                " \u00B7 \uCD9C\uC2DC ",
+                v.target,
+                " \u00B7 \uCD9C\uC2DC \uD6C4 \uAD00\uB9AC ",
+                (0, sched_1.addDays)(v.target, 90),
+                "\uAE4C\uC9C0 (\uC2DC\uC791\uC77C \uCE78 \uB300\uC2E0 \uC774 \uB0A0\uC9DC\uB85C \uC7A1\uD600\uC694)"),
             React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint, marginTop: 10 } },
-                "\uCD9C\uC2DC \uBAA9\uD45C\uC77C\uC744 \uB123\uC73C\uBA74 \uB2E8\uACC4\uBCC4 \uACC4\uD68D \uC644\uB8CC\uC77C\uC774 \uC790\uB3D9\uC73C\uB85C \uB098\uB258\uC5B4\uC694.",
+                "\uCD9C\uC2DC \uBAA9\uD45C\uC77C\uC744 \uB123\uC73C\uBA74 \uAC1C\uBC1C \uC720\uD615\uBCC4 \uD45C\uC900 \uC77C\uC218\uB85C \uB2E8\uACC4 \uACC4\uD68D\uC77C\uC744 \uAC70\uAFB8\uB85C \uCC44\uC6CC\uC694.",
                 t === 'derive' ? ' 기반 품목의 BOM·도면·인증이 복사되고, 바뀐 부품만 설계 변경으로 Rev를 올려요.' : '')),
         !t && React.createElement("div", { style: { marginTop: 10 } },
             React.createElement("button", { onClick: props.onCancel, style: ui_1.btn }, "\uCDE8\uC18C"))));
@@ -2827,7 +2884,7 @@ const projLate = (p) => perf(p, curIdx(p)).late;
 exports.projLate = projLate;
 function todos(items, who, now = (0, ax_1.today)()) {
     const out = [];
-    const me = (n) => !!n && !!who && n.replace(/\s/g, '') === who.replace(/\s/g, '');
+    const me = (n) => who === '*' || (!!n && !!who && n.replace(/\s/g, '') === who.replace(/\s/g, '')); // 1.0.134 '*' = 팀 전체
     items.forEach(p => {
         const k = curIdx(p);
         const s = (0, devtype_1.stagesOf)(p)[k];
@@ -3415,6 +3472,7 @@ exports.VendorsView = VendorsView;
 exports.ItemVendors = ItemVendors;
 exports.VendorPanel = VendorPanel;
 const React = __importStar(require("react"));
+const Dash_1 = require("src/webparts/huromAxPlm/components/Dash.js");
 const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
 const item_1 = require("src/webparts/huromAxPlm/model/item.js");
 const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
@@ -3436,9 +3494,12 @@ function VendorsView(props) {
     const th = { padding: '10px 12px', fontSize: 12, fontWeight: 600, color: ui_1.C.faint, textAlign: 'left', whiteSpace: 'nowrap', borderBottom: `1px solid ${ui_1.C.line}` };
     const td = { padding: '11px 12px', borderBottom: `1px solid ${ui_1.C.line}`, whiteSpace: 'nowrap', fontSize: 13 };
     const r = g && g.rows[Math.min(row, g.rows.length - 1)];
+    const aiPid = r ? r.p.id : (props.items.filter(x => (x.vendors || []).length)[0] || props.items[0] || { id: '' }).id;
     return (React.createElement("div", { "data-ax-vendors": true, className: "axw-main" },
         React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { overflowX: 'auto', minWidth: 0 }) },
-            React.createElement("div", { style: { padding: '10px 14px', borderBottom: `1px solid ${ui_1.C.line}`, display: 'flex', gap: 10, alignItems: 'baseline' } },
+            React.createElement("div", { style: { padding: '10px 14px', borderBottom: `1px solid ${ui_1.C.line}`, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' } },
+                React.createElement("span", { style: { order: 9, marginLeft: 'auto' } },
+                    React.createElement(Dash_1.AiButton, { pid: aiPid, kinds: ['vendor', 'chase'], small: true })),
                 React.createElement("span", { style: { fontWeight: 700 } }, "\uD611\uB825\uC0AC"),
                 React.createElement("span", { style: { fontSize: 12.5, color: ui_1.C.faint } },
                     "\uC5C5\uCCB4 ",
@@ -3618,6 +3679,919 @@ function VendorPanel(props) {
 }
 
 };
+__m["src/webparts/huromAxPlm/components/Dash.js"]=function(module,exports,require){"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AiCtx = void 0;
+exports.AiButton = AiButton;
+exports.AiJobs = AiJobs;
+exports.AiResult = AiResult;
+exports.vendorWaits = vendorWaits;
+exports.Dashboard = Dashboard;
+exports.AiStatus = AiStatus;
+exports.AllSchedule = AllSchedule;
+exports.ProjectSchedule = ProjectSchedule;
+const React = __importStar(require("react"));
+const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
+const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
+const Gantt_1 = require("src/webparts/huromAxPlm/components/Gantt.js");
+const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
+exports.AiCtx = React.createContext(undefined);
+const fmtAt = (iso) => { if (!iso)
+    return ''; const t = new Date(iso); return `${t.getMonth() + 1}/${t.getDate()} ${('0' + t.getHours()).slice(-2)}:${('0' + t.getMinutes()).slice(-2)}`; };
+// 「AI에게 맡기기」 — 누르면 할 수 있는 일 목록, 고르면 확인 대기로 들어감
+function AiButton(props) {
+    const api = React.useContext(exports.AiCtx);
+    const [open, setOpen] = React.useState(false);
+    const [ask, setAsk] = React.useState(undefined);
+    const [text, setText] = React.useState('');
+    if (!api || !props.pid)
+        return null;
+    const list = ai_1.AI_KINDS.filter(k => !props.kinds || props.kinds.indexOf(k.id) >= 0);
+    const go = (k, input) => { api.run(props.pid, k, input); setOpen(false); setAsk(undefined); setText(''); };
+    const pick = (k) => { const info = (0, ai_1.kindInfo)(k); if (info.ask) {
+        setAsk(k);
+        setText(props.preset || '');
+    }
+    else
+        go(k); };
+    return (React.createElement("span", { style: { position: 'relative', display: 'inline-block' } },
+        React.createElement("button", { "data-ax-ai-btn": props.kinds ? props.kinds.join(',') : 'all', onClick: () => (list.length === 1 && !(0, ai_1.kindInfo)(list[0].id).ask ? go(list[0].id) : setOpen(!open)), style: Object.assign(Object.assign({}, ui_1.btn), { borderColor: ui_1.C.accent, color: ui_1.C.accent, padding: props.small ? '3px 9px' : ui_1.btn.padding, fontSize: props.small ? 12 : 13 }) },
+            "\u2726 ",
+            props.label || 'AI에게 맡기기',
+            api.online === false && React.createElement("span", { style: { marginLeft: 6, color: ui_1.C.faint, fontWeight: 500 } }, "(\uC5F0\uACB0 \uC804)")),
+        open && React.createElement("div", { "data-ax-ai-menu": true, style: Object.assign(Object.assign({}, ui_1.card), { position: 'absolute', right: 0, top: '110%', zIndex: 40, width: 300, maxWidth: '86vw', boxShadow: '0 12px 30px rgba(0,0,0,.14)', padding: 6 }) },
+            !ask && list.map((k, i) => React.createElement("div", { key: k.id },
+                (i === 0 || list[i - 1].group !== k.group) && React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { padding: '8px 8px 4px', fontSize: 11 }) }, k.group),
+                React.createElement("button", { "data-ax-ai-kind": k.id, onClick: () => pick(k.id), style: { display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'transparent', padding: '7px 8px', fontSize: 13, borderRadius: 6, cursor: 'pointer', color: ui_1.C.text } }, k.label))),
+            ask && React.createElement("div", { style: { padding: 6, display: 'flex', flexDirection: 'column', gap: 8 } },
+                React.createElement("div", { style: { fontSize: 13, fontWeight: 700 } }, (0, ai_1.kindInfo)(ask).label),
+                React.createElement("textarea", { "data-ax-ai-input": true, autoFocus: true, rows: ask === 'minutes' ? 6 : 2, placeholder: (0, ai_1.kindInfo)(ask).ask, value: text, onChange: e => setText(e.target.value), style: Object.assign(Object.assign({}, ui_1.inp), { resize: 'vertical' }) }),
+                React.createElement("div", { style: { display: 'flex', gap: 6 } },
+                    React.createElement("button", { "data-ax-ai-go": true, disabled: !text.trim(), onClick: () => go(ask, text.trim()), style: Object.assign(Object.assign({}, ui_1.primary), { flex: 1, opacity: text.trim() ? 1 : 0.4 }) }, "\uB9E1\uAE30\uAE30"),
+                    React.createElement("button", { onClick: () => setAsk(undefined), style: ui_1.btn }, "\uB4A4\uB85C"))),
+            React.createElement("div", { style: { fontSize: 11.5, color: ui_1.C.faint, padding: '6px 8px 4px', borderTop: `1px solid ${ui_1.C.line}`, marginTop: 4 } }, "\uACB0\uACFC\uB294 \u300C\uD655\uC778 \uB300\uAE30\u300D\uB85C \uB4E4\uC5B4\uC624\uACE0, \uBC18\uC601\uC744 \uB20C\uB7EC\uC57C \uB370\uC774\uD130\uC5D0 \uB4E4\uC5B4\uAC00\uC694."))));
+}
+const STATE_DOT = { running: 'soon', review: 'soon', applied: 'done', dismissed: 'lock', offline: 'lock', error: 'late' };
+function AiJobs(props) {
+    const api = React.useContext(exports.AiCtx);
+    const rows = [];
+    props.items.filter(p => !props.pid || p.id === props.pid).forEach(p => (p.aiJobs || []).forEach(j => rows.push({ p: p, j })));
+    rows.sort((a, b) => (a.j.at < b.j.at ? 1 : -1));
+    const live = rows.filter(r => ['running', 'review', 'offline', 'error'].indexOf((0, ai_1.jobState)(r.j)) >= 0);
+    const past = rows.filter(r => live.indexOf(r) < 0);
+    const show = live.concat(past.slice(0, 3)).slice(0, props.limit || 20);
+    return (React.createElement("div", { "data-ax-ai-jobs": true },
+        !show.length && React.createElement("div", { style: { padding: '18px 14px', fontSize: 13, color: ui_1.C.faint } },
+            "\uB9E1\uAE34 \uC77C\uC774 \uC5C6\uC5B4\uC694. \uD504\uB85C\uC81D\uD2B8\u00B7\uAD00\uBB38\u00B7\uC0B0\uCD9C\uBB3C\u00B7\uD488\uBAA9\u00B7\uD611\uB825\uC0AC \uD654\uBA74\uC758 \u300C\u2726 AI\uC5D0\uAC8C \uB9E1\uAE30\uAE30\u300D\uB85C \uB9E1\uACA8 \uBCF4\uC138\uC694.",
+            api && api.online === false ? ' (지금은 AI 연결 전이에요)' : ''),
+        show.map(({ p, j }) => {
+            const s = (0, ai_1.jobState)(j);
+            return (React.createElement("div", { key: j.id, className: "axw-row", "data-ax-ai-job": j.kind, "data-ax-ai-state": s, onClick: () => api && api.open(p.id, j.id), style: { opacity: s === 'applied' || s === 'dismissed' ? 0.55 : 1 } },
+                React.createElement(ui_1.Dot, { s: STATE_DOT[s] }),
+                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                    React.createElement("div", { style: { fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+                        j.label,
+                        j.input ? React.createElement("span", { style: { color: ui_1.C.faint, fontWeight: 500 } },
+                            " \u2014 ",
+                            j.input.slice(0, 40)) : null),
+                    React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint } },
+                        p.name,
+                        " \u00B7 ",
+                        fmtAt(j.at),
+                        " \uC2DC\uC791 \u00B7 ",
+                        j.who)),
+                React.createElement("span", { style: { fontSize: 12.5, fontWeight: 700, color: s === 'review' ? ui_1.C.soon : s === 'error' ? ui_1.C.late : s === 'running' ? ui_1.C.accent : ui_1.C.faint, whiteSpace: 'nowrap' } }, s === 'running' ? '진행 중…' : ai_1.AI_STATE_LABEL[s]),
+                React.createElement("button", { "data-ax-ai-see": true, onClick: e => { e.stopPropagation(); if (api)
+                        api.open(p.id, j.id); }, style: Object.assign(Object.assign({}, ui_1.btn), { padding: '3px 9px' }) }, "\uACB0\uACFC \uD655\uC778")));
+        })));
+}
+// 결과 확인 창 — 반영 / 버리기 / 다시
+function AiResult(props) {
+    const { job } = props;
+    const s = (0, ai_1.jobState)(job);
+    return (React.createElement("div", { "data-ax-ai-result": job.kind, "data-ax-ai-result-state": s, style: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.28)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }, onClick: props.onClose },
+        React.createElement("div", { onClick: e => e.stopPropagation(), style: Object.assign(Object.assign({}, ui_1.card), { width: 640, maxWidth: '100%', maxHeight: '86vh', display: 'flex', flexDirection: 'column' }) },
+            React.createElement(ui_1.PanelHead, { title: job.label, sub: `${props.p.name} · ${fmtAt(job.at)} · ${ai_1.AI_STATE_LABEL[s]}`, onClose: props.onClose }),
+            React.createElement("div", { style: { padding: 16, overflow: 'auto', flex: 1 } },
+                job.input && React.createElement("div", { style: { fontSize: 12.5, color: ui_1.C.sub, marginBottom: 10, whiteSpace: 'pre-wrap' } },
+                    React.createElement("span", { style: ui_1.label }, "\uC694\uCCAD "),
+                    job.input),
+                s === 'running' && React.createElement("div", { style: { fontSize: 13.5, color: ui_1.C.sub } }, "AI\uAC00 \uC791\uC5C5 \uC911\uC774\uC5D0\uC694. \uBCF4\uD1B5 10~40\uCD08 \uAC78\uB824\uC694. \uCC3D\uC744 \uB2EB\uC544\uB3C4 \uACC4\uC18D\uB3FC\uC694."),
+                s === 'offline' && React.createElement("div", { "data-ax-ai-offline": true, style: { fontSize: 13.5, color: ui_1.C.sub } },
+                    React.createElement("b", null, "AI \uC5F0\uACB0 \uC804"),
+                    " \u2014 AI \uC911\uACC4\uC5D0 \uC5F0\uACB0\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694. \uACB0\uACFC\uB97C \uB9CC\uB4E4\uC9C0 \uC54A\uC558\uC5B4\uC694. \uC5F0\uACB0\uB418\uBA74 \u300C\uB2E4\uC2DC\u300D\uB97C \uB20C\uB7EC \uC8FC\uC138\uC694."),
+                s === 'error' && React.createElement("div", { style: { fontSize: 13.5, color: ui_1.C.late } }, job.note || '중간에 끊겼어요. 다시 맡겨 주세요.'),
+                job.result && React.createElement("div", { "data-ax-ai-text": true, style: { fontSize: 13.5, lineHeight: 1.6, whiteSpace: 'pre-wrap', background: ui_1.C.bg, border: `1px solid ${ui_1.C.line}`, borderRadius: 8, padding: 12 } }, job.result),
+                s === 'applied' && React.createElement("div", { style: { fontSize: 12.5, color: ui_1.C.ok, marginTop: 8 } },
+                    job.by,
+                    "\uB2D8\uC774 \uBC18\uC601\uD588\uC5B4\uC694.")),
+            React.createElement("div", { style: { display: 'flex', gap: 8, padding: 12, borderTop: `1px solid ${ui_1.C.line}`, flexWrap: 'wrap', alignItems: 'center' } },
+                s === 'review' && React.createElement("button", { "data-ax-ai-apply": true, onClick: props.onApply, style: ui_1.primary }, "\uBC18\uC601"),
+                s === 'review' && React.createElement("button", { "data-ax-ai-dismiss": true, onClick: props.onDismiss, style: ui_1.btn }, "\uBC84\uB9AC\uAE30"),
+                (s === 'offline' || s === 'error' || s === 'dismissed') && React.createElement("button", { "data-ax-ai-retry": true, onClick: props.onRetry, style: ui_1.primary }, "\uB2E4\uC2DC"),
+                s === 'review' && job.result && React.createElement("button", { onClick: () => { try {
+                        navigator.clipboard.writeText(job.result || '');
+                    }
+                    catch (e) { /* 복사 못 함 */ } }, style: ui_1.btn }, "\uBCF5\uC0AC"),
+                React.createElement("span", { style: { fontSize: 12, color: ui_1.C.faint, flex: 1, minWidth: 160 } }, s === 'review' ? (ai_1.APPLY_NOTE[job.kind] || '프로젝트 기록에 남아요') + ' · AI가 직접 고치지 않아요' : '')))));
+}
+// ───────── 일정 줄 만들기
+function stageSegs(p, onOpen, short) {
+    return (0, work_1.stagesOf)(p).map((s, k) => {
+        const sp = (0, sched_1.planSpan)(p, k);
+        if (!sp)
+            return undefined;
+        const st = (0, sched_1.stageState)(p, k);
+        return { span: sp, state: st, label: short ? s.no : `${s.no} ${s.short || s.name}`, title: `${s.no} ${s.name} · ${sp.a} ~ ${sp.b} · ${Gantt_1.BAR[st].label}`, onClick: onOpen ? () => onOpen(k) : undefined };
+    })
+        .filter(x => !!x);
+}
+function laneRows(p, depth, onOpen) {
+    return sched_1.LANES.map((l, i) => {
+        const cs = (0, sched_1.laneCells)(p, i);
+        const late = cs.filter(c => c.state === 'late').length;
+        const done = cs.reduce((a, c) => a + c.done, 0);
+        const tot = cs.reduce((a, c) => a + c.total, 0);
+        return { id: `${p.id}-lane${i}`, label: l, depth, sub: tot ? `${done}/${tot}` : '—', state: late ? 'late' : undefined, data: { 'data-ax-lane': String(i) },
+            segs: cs.map(c => ({ span: c.span, state: c.state, label: `${(0, work_1.stagesOf)(p)[c.k].no} ${c.done}/${c.total}`, title: `${l} · ${(0, work_1.stagesOf)(p)[c.k].no} ${(0, work_1.stagesOf)(p)[c.k].name} · 산출물 ${c.done}/${c.total} · ${Gantt_1.BAR[c.state].label}`, onClick: () => onOpen(c.k, c.keys.filter(x => !(p.docs[x] || {}).done && !(p.docs[x] || {}).skip)[0]) })) };
+    });
+}
+function vendorWaits(items, who, now = (0, ax_1.today)()) {
+    const out = [];
+    const all = who === '*';
+    items.forEach(p0 => {
+        const p = p0;
+        if (!all && (p.owner || '').replace(/\s/g, '') !== who.replace(/\s/g, ''))
+            return;
+        (p.vendors || []).forEach(v => {
+            const last = v.samples.slice(-1)[0];
+            if (last && last.result !== '합격')
+                out.push({ pid: p.id, project: p.name, vendor: v.name, text: `${last.round} 샘플 ${last.result} — 보완품 회신 대기` });
+            if (!last && ['odm', 'sourcing'].indexOf((0, devtype_1.typeOf)(p)) >= 0 && (0, work_1.curIdx)(p) >= 2)
+                out.push({ pid: p.id, project: p.name, vendor: v.name, text: '샘플 회신 대기' });
+            v.aprvs.filter(a => a.status === '제출').forEach(a => out.push({ pid: p.id, project: p.name, vendor: v.name, text: `승인원 「${a.title}」 검토 대기` }));
+            (v.vcerts || []).forEach(c => {
+                if (!c.until)
+                    return;
+                const d = Math.round((new Date(c.until + 'T00:00:00').getTime() - new Date(now + 'T00:00:00').getTime()) / 86400000);
+                if (d <= 60)
+                    out.push({ pid: p.id, project: p.name, vendor: v.name, text: `업체 인증서 ${c.name} ${d < 0 ? '만료' : '만료 임박'} — 새 인증서 요청`, left: d });
+            });
+        });
+    });
+    return out;
+}
+// ───────── 메인 대시보드
+function Dashboard(props) {
+    const { items, who } = props;
+    const [sel, setSel] = React.useState('all');
+    const [scale, setScale] = React.useState('month');
+    const [openIds, setOpenIds] = React.useState(() => (items[0] ? { [items[0].id]: true } : {}));
+    const [whose, setWhose] = React.useState('me');
+    const p1 = items.filter(x => x.id === sel)[0];
+    const rows = [];
+    const add = (p, group) => {
+        const op = !group || !!openIds[p.id];
+        const lt = (0, sched_1.lateDays)(p);
+        rows.push({ id: p.id, label: group ? p.name : '단계', strong: true, toggle: group, open: op, sub: lt ? `${lt}일 지연` : `${(0, work_1.stagesOf)(p)[(0, work_1.curIdx)(p)].no} 진행`, state: lt ? 'late' : undefined, data: { 'data-ax-dash-proj': p.id },
+            onLabel: group ? () => setOpenIds(Object.assign(Object.assign({}, openIds), { [p.id]: !openIds[p.id] })) : undefined, segs: stageSegs(p, k => props.onOpen(p.id, k), group), gems: (0, sched_1.gems)(p) });
+        if (op)
+            laneRows(p, group ? 1 : 0, (k, key) => props.onOpen(p.id, k, key)).forEach(r => rows.push(r));
+    };
+    if (p1)
+        add(p1, false);
+    else
+        items.forEach(p => add(p, true));
+    const meWho = whose === 'all' ? '*' : who;
+    const list = (0, work_1.todos)(items, meWho).filter(t => t.kind === '승인' || t.left === undefined || t.left <= 14);
+    const vw = vendorWaits(items, meWho);
+    const late = list.filter(t => t.left !== undefined && t.left < 0).length;
+    const live = items.reduce((a, p) => a + (p.aiJobs || []).filter(j => ['running', 'review'].indexOf((0, ai_1.jobState)(j)) >= 0).length, 0);
+    const lateP = items.filter(p => (0, sched_1.lateDays)(p) > 0);
+    const head = lateP.length ? `${lateP.length}개 프로젝트가 늦어지고 있어요 — ${lateP.map(p => `${p.name.split(' (')[0]} ${(0, sched_1.lateDays)(p)}일`).join(', ')}` : '모든 프로젝트가 계획대로예요';
+    return (React.createElement("div", { "data-ax-dash": true },
+        React.createElement("div", { style: { display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: 12 } },
+            React.createElement("div", { style: { flex: 1, minWidth: 220 } },
+                React.createElement("h1", { "data-ax-dash-head": true, style: { fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: '-.01em' } }, "\uBA54\uC778 \uB300\uC2DC\uBCF4\uB4DC"),
+                React.createElement("div", { style: { fontSize: 13, color: lateP.length ? ui_1.C.late : ui_1.C.sub, marginTop: 4, fontWeight: lateP.length ? 600 : 500 } }, head)),
+            React.createElement(AiButton, { pid: p1 ? p1.id : items[0] && items[0].id, kinds: ['weekly', 'minutes', 'similar', 'delay'], label: p1 ? 'AI에게 맡기기' : `AI에게 맡기기 (${items[0] ? items[0].name.split(' (')[0] : ''})` })),
+        React.createElement("div", { style: Object.assign({}, ui_1.card) },
+            React.createElement("div", { style: { display: 'flex', gap: 8, padding: '10px 12px', alignItems: 'center', flexWrap: 'wrap' } },
+                React.createElement("div", { "data-ax-dash-pick": true, style: { display: 'flex', gap: 4, flexWrap: 'nowrap', overflowX: 'auto', flex: '1 1 260px', minWidth: 0 } }, [{ id: 'all', name: '전체' }].concat(items).map(x => React.createElement("button", { key: x.id, "data-ax-dash-sel": x.id, onClick: () => setSel(x.id), style: Object.assign(Object.assign({}, ui_1.btn), { padding: '4px 10px', background: sel === x.id ? ui_1.C.text : ui_1.C.card, color: sel === x.id ? '#fff' : ui_1.C.sub, borderColor: sel === x.id ? ui_1.C.text : ui_1.C.line2 }) }, x.id === 'all' ? '전체' : x.name.split(' (')[0]))),
+                React.createElement(Gantt_1.ScalePick, { v: scale, set: setScale })),
+            React.createElement("div", { style: { padding: '0 12px 10px' } },
+                React.createElement(Gantt_1.Legend, null)),
+            React.createElement(Gantt_1.Gantt, { name: "dash", rows: rows, scale: scale, labelW: 190 })),
+        React.createElement("div", { className: "axw-dash2", style: { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 16, marginTop: 16 } },
+            React.createElement("div", { "data-ax-now": true, style: Object.assign({}, ui_1.card) },
+                React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', borderBottom: `1px solid ${ui_1.C.line}` } },
+                    React.createElement("b", { style: { fontSize: 15 } }, "\uC9C0\uAE08 \uD574\uC57C \uD560 \uAC83"),
+                    React.createElement("span", { style: { fontSize: 12.5, color: late ? ui_1.C.late : ui_1.C.faint, fontWeight: 600 } },
+                        list.length + vw.length,
+                        "\uAC74",
+                        late ? ` · 지연 ${late}` : ''),
+                    React.createElement("span", { style: { flex: 1 } }),
+                    React.createElement("span", { style: { display: 'inline-flex', border: `1px solid ${ui_1.C.line2}`, borderRadius: 6, overflow: 'hidden' } }, ['me', 'all'].map(w => React.createElement("button", { key: w, "data-ax-now-whose": w, onClick: () => setWhose(w), style: Object.assign(Object.assign({}, ui_1.btn), { border: 'none', borderRadius: 0, padding: '3px 9px', fontSize: 12, background: whose === w ? ui_1.C.text : ui_1.C.card, color: whose === w ? '#fff' : ui_1.C.sub }) }, w === 'me' ? '내 담당' : '전체')))),
+                !list.length && !vw.length && React.createElement("div", { style: { padding: '18px 14px', fontSize: 13, color: ui_1.C.faint } },
+                    "2\uC8FC \uC548\uC5D0 \uB9C8\uAC10\uB418\uB294 \uAC83\uC774 \uC5C6\uC5B4\uC694.",
+                    whose === 'me' ? ' 「전체」로 팀 전체를 볼 수 있어요.' : ''),
+                list.map((t, i) => React.createElement("div", { key: 't' + i, className: "axw-row", "data-ax-now-row": t.kind, onClick: () => props.onOpen(t.pid, t.stage, t.key || (t.kind === '승인' ? 'gate' : undefined)) },
+                    React.createElement(ui_1.Dot, { s: t.left !== undefined && t.left < 0 ? 'late' : t.kind === '승인' || (t.left !== undefined && t.left <= 7) ? 'soon' : 'open' }),
+                    React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+                            t.kind === '승인' ? '관문 승인 대기 — ' : '',
+                            t.text),
+                        React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint } },
+                            t.project.split(' (')[0],
+                            " \u00B7 ",
+                            (0, work_1.stagesOf)(items.filter(x => x.id === t.pid)[0])[t.stage].no,
+                            " ",
+                            t.kind)),
+                    React.createElement("span", { style: { fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', color: t.left !== undefined && t.left < 0 ? ui_1.C.late : t.left !== undefined && t.left <= 7 ? ui_1.C.soon : ui_1.C.sub } }, t.left === undefined ? '' : t.left < 0 ? `${-t.left}일 지연` : t.left === 0 ? '오늘' : `D-${t.left}`))),
+                vw.map((v, i) => React.createElement("div", { key: 'v' + i, className: "axw-row", "data-ax-now-row": "\uD611\uB825\uC0AC", onClick: () => props.onVendor(v.pid) },
+                    React.createElement(ui_1.Dot, { s: v.left !== undefined && v.left < 0 ? 'late' : 'soon' }),
+                    React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+                            v.vendor,
+                            " \u2014 ",
+                            v.text),
+                        React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint } },
+                            v.project.split(' (')[0],
+                            " \u00B7 \uD611\uB825\uC0AC \uD68C\uC2E0")),
+                    React.createElement(AiButton, { pid: v.pid, kinds: ['chase'], label: "\uB3C5\uCD09 \uBA54\uC77C", small: true })))),
+            React.createElement("div", { "data-ax-ai-now": true, style: Object.assign({}, ui_1.card) },
+                React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', borderBottom: `1px solid ${ui_1.C.line}` } },
+                    React.createElement("b", { style: { fontSize: 15 } }, "AI\uAC00 \uC9C4\uD589 \uC911\uC778 \uAC83"),
+                    React.createElement("span", { style: { fontSize: 12.5, color: ui_1.C.faint, fontWeight: 600 } },
+                        live,
+                        "\uAC74"),
+                    React.createElement("span", { style: { flex: 1 } }),
+                    React.createElement(AiStatus, null)),
+                React.createElement(AiJobs, { items: items })))));
+}
+function AiStatus() {
+    const api = React.useContext(exports.AiCtx);
+    const on = api && api.online;
+    return React.createElement("span", { "data-ax-ai-online": on === undefined ? 'checking' : on ? 'on' : 'off', style: { fontSize: 12, color: on ? ui_1.C.ok : ui_1.C.faint, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 } },
+        React.createElement(ui_1.Dot, { s: on ? 'done' : 'lock', size: 7 }),
+        on === undefined ? '연결 확인 중' : on ? 'AI 연결됨' : 'AI 연결 전');
+}
+// ───────── 전체 일정 — 프로젝트마다 한 줄
+function AllSchedule(props) {
+    const [scale, setScale] = React.useState('quarter');
+    const rows = props.items.map(p => {
+        const lt = (0, sched_1.lateDays)(p);
+        const ck = (0, work_1.curIdx)(p);
+        const r = (0, sched_1.projRange)(p);
+        return { id: p.id, label: p.name.split(' (')[0], sub: lt ? `${lt}일 지연` : ui_1.SHORT[ck], state: lt ? 'late' : undefined, data: { 'data-ax-all-proj': p.id }, onLabel: () => props.onOpen(p.id),
+            segs: stageSegs(p, k => props.onOpen(p.id, k), true), gems: (0, sched_1.gems)(p),
+            flag: r && p.target ? { date: p.target, label: `출시 ${(0, ui_1.md)(p.target)}` } : undefined };
+    });
+    return (React.createElement("div", { "data-ax-allsched": true },
+        React.createElement("div", { style: { display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: 12 } },
+            React.createElement("div", { style: { flex: 1, minWidth: 200 } },
+                React.createElement("h1", { style: { fontSize: 20, fontWeight: 700, margin: 0 } }, "\uC804\uCCB4 \uC77C\uC815"),
+                React.createElement("div", { style: { fontSize: 13, color: ui_1.C.sub, marginTop: 4 } },
+                    "\uD504\uB85C\uC81D\uD2B8 ",
+                    props.items.length,
+                    "\uAC1C \u00B7 \uB9C9\uB300\uB97C \uB204\uB974\uBA74 \uADF8 \uB2E8\uACC4\uB85C \uAC00\uC694")),
+            React.createElement(Gantt_1.ScalePick, { v: scale, set: setScale })),
+        React.createElement("div", { style: Object.assign({}, ui_1.card) },
+            React.createElement("div", { style: { padding: '10px 12px' } },
+                React.createElement(Gantt_1.Legend, null)),
+            React.createElement(Gantt_1.Gantt, { name: "all", rows: rows, scale: scale, labelW: 170 })),
+        React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { marginTop: 16, overflowX: 'auto' }) },
+            React.createElement("table", { "data-ax-allsched-table": true, style: { width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 520 } },
+                React.createElement("thead", null,
+                    React.createElement("tr", { style: { textAlign: 'left', color: ui_1.C.faint, fontSize: 12 } }, ['프로젝트', '현재 단계', '지연', '출시 목표', '남은 날'].map(h => React.createElement("th", { key: h, style: { padding: '10px 12px', borderBottom: `1px solid ${ui_1.C.line}`, fontWeight: 600 } }, h)))),
+                React.createElement("tbody", null, props.items.map(p => {
+                    const lt = (0, sched_1.lateDays)(p);
+                    const ck = (0, work_1.curIdx)(p);
+                    const s = (0, work_1.stagesOf)(p)[ck];
+                    return React.createElement("tr", { key: p.id, "data-ax-allsched-row": p.id, onClick: () => props.onOpen(p.id), style: { cursor: 'pointer' } },
+                        React.createElement("td", { style: { padding: '10px 12px', borderTop: `1px solid ${ui_1.C.line}`, fontWeight: 600 } },
+                            React.createElement(ui_1.TypeTag, { p: p }),
+                            p.name),
+                        React.createElement("td", { style: { padding: '10px 12px', borderTop: `1px solid ${ui_1.C.line}` } },
+                            s.no,
+                            " ",
+                            s.name),
+                        React.createElement("td", { style: { padding: '10px 12px', borderTop: `1px solid ${ui_1.C.line}`, color: lt ? ui_1.C.late : ui_1.C.faint, fontWeight: lt ? 700 : 500 } }, lt ? `${lt}일` : '—'),
+                        React.createElement("td", { style: { padding: '10px 12px', borderTop: `1px solid ${ui_1.C.line}` } }, (0, ui_1.md)(p.target)),
+                        React.createElement("td", { style: { padding: '10px 12px', borderTop: `1px solid ${ui_1.C.line}`, color: ui_1.C.sub } }, (0, ax_1.dday)(p.target)));
+                }))))));
+}
+// ───────── 프로젝트 일정표 — 단계 줄 + 산출물 줄, 단계 막대 끌어서 계획 바꾸기
+function ProjectSchedule(props) {
+    const { p } = props;
+    const [scale, setScale] = React.useState('month');
+    const [docs, setDocs] = React.useState(true);
+    const rows = [];
+    const gm = (0, sched_1.gems)(p);
+    (0, work_1.stagesOf)(p).forEach((s, k) => {
+        const st = (0, sched_1.stageState)(p, k);
+        const sp = (0, sched_1.planSpan)(p, k);
+        rows.push({ id: `st-${s.id}`, label: `${s.no} ${s.name}`, strong: true, plan: sp, actual: (0, sched_1.actualSpan)(p, k), state: st, sub: st === 'late' ? '지연' : Gantt_1.BAR[st].label, gems: gm.filter(g => g.k === k), data: { 'data-ax-gs-stage': s.id },
+            onLabel: () => props.onOpen(k),
+            drag: sp ? (n) => props.update(x => (Object.assign(Object.assign({}, x), { plan: (0, sched_1.shiftFrom)(x, k, n), log: x.log.concat([{ at: new Date().toISOString(), who: props.who, kind: 'edit', what: `일정표에서 ${s.no} ${s.name} 계획 ${n > 0 ? '+' : ''}${n}일 — 뒤 단계 같이 밈` }]) }))) : undefined });
+        if (docs)
+            s.docs.forEach(d => {
+                const ds = (0, sched_1.docSpan)(p, k, d.key);
+                const st2 = p.docs[d.key] || {};
+                rows.push({ id: `doc-${d.key}`, label: d.label, depth: 1, plan: ds.plan, actual: ds.actual, state: ds.state, sub: st2.skip ? '필요 없음' : ds.state === 'done' ? '완료' : st2.due ? (0, ui_1.md)(st2.due) : '', data: { 'data-ax-gs-doc': d.key }, onLabel: () => props.onOpen(k, d.key) });
+            });
+    });
+    const noPlan = !Object.keys(p.plan || {}).length;
+    const refill = () => { if (!p.target)
+        return; const b = (0, sched_1.backPlan)(p.target, (0, devtype_1.typeOf)(p)); props.update(x => (Object.assign(Object.assign({}, x), { start: b.start, plan: b.plan, log: x.log.concat([{ at: new Date().toISOString(), who: props.who, kind: 'edit', what: `출시 목표 ${p.target} 기준으로 표준 일정 다시 채움 (시작 ${b.start})` }]) }))); };
+    return (React.createElement("div", { "data-ax-psched": true, style: Object.assign(Object.assign({}, ui_1.card), { marginTop: 16 }) },
+        React.createElement("div", { style: { display: 'flex', gap: 8, padding: '10px 12px', alignItems: 'center', flexWrap: 'wrap' } },
+            React.createElement("b", { style: { fontSize: 14 } }, "\uC77C\uC815\uD45C"),
+            React.createElement("span", { style: { fontSize: 12, color: ui_1.C.faint } }, "\uB2E8\uACC4 \uB9C9\uB300\uB97C \uC88C\uC6B0\uB85C \uB04C\uBA74 \uACC4\uD68D\uC774 \uBC14\uB00C\uACE0 \uB4A4 \uB2E8\uACC4\uAC00 \uAC19\uC774 \uBC00\uB824\uC694"),
+            React.createElement("span", { style: { flex: 1 } }),
+            React.createElement("label", { style: { fontSize: 12.5, color: ui_1.C.sub, display: 'inline-flex', gap: 5, alignItems: 'center' } },
+                React.createElement("input", { "data-ax-gs-docs": true, type: "checkbox", checked: docs, onChange: () => setDocs(!docs) }),
+                "\uC0B0\uCD9C\uBB3C"),
+            React.createElement("button", { "data-ax-gs-refill": true, disabled: !p.target, title: p.target ? '' : '설정에서 출시 목표일을 넣어 주세요', onClick: refill, style: Object.assign(Object.assign({}, ui_1.btn), { opacity: p.target ? 1 : 0.4 }) }, "\uCD9C\uC2DC \uBAA9\uD45C\uB85C \uB2E4\uC2DC \uCC44\uC6B0\uAE30"),
+            React.createElement(AiButton, { pid: p.id, kinds: ['delay', 'replan'], label: "AI \uC77C\uC815 \uC810\uAC80" }),
+            React.createElement(Gantt_1.ScalePick, { v: scale, set: setScale })),
+        React.createElement("div", { style: { padding: '0 12px 10px' } },
+            React.createElement(Gantt_1.Legend, null)),
+        noPlan ? React.createElement("div", { style: { padding: 24, fontSize: 13, color: ui_1.C.faint, borderTop: `1px solid ${ui_1.C.line}` } }, "\uACC4\uD68D\uC77C\uC774 \uC5C6\uC5B4\uC694. \u300C\uCD9C\uC2DC \uBAA9\uD45C\uB85C \uB2E4\uC2DC \uCC44\uC6B0\uAE30\u300D\uB97C \uB204\uB974\uAC70\uB098 \uC124\uC815\uC5D0\uC11C \uB0A0\uC9DC\uB97C \uB123\uC5B4 \uC8FC\uC138\uC694.")
+            : React.createElement(Gantt_1.Gantt, { name: "project", rows: rows, scale: scale, labelW: 210 })));
+}
+
+};
+__m["src/webparts/huromAxPlm/model/ai.js"]=function(module,exports,require){"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.APPLY_NOTE = exports.SYSTEM = exports.jobState = exports.AI_STATE_LABEL = exports.kindInfo = exports.AI_KINDS = void 0;
+exports.aiOnline = aiOnline;
+exports.askAi = askAi;
+exports.buildAsk = buildAsk;
+exports.applyJob = applyJob;
+// AX-PLM 1.0.134 — 「AI에게 맡기기」 (심준보 2026-11-18 #ax-plm msg 10483498 'ai가 할꺼 할 수 있는 거 다 반영', 곽두팔 msg 10483554 4·5번)
+// 연결: E-HR 휴글과 같은 중계 (곽두팔 PC의 relay.py → Claude). 주소는 hurom-ehr 저장소 relay.json 에서 읽음
+// 규칙: AI 결과는 「확인 대기」로만 들어오고 사람이 「반영」을 눌러야 데이터가 바뀜. 연결이 안 되면 결과를 만들지 않고 「AI 연결 전」
+const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+const item_1 = require("src/webparts/huromAxPlm/model/item.js");
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
+const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
+exports.AI_KINDS = [
+    { id: 'delay', label: '지연 예측·뒤 단계 영향', group: '일정' },
+    { id: 'replan', label: '다시 짠 계획 제안', group: '일정' },
+    { id: 'draft', label: '산출물 초안', group: '산출물', ask: '어떤 산출물 초안? (예: 요구 사양서, 시사출 결과 보고서, 검토서 요약)' },
+    { id: 'gate', label: '관문 승인 기준 점검·요청 글 초안', group: '관문' },
+    { id: 'ecr', label: '설계 변경 영향 부품·도면 찾기', group: '설계 변경' },
+    { id: 'bomdiff', label: '파생 모델 BOM 차이', group: '설계 변경' },
+    { id: 'oldrev', label: '업체에 옛 판 나간 도면 찾기', group: '도면' },
+    { id: 'vendor', label: '샘플·인증서 만료 점검', group: '협력사' },
+    { id: 'chase', label: '회신 독촉 메일 초안', group: '협력사' },
+    { id: 'certlist', label: '나라별 필요 인증 목록', group: '인증', ask: '어느 나라에 팔아요? (예: 한국, 유럽, 미국, 독일)' },
+    { id: 'minutes', label: '회의록 → 이슈·할 일 등록', group: '회의·보고', ask: '회의록을 붙여 넣어 주세요' },
+    { id: 'weekly', label: '주간 보고 작성', group: '회의·보고' },
+    { id: 'similar', label: '비슷한 과거 이슈 찾기', group: '회의·보고', ask: '어떤 문제와 비슷한 걸 찾을까요?' },
+];
+const kindInfo = (k) => exports.AI_KINDS.filter(x => x.id === k)[0];
+exports.kindInfo = kindInfo;
+exports.AI_STATE_LABEL = { running: '진행 중', review: '확인 대기', applied: '반영됨', dismissed: '버림', offline: 'AI 연결 전', error: '실패' };
+// 페이지를 닫아 '진행 중'으로 남은 것은 3분 지나면 중단으로 봄
+const jobState = (j) => (j.state === 'running' && Date.now() - new Date(j.at).getTime() > 180000 ? 'error' : j.state);
+exports.jobState = jobState;
+// ───────── 중계 연결
+const RELAY_JSON = 'https://simjb23-oss.github.io/hurom-ehr/relay.json';
+const RELAY_KEY = 'hurom-b7f25d'; // E-HR ai.js 와 같은 중계 열쇠 (중계는 분당 20회 제한)
+let relayUrl;
+async function relay() {
+    if (relayUrl)
+        return relayUrl;
+    const r = await fetch(RELAY_JSON + '?' + Date.now(), { cache: 'no-store' });
+    if (!r.ok)
+        throw new Error('offline');
+    const j = await r.json();
+    if (!j || !j.url)
+        throw new Error('offline');
+    relayUrl = String(j.url).replace(/\/$/, '');
+    return relayUrl;
+}
+async function aiOnline() {
+    try {
+        const u = await relay();
+        const r = await fetch(u, { method: 'GET' });
+        return r.ok;
+    }
+    catch (e) {
+        relayUrl = undefined;
+        return false;
+    }
+}
+async function askAi(system, user) {
+    let u;
+    try {
+        u = await relay();
+    }
+    catch (e) {
+        throw new Error('offline');
+    }
+    const ac = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
+    const tm = setTimeout(() => ac && ac.abort(), 110000);
+    try {
+        const r = await fetch(u + '/v1/messages', { method: 'POST', signal: ac && ac.signal,
+            headers: { 'content-type': 'application/json', 'x-api-key': RELAY_KEY, 'anthropic-version': '2023-06-01' },
+            body: JSON.stringify({ model: 'claude-haiku-5-5', max_tokens: 1500, system, messages: [{ role: 'user', content: user }] }) });
+        if (!r.ok) {
+            relayUrl = undefined;
+            throw new Error(r.status === 429 ? '잠시 뒤에 다시 (분당 20회)' : 'offline');
+        }
+        const j = await r.json();
+        const t = ((j && j.content) || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+        if (!t)
+            throw new Error('빈 답');
+        return t;
+    }
+    catch (e) {
+        const m = String((e && e.message) || e);
+        if (m.indexOf('잠시') === 0 || m === '빈 답')
+            throw e;
+        relayUrl = undefined;
+        throw new Error('offline');
+    }
+    finally {
+        clearTimeout(tm);
+    }
+}
+// ───────── 프롬프트 — 화면에 있는 사실만 넘기고, 없는 건 지어내지 말라고 함
+const ST_KO = { done: '완료', doing: '진행 중', late: '지연', wait: '대기' };
+const SYS = '너는 휴롬 AX팀 PLM(AX-PLM)의 업무 도우미다. 아래 「프로젝트 데이터」에 있는 사실만 근거로 한국어로 짧고 바로 쓸 수 있게 답한다. 데이터에 없는 숫자·날짜·업체명은 지어내지 말고 「확인 필요」라고 적는다. 머리말·인사 없이 본문만. 목록은 "- "로 시작한다.';
+function facts(p, now) {
+    const ss = (0, work_1.stagesOf)(p);
+    const ck = (0, work_1.curIdx)(p);
+    const st = ss.map((s, k) => {
+        const sp = (0, sched_1.planSpan)(p, k);
+        const left = s.docs.filter(d => !(0, work_1.docOk)(p.docs[d.key])).map(d => `${d.label}${(p.docs[d.key] || {}).due ? `(마감 ${(p.docs[d.key] || {}).due})` : ''}`);
+        return `${s.no} ${s.name}${s.gate ? ` [관문 ${s.gate}]` : ''}: 계획 ${sp ? sp.a + '~' + sp.b : '없음'}, 실제 끝 ${(p.actual || {})[s.id] || '-'}, 상태 ${ST_KO[(0, sched_1.stageState)(p, k, now)]}${left.length ? `, 남은 산출물 ${left.join(', ')}` : ''}`;
+    });
+    const lines = [`프로젝트 ${p.name} (품번 ${p.itemCode || '-'}, 개발 유형 ${(0, devtype_1.typeInfo)((0, devtype_1.typeOf)(p)).label}, PM ${p.owner || '-'}, 승인자 ${p.approver || '-'})`,
+        `오늘 ${now}, 출시 목표 ${p.target || '-'}, 지금 단계 ${ss[ck].no} ${ss[ck].name}, 지연 ${(0, sched_1.lateDays)(p, now)}일`, '단계:', ...st];
+    const iss = (p.issues || []).filter(i => !i.done);
+    if (iss.length)
+        lines.push('열린 이슈·리스크: ' + iss.map(i => `${i.kind} ${i.text}(담당 ${i.owner || '-'}, 기한 ${i.due || '-'})`).join(' / '));
+    return lines.join('\n');
+}
+function itemFacts(p, now) {
+    const out = [];
+    if ((p.parts || []).length)
+        out.push('BOM: ' + (0, item_1.bomTree)(p.parts || []).map(x => `${'  '.repeat(x.depth)}${x.part.no} ${x.part.name} Rev${x.part.rev}${x.part.baseRev ? ` (기반 Rev${x.part.baseRev})` : ''}${x.part.material ? ' ' + x.part.material : ''}${x.part.supplier ? ' / ' + x.part.supplier : ''}`).join('\n'));
+    if ((p.docs2 || []).length)
+        out.push('도면·문서: ' + (p.docs2 || []).map(d => `${d.title}${d.part ? `(${d.part})` : ''} 현재 Rev${d.rev}`).join(', '));
+    if ((p.releases || []).length)
+        out.push('업체 배포 기록: ' + (p.releases || []).map(r => `${r.doc} Rev${r.rev} → ${r.vendor} (${r.at.slice(0, 10)})`).join(', '));
+    if ((p.ecrs || []).length)
+        out.push('설계 변경: ' + (p.ecrs || []).map(e => `${e.no} ${e.title} [${e.status}] 부품 ${e.parts.join(',')}${e.eco ? ' ' + e.eco : ''}`).join(' / '));
+    if ((p.certs || []).length)
+        out.push('인증: ' + (p.certs || []).map(c => `${c.name} ${c.status}${c.until ? ' ~' + c.until : ''}(${(0, item_1.certState)(c, now)})`).join(', '));
+    if ((p.vendors || []).length)
+        out.push('협력사: ' + (p.vendors || []).map(v => `${v.name}(${v.role}${v.contact ? ', ' + v.contact : ''}) 샘플 ${v.samples.map(s => `${s.round} ${s.result} ${s.at.slice(0, 10)}`).join('·') || '없음'}, 승인원 ${v.aprvs.map(a => `${a.title} Rev${a.rev} ${a.status}`).join('·') || '없음'}, 업체 인증서 ${(v.vcerts || []).map(c => `${c.name}${c.until ? ' ~' + c.until : ''}`).join('·') || '없음'}`).join(' / '));
+    return out.join('\n');
+}
+const ASK = {
+    delay: '지금 진행 속도와 남은 산출물을 보고 ① 어느 단계가 며칠 늦어질지 예측 ② 그게 뒤 단계·관문·출시 목표에 주는 영향을 정리해라. 근거가 된 줄을 같이 적어라.',
+    replan: '지연을 반영해 단계별 새 계획 끝 날짜(YYYY-MM-DD)를 제안해라. 형식: "- ① 컨셉·기획: 2026-12-01 (이유)". 출시 목표를 지킬 수 있는지와 줄일 수 있는 단계를 마지막에 한 줄.',
+    draft: '아래 요청한 산출물의 초안을 써라. 제목·목적·항목별 내용(표 대신 목록)·확인 필요한 것 순서. 데이터에 없는 수치는 「확인 필요」.',
+    gate: '지금 단계 관문의 승인 기준을 남은 산출물과 비교해 충족/미충족을 "- [충족] …" "- [미충족] …"으로 점검하고, 마지막에 승인자에게 보낼 승인 요청 글 초안(3~5문장)을 써라.',
+    ecr: '진행 중이거나 최근 설계 변경마다 영향 받는 부품(BOM 상하위 포함)·도면·인증·업체 배포 판을 찾아 정리해라.',
+    bomdiff: '기반 모델 대비 이 파생 모델의 BOM 차이(Rev가 기반과 다른 부품, 새 부품)를 목록으로 정리해라.',
+    oldrev: '업체 배포 기록의 Rev와 도면·문서의 현재 Rev를 비교해 업체가 옛 판을 갖고 있는 경우를 모두 찾고, 다시 보낼 판을 적어라.',
+    vendor: '협력사별 샘플·승인원·업체 인증서를 보고 만료됐거나 90일 안에 만료되는 것, 회신이 늦은 것을 정리해라.',
+    chase: '회신이 필요한 협력사마다 독촉 메일 초안을 써라(제목 한 줄 + 본문 4~6문장, 정중하게). 영어 업체면 영어로.',
+    certlist: '이 제품을 아래 나라에 팔 때 필요한 인증·신고(예: KC 전기안전·EMC·전파, CE LVD·EMC·RED, FCC, UL/ETL, FDA 식품접촉, LFGB, PSE 등)를 나라별 목록으로, 지금 인증 현황과 비교해 빠진 것 표시.',
+    minutes: '아래 회의록에서 이슈와 할 일만 뽑아라. 한 줄에 하나, 형식 "- [이슈] 내용 / 담당 이름 / 기한 YYYY-MM-DD" 또는 "- [할 일] …". 회의록에 없는 담당·기한은 비워라.',
+    weekly: '이번 주 주간 보고를 써라: 진행 한 줄, 이번 주 한 것, 다음 주 할 것, 지연·리스크, 도움 필요. 5~8줄.',
+    similar: '아래 문제와 비슷한 과거 이슈·사양 변경·설계 변경을 이 데이터(다른 프로젝트 포함)에서 찾고, 그때 어떻게 했는지 적어라. 없으면 없다고.',
+};
+function buildAsk(kind, p, items, input, now = (0, ax_1.today)()) {
+    const parts = ['프로젝트 데이터:', facts(p, now)];
+    if (['ecr', 'bomdiff', 'oldrev', 'vendor', 'chase', 'certlist', 'draft', 'gate'].indexOf(kind) >= 0)
+        parts.push(itemFacts(p, now));
+    if (kind === 'similar')
+        parts.push('다른 프로젝트 이슈·변경: ' + items.filter(x => x.id !== p.id).map(x => `${x.name}: ` + (x.issues || []).map(i => `${i.kind} ${i.text}${i.done ? '(해결)' : ''}`).concat((x.changes || []).map(c => `변경 ${c.what}(${c.why})`)).concat((x.ecrs || []).map(e => `${e.no} ${e.title}`)).join(' / ')).join('\n'));
+    if (kind === 'bomdiff' && p.baseItem)
+        parts.push('기반 모델: ' + p.baseItem);
+    parts.push('', '할 일: ' + ASK[kind]);
+    if (input)
+        parts.push('', '요청 내용:', input);
+    return parts.join('\n');
+}
+exports.SYSTEM = SYS;
+// ───────── 반영 — 사람이 「반영」을 눌렀을 때만
+function applyJob(p, j, who) {
+    const at = new Date().toISOString();
+    const text = j.result || '';
+    let next = Object.assign({}, p);
+    if (j.kind === 'weekly')
+        next.brief = (p.brief || []).concat([{ at, who: `${who} (AI 초안 반영)`, text: text.replace(/\n+/g, ' ').slice(0, 600) }]);
+    if (j.kind === 'minutes') {
+        const add = [];
+        text.split('\n').forEach((ln, i) => {
+            const m = ln.match(/^\s*-\s*\[(이슈|할 일|할일|리스크)\]\s*(.+)$/);
+            if (!m)
+                return;
+            const f = m[2].split('/').map(x => x.trim());
+            const owner = (f.filter(x => /^담당/.test(x))[0] || '').replace(/^담당\s*/, '') || undefined;
+            const due = ((f.filter(x => /^기한/.test(x))[0] || '').match(/\d{4}-\d{2}-\d{2}/) || [])[0];
+            add.push({ id: 'ai' + Date.now().toString(36) + i, kind: m[1] === '리스크' ? '리스크' : '이슈', text: (m[1].indexOf('할') === 0 ? '[할 일] ' : '') + f[0], owner, due, at, who, stage: (0, work_1.stagesOf)(p)[(0, work_1.curIdx)(p)].id });
+        });
+        next.issues = (p.issues || []).concat(add);
+    }
+    if (j.kind === 'replan') {
+        const plan = Object.assign({}, (p.plan || {}));
+        const ss = (0, work_1.stagesOf)(p);
+        text.split('\n').forEach(ln => { ss.forEach(s => { if (ln.indexOf(s.no) >= 0) {
+            const d = (ln.match(/\d{4}-\d{2}-\d{2}/) || [])[0];
+            if (d)
+                plan[s.id] = d;
+        } }); });
+        next.plan = plan;
+    }
+    next.aiJobs = (p.aiJobs || []).map(x => (x.id === j.id ? Object.assign(Object.assign({}, x), { state: 'applied', by: who, doneAt: x.doneAt || at }) : x));
+    next.log = (p.log || []).concat([{ at, who, kind: 'note', ai: true, what: `AI 결과 반영 — ${j.label}: ${text.split('\n')[0].slice(0, 120)}` }]);
+    return next;
+}
+exports.APPLY_NOTE = { weekly: '「이번 주 요약」에 들어가요', minutes: '이슈·할 일로 등록돼요', replan: '단계 계획일이 바뀌어요' };
+
+};
+__m["src/webparts/huromAxPlm/model/sched.js"]=function(module,exports,require){"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.typeDays = exports.laneOf = exports.LANES = exports.stdTotal = exports.AFTER_DAYS = exports.STD_DAYS = exports.diffDays = exports.addDays = void 0;
+exports.backPlan = backPlan;
+exports.planSpan = planSpan;
+exports.stageState = stageState;
+exports.actualSpan = actualSpan;
+exports.shiftFrom = shiftFrom;
+exports.docSpan = docSpan;
+exports.gems = gems;
+exports.laneCells = laneCells;
+exports.projRange = projRange;
+exports.lateDays = lateDays;
+// AX-PLM 1.0.134 — 일정표(간트)·메인 대시보드 계산 (심준보 2026-11-18 #ax-plm msg 10483430 '스케쥴링표가 없냐' · 10483498 '메인대시보드, 업무구분 세로·일정 단계 가로'; 곽두팔 msg 10483490·10483554)
+// 단계 계획 = plan[S1..S7] (단계 끝 날짜), 단계 시작 = 앞 단계 끝(첫 단계는 start). 실제 = actual[...] 같은 방식
+const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
+const ymd = (t) => `${t.getFullYear()}-${('0' + (t.getMonth() + 1)).slice(-2)}-${('0' + t.getDate()).slice(-2)}`;
+const day = (s) => new Date(s + 'T00:00:00');
+const addDays = (s, n) => { const t = day(s); t.setDate(t.getDate() + n); return ymd(t); };
+exports.addDays = addDays;
+const diffDays = (a, b) => Math.round((day(b).getTime() - day(a).getTime()) / 86400000);
+exports.diffDays = diffDays;
+// 개발 유형별 표준 일수 (단계 ①~⑥, 달력 일수) — ⑥ 생산 끝 = 출시(첫 출하), ⑦은 출시 뒤 90일
+// 자체 금형 개발은 휴롬 R12 체계도 일정(설계 45일·금형 T0~T2 약 120일)을, ODM·소싱은 샘플 차수 기준으로 잡음
+exports.STD_DAYS = {
+    own: [30, 20, 45, 120, 30, 20],
+    derive: [15, 10, 30, 45, 20, 15],
+    oem: [30, 25, 40, 90, 25, 20],
+    odm: [20, 20, 60, 60, 20, 15],
+    sourcing: [10, 15, 25, 30, 15, 10],
+};
+exports.AFTER_DAYS = 90;
+const stdTotal = (t) => exports.STD_DAYS[t].reduce((a, b) => a + b, 0);
+exports.stdTotal = stdTotal;
+// 출시 목표일에서 거꾸로 — 시작일과 단계 끝 날짜를 채움
+function backPlan(target, t) {
+    const ds = exports.STD_DAYS[t] || exports.STD_DAYS.own;
+    const plan = {};
+    let end = target;
+    for (let i = 5; i >= 0; i--) {
+        plan['S' + (i + 1)] = end;
+        end = (0, exports.addDays)(end, -ds[i]);
+    }
+    plan.S7 = (0, exports.addDays)(target, exports.AFTER_DAYS);
+    return { start: end, plan };
+}
+function planSpan(p, k) {
+    const ids = (0, work_1.stagesOf)(p).map(s => s.id);
+    const plan = p.plan || {};
+    const b = plan[ids[k]];
+    const a = k === 0 ? p.start : plan[ids[k - 1]];
+    return a && b ? { a, b: b < a ? a : b } : undefined;
+}
+function stageState(p, k, now = (0, ax_1.today)()) {
+    const s = (0, work_1.stagesOf)(p)[k];
+    const ck = (0, work_1.curIdx)(p);
+    if ((0, work_1.stageClear)(p, s) && (k < ck || k === (0, work_1.stagesOf)(p).length - 1))
+        return 'done';
+    const sp = planSpan(p, k);
+    if (k === ck)
+        return sp && sp.b < now ? 'late' : 'doing';
+    if (sp && sp.b < now)
+        return 'late';
+    return 'wait';
+}
+function actualSpan(p, k, now = (0, ax_1.today)()) {
+    const ids = (0, work_1.stagesOf)(p).map(s => s.id);
+    const act = p.actual || {};
+    const a = k === 0 ? p.start : act[ids[k - 1]];
+    if (!a)
+        return undefined;
+    const b = act[ids[k]] || (k === (0, work_1.curIdx)(p) ? now : undefined);
+    return b ? { a, b: b < a ? a : b } : undefined;
+}
+// 단계 계획 끌기 — 그 단계 끝과 뒤 단계 전부를 같은 날수만큼 밈
+function shiftFrom(p, k, n) {
+    const ids = (0, work_1.stagesOf)(p).map(s => s.id);
+    const plan = Object.assign({}, (p.plan || {}));
+    for (let i = k; i < ids.length; i++)
+        if (plan[ids[i]])
+            plan[ids[i]] = (0, exports.addDays)(plan[ids[i]], n);
+    return plan;
+}
+// 산출물 줄 — 단계 시작 ~ 마감(없으면 단계 끝), 끝낸 날은 실제
+function docSpan(p, k, key) {
+    const sp = planSpan(p, k);
+    const st = p.docs[key] || {};
+    const due = st.due || (sp && sp.b);
+    const plan = sp && due ? { a: sp.a, b: due < sp.a ? sp.a : due } : undefined;
+    const at = st.at ? st.at.slice(0, 10) : undefined;
+    const actual = (0, work_1.docOk)(st) && sp && at ? { a: sp.a < at ? sp.a : at, b: at } : undefined;
+    const now = (0, ax_1.today)();
+    const ck = (0, work_1.curIdx)(p);
+    const state = (0, work_1.docOk)(st) ? 'done' : due && due < now && k <= ck ? 'late' : k === ck ? 'doing' : 'wait';
+    return { plan, actual, state };
+}
+function gems(p, now = (0, ax_1.today)()) {
+    const out = [];
+    (0, work_1.stagesOf)(p).forEach((s, k) => {
+        if (!s.gate)
+            return;
+        const g = (0, work_1.gateState)(p, s);
+        const plan = (p.plan || {})[s.id];
+        const ap = (p.approvals || []).filter(a => a.gate === s.gate && a.kind === 'approve').slice(-1)[0];
+        const date = g === 'approved' && ap ? ap.at.slice(0, 10) : plan;
+        if (!date)
+            return;
+        out.push({ date, label: s.gate.split(' ')[0], k, state: g === 'approved' ? 'done' : g === 'requested' ? 'req' : plan && plan < now ? 'late' : 'wait' });
+    });
+    return out;
+}
+// 업무 구분 — 메인 대시보드 세로줄 (곽두팔 msg 10483554)
+exports.LANES = ['상품기획', '설계', '금형/시사출', '구매/협력사', '인증', '품질', '생산', '인쇄물/마케팅'];
+const LANE_OF = {
+    voc: 0, plan: 0, biz: 0, g1rep: 0, base: 0, req: 0, rr: 0, spec: 0, kickoff: 0, sched: 0, price: 0, close: 0, vocr: 0,
+    cad: 1, dr: 1, proto: 1, ecr: 1, cmf: 1, keyparts: 1, release: 1,
+    mold: 2, trial: 2, t0: 2, t1: 2, t2: 2,
+    vendor: 3, quote: 3, s1: 3, s2: 3, s3: 3, aprv: 3, sample: 3, specsheet: 3, vcert: 3, po: 3,
+    cert: 4, certchg: 4,
+    ppap: 5, fai: 5, iqc: 5, issue: 5, mpqa: 5,
+    first: 6,
+    print: 7, pack: 7, faq: 7, usp: 7, launch: 7,
+};
+const laneOf = (key) => (LANE_OF[key] === undefined ? 0 : LANE_OF[key]);
+exports.laneOf = laneOf;
+// 한 업무 구분에서 단계마다 칸 하나 — 산출물이 있는 단계만
+function laneCells(p, lane, now = (0, ax_1.today)()) {
+    const out = [];
+    const ck = (0, work_1.curIdx)(p);
+    (0, work_1.stagesOf)(p).forEach((s, k) => {
+        const ks = s.docs.filter(d => (0, exports.laneOf)(d.key) === lane).map(d => d.key);
+        if (!ks.length)
+            return;
+        const sp = planSpan(p, k);
+        if (!sp)
+            return;
+        const done = ks.filter(x => (0, work_1.docOk)(p.docs[x])).length;
+        const late = ks.some(x => { const st = p.docs[x] || {}; const due = st.due || sp.b; return !(0, work_1.docOk)(st) && due < now; });
+        const state = done === ks.length ? 'done' : late ? 'late' : k <= ck ? 'doing' : 'wait';
+        out.push({ k, span: sp, state, done, total: ks.length, keys: ks });
+    });
+    return out;
+}
+// 전체 일정 한 줄 — 현재 단계·지연 일수·출시 목표
+function projRange(p) {
+    const plan = p.plan || {};
+    const ids = (0, work_1.stagesOf)(p).map(s => s.id);
+    const b = plan[ids[5]] || plan[ids[ids.length - 1]];
+    return p.start && b ? { a: p.start, b } : undefined;
+}
+function lateDays(p, now = (0, ax_1.today)()) {
+    const k = (0, work_1.curIdx)(p);
+    const sp = planSpan(p, k);
+    if (!sp || stageState(p, k, now) === 'done')
+        return 0;
+    const d = (0, ax_1.daysTo)(sp.b, now);
+    return d !== undefined && d < 0 ? -d : 0;
+}
+const typeDays = (p) => (0, exports.stdTotal)((0, devtype_1.typeOf)(p));
+exports.typeDays = typeDays;
+
+};
+__m["src/webparts/huromAxPlm/components/Gantt.js"]=function(module,exports,require){"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.BAR = exports.SCALE_LABEL = exports.PPD = void 0;
+exports.ScalePick = ScalePick;
+exports.Legend = Legend;
+exports.Gantt = Gantt;
+const React = __importStar(require("react"));
+const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
+const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
+const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
+exports.PPD = { week: 16, month: 4.2, quarter: 1.6 };
+exports.SCALE_LABEL = { week: '주', month: '월', quarter: '분기' };
+exports.BAR = {
+    done: { plan: '#DCFCE7', act: '#16A34A', text: '#166534', label: '완료' },
+    doing: { plan: '#E0E7FF', act: '#4F46E5', text: '#3730A3', label: '진행' },
+    late: { plan: '#FEE2E2', act: '#DC2626', text: '#991B1B', label: '지연' },
+    wait: { plan: '#F1F5F9', act: '#94A3B8', text: '#475569', label: '대기' },
+};
+function ScalePick(props) {
+    return React.createElement("span", { "data-ax-scale": props.v, style: { display: 'inline-flex', border: `1px solid ${ui_1.C.line2}`, borderRadius: 6, overflow: 'hidden' } }, ['week', 'month', 'quarter'].map(s => React.createElement("button", { key: s, "data-ax-scale-btn": s, onClick: () => props.set(s), style: Object.assign(Object.assign({}, ui_1.btn), { border: 'none', borderRadius: 0, padding: '5px 11px', background: props.v === s ? ui_1.C.text : ui_1.C.card, color: props.v === s ? '#fff' : ui_1.C.sub }) }, exports.SCALE_LABEL[s])));
+}
+function Legend() {
+    return React.createElement("div", { "data-ax-legend": true, style: { display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: ui_1.C.sub, alignItems: 'center' } },
+        ['done', 'doing', 'late', 'wait'].map(s => React.createElement("span", { key: s, style: { display: 'inline-flex', gap: 5, alignItems: 'center' } },
+            React.createElement("span", { style: { width: 14, height: 8, borderRadius: 2, background: exports.BAR[s].act } }),
+            exports.BAR[s].label)),
+        React.createElement("span", { style: { display: 'inline-flex', gap: 5, alignItems: 'center' } },
+            React.createElement("span", { style: { width: 14, height: 8, borderRadius: 2, background: '#E0E7FF', border: '1px solid #C7D2FE' } }),
+            "\uACC4\uD68D"),
+        React.createElement("span", { style: { display: 'inline-flex', gap: 5, alignItems: 'center' } },
+            React.createElement("span", { style: { color: ui_1.C.text } }, "\u25C6"),
+            "\uAD00\uBB38"),
+        React.createElement("span", { style: { display: 'inline-flex', gap: 5, alignItems: 'center' } },
+            React.createElement("span", { style: { width: 2, height: 12, background: ui_1.C.late } }),
+            "\uC624\uB298"));
+}
+function ticks(a, b, scale) {
+    const out = [];
+    const t = new Date(a + 'T00:00:00');
+    if (scale === 'week') {
+        while (t.getDay() !== 1)
+            t.setDate(t.getDate() + 1);
+    }
+    else
+        t.setDate(1);
+    const ymd = (x) => `${x.getFullYear()}-${('0' + (x.getMonth() + 1)).slice(-2)}-${('0' + x.getDate()).slice(-2)}`;
+    for (let i = 0; i < 400; i++) {
+        const s = ymd(t);
+        if (s > b)
+            break;
+        if (scale === 'week') {
+            out.push({ at: s, label: `${t.getMonth() + 1}/${t.getDate()}`, major: t.getDate() <= 7 });
+            t.setDate(t.getDate() + 7);
+        }
+        else if (scale === 'month') {
+            out.push({ at: s, label: t.getMonth() === 0 ? `${t.getFullYear()}.1` : `${t.getMonth() + 1}월`, major: t.getMonth() === 0 });
+            t.setMonth(t.getMonth() + 1);
+        }
+        else {
+            if (t.getMonth() % 3 === 0)
+                out.push({ at: s, label: `${String(t.getFullYear()).slice(2)}년 ${t.getMonth() / 3 + 1}Q`, major: t.getMonth() === 0 });
+            t.setMonth(t.getMonth() + 1);
+        }
+    }
+    return out;
+}
+function Gantt(props) {
+    const ppd = exports.PPD[props.scale];
+    const now = (0, ax_1.today)();
+    const all = [now];
+    props.rows.forEach(r => { [r.plan, r.actual].concat((r.segs || []).map(s => s.span)).forEach(s => { if (s) {
+        all.push(s.a);
+        all.push(s.b);
+    } }); (r.gems || []).forEach(g => all.push(g.date)); if (r.flag)
+        all.push(r.flag.date); });
+    all.sort();
+    const pad = props.scale === 'week' ? 7 : props.scale === 'month' ? 20 : 45;
+    const a0 = (0, sched_1.addDays)(props.minDate || all[0], -pad);
+    const b0 = (0, sched_1.addDays)(props.maxDate || all[all.length - 1], pad);
+    const W = Math.max(320, Math.round((0, sched_1.diffDays)(a0, b0) * ppd));
+    const x = (d) => Math.round((0, sched_1.diffDays)(a0, d) * ppd);
+    const LW = typeof window !== 'undefined' && window.innerWidth < 600 ? Math.min(props.labelW || 220, 128) : props.labelW || 220;
+    const [drag, setDrag] = React.useState(undefined);
+    const scroller = React.useRef(null);
+    const dragRef = React.useRef(undefined);
+    React.useEffect(() => { const el = scroller.current; if (el)
+        el.scrollLeft = Math.max(0, x(now) - (el.clientWidth - LW) / 3); }, [props.scale]);
+    const tk = ticks(a0, b0, props.scale);
+    const rowH = (r) => (r.depth ? 30 : 38);
+    const bar = (s, st, kind, extra = {}) => {
+        const l = x(s.a);
+        const w = Math.max(4, x((0, sched_1.addDays)(s.b, 1)) - l);
+        return kind === 'plan'
+            ? Object.assign({ position: 'absolute', left: l, width: w, top: '50%', height: 16, marginTop: -8, borderRadius: 4, background: exports.BAR[st].plan, border: `1px solid ${st === 'late' ? '#FCA5A5' : '#CBD5E1'}` }, extra) : Object.assign({ position: 'absolute', left: l, width: w, top: '50%', height: 8, marginTop: -4, borderRadius: 3, background: exports.BAR[st].act }, extra);
+    };
+    return (React.createElement("div", { ref: scroller, "data-ax-gantt": props.name || '', "data-ax-scale-now": props.scale, style: { overflowX: 'auto', overflowY: 'hidden', position: 'relative', WebkitOverflowScrolling: 'touch', borderTop: `1px solid ${ui_1.C.line}` } },
+        React.createElement("div", { style: { width: LW + W, position: 'relative' } },
+            React.createElement("div", { style: { display: 'flex', position: 'sticky', top: 0, zIndex: 3, background: ui_1.C.card, borderBottom: `1px solid ${ui_1.C.line}`, height: 30 } },
+                React.createElement("div", { style: { width: LW, flex: `0 0 ${LW}px`, position: 'sticky', left: 0, background: ui_1.C.card, zIndex: 4, borderRight: `1px solid ${ui_1.C.line}` } }),
+                React.createElement("div", { style: { position: 'relative', width: W, flex: `0 0 ${W}px` } }, tk.map(t => React.createElement("span", { key: t.at, style: { position: 'absolute', left: x(t.at) + 4, top: 7, fontSize: 11.5, color: t.major ? ui_1.C.text : ui_1.C.faint, fontWeight: t.major ? 700 : 500, whiteSpace: 'nowrap' } }, t.label)))),
+            React.createElement("div", { style: { position: 'relative' } },
+                React.createElement("div", { style: { position: 'absolute', left: LW, top: 0, bottom: 0, width: W, pointerEvents: 'none' } },
+                    tk.map(t => React.createElement("span", { key: t.at, style: { position: 'absolute', left: x(t.at), top: 0, bottom: 0, width: 1, background: t.major ? ui_1.C.line2 : ui_1.C.line } })),
+                    React.createElement("span", { "data-ax-today": true, style: { position: 'absolute', left: x(now), top: 0, bottom: 0, width: 2, background: ui_1.C.late, zIndex: 2 } })),
+                props.rows.map(r => {
+                    const dx = drag && drag.id === r.id ? drag.dx : 0;
+                    const dd = Math.round(dx / ppd);
+                    const shift = (s) => (s && dd ? { a: s.a, b: (0, sched_1.addDays)(s.b, dd) } : s);
+                    const st = r.state || 'wait';
+                    return (React.createElement("div", Object.assign({ key: r.id, "data-ax-grow": r.id, "data-ax-grow-state": r.state || '' }, (r.data || {}), { style: { display: 'flex', height: rowH(r), borderBottom: `1px solid ${ui_1.C.line}`, background: r.strong ? '#FAFAFA' : 'transparent' } }),
+                        React.createElement("div", { onClick: r.onLabel, title: r.title || r.label, style: { width: LW, flex: `0 0 ${LW}px`, position: 'sticky', left: 0, zIndex: 2, background: r.strong ? '#FAFAFA' : ui_1.C.card, borderRight: `1px solid ${ui_1.C.line}`, padding: `0 10px 0 ${10 + (r.depth || 0) * 14}px`, display: 'flex', alignItems: 'center', gap: 6, cursor: r.onLabel ? 'pointer' : 'default', minWidth: 0 } },
+                            r.toggle && React.createElement("span", { style: { fontSize: 10, color: ui_1.C.faint, width: 10 } }, r.open ? '▼' : '▶'),
+                            React.createElement("span", { style: { fontSize: r.depth ? 12.5 : 13, fontWeight: r.strong || !r.depth ? 700 : 500, color: r.depth ? ui_1.C.sub : ui_1.C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 } }, r.label),
+                            r.sub && React.createElement("span", { style: { fontSize: 11.5, color: st === 'late' ? ui_1.C.late : ui_1.C.faint, fontWeight: st === 'late' ? 700 : 500, whiteSpace: 'nowrap' } }, r.sub)),
+                        React.createElement("div", { style: { position: 'relative', width: W, flex: `0 0 ${W}px` } },
+                            r.plan && React.createElement("div", { "data-ax-bar-plan": r.id, title: `계획 ${r.plan.a} ~ ${shift(r.plan).b}${dd ? ` (${dd > 0 ? '+' : ''}${dd}일)` : ''}`, onPointerDown: r.drag ? (e => { try {
+                                    e.currentTarget.setPointerCapture(e.pointerId);
+                                }
+                                catch (er) { /* 무시 */ } dragRef.current = { id: r.id, x0: e.clientX }; setDrag({ id: r.id, x0: e.clientX, dx: 0 }); }) : undefined, onPointerMove: r.drag ? (e => { const d0 = dragRef.current; if (d0 && d0.id === r.id)
+                                    setDrag({ id: d0.id, x0: d0.x0, dx: e.clientX - d0.x0 }); }) : undefined, onPointerUp: r.drag ? (e => { const d0 = dragRef.current; dragRef.current = undefined; setDrag(undefined); if (d0 && d0.id === r.id) {
+                                    const n = Math.round((e.clientX - d0.x0) / ppd);
+                                    if (n)
+                                        r.drag(n);
+                                } }) : undefined, onPointerCancel: () => { dragRef.current = undefined; setDrag(undefined); }, style: bar(shift(r.plan), st, 'plan', { cursor: r.drag ? 'ew-resize' : 'default', touchAction: r.drag ? 'none' : 'auto', outline: dd ? `2px dashed ${ui_1.C.accent}` : 'none' }) }),
+                            r.actual && React.createElement("div", { "data-ax-bar-act": r.id, style: bar(r.actual, st, 'act', { pointerEvents: 'none' }) }),
+                            dd !== 0 && r.plan && React.createElement("span", { style: { position: 'absolute', left: x((0, sched_1.addDays)(r.plan.b, dd)) + 8, top: 2, fontSize: 11, fontWeight: 700, color: ui_1.C.accent, background: '#fff', padding: '0 4px', borderRadius: 3 } },
+                                dd > 0 ? '+' : '',
+                                dd,
+                                "\uC77C \u00B7 \uB4A4 \uB2E8\uACC4 \uAC19\uC774"),
+                            (r.segs || []).map((s, i) => React.createElement("div", { key: i, "data-ax-seg": s.state, title: s.title, onClick: s.onClick, style: Object.assign({}, bar(s.span, s.state, 'plan', { background: s.state === 'wait' ? exports.BAR.wait.plan : exports.BAR[s.state].act, border: 'none', height: 18, marginTop: -9, cursor: s.onClick ? 'pointer' : 'default', overflow: 'hidden', color: s.state === 'wait' ? exports.BAR.wait.text : '#fff', fontSize: 10.5, fontWeight: 700, lineHeight: '18px', padding: '0 4px', whiteSpace: 'nowrap', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.6)' })) }, s.label)),
+                            (r.gems || []).map((g, i) => React.createElement("span", { key: i, "data-ax-gem": g.label, "data-ax-gem-state": g.state, title: `${g.label} ${g.date} · ${g.state === 'done' ? '승인됨' : g.state === 'req' ? '승인 대기' : g.state === 'late' ? '계획일 지남' : '예정'}`, style: { position: 'absolute', left: x(g.date) - 6, top: '50%', marginTop: -8, fontSize: 14, lineHeight: '16px', color: g.state === 'done' ? ui_1.C.ok : g.state === 'late' ? ui_1.C.late : g.state === 'req' ? ui_1.C.soon : ui_1.C.text, zIndex: 1, textShadow: '0 0 2px #fff', pointerEvents: 'none' } }, "\u25C6")),
+                            r.flag && React.createElement("span", { "data-ax-flag": r.flag.date, title: r.flag.label, style: { position: 'absolute', left: x(r.flag.date), top: 4, bottom: 4, borderLeft: `2px solid ${ui_1.C.text}`, paddingLeft: 4, fontSize: 10.5, fontWeight: 700, color: ui_1.C.text, whiteSpace: 'nowrap', lineHeight: '12px' } },
+                                "\u2691 ",
+                                r.flag.label),
+                            r.right)));
+                })))));
+}
+
+};
 __m["src/webparts/huromAxPlm/components/ui.js"]=function(module,exports,require){"use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -3696,6 +4670,7 @@ exports.CSS = `
   .axw-top nav::-webkit-scrollbar{display:none}
   .axw-top > span[data-flex]{display:none}
   .axw-cnt{display:none}
+  .axw-dash2{grid-template-columns:minmax(0,1fr) !important}
 }`;
 exports.btn = { border: `1px solid ${exports.C.line2}`, background: exports.C.card, color: exports.C.text, borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: exports.font, whiteSpace: 'nowrap' };
 exports.primary = Object.assign(Object.assign({}, exports.btn), { background: exports.C.accent, borderColor: exports.C.accent, color: '#fff' });
@@ -3880,6 +4855,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ItemsList = ItemsList;
 exports.ItemDetail = ItemDetail;
 const React = __importStar(require("react"));
+const Dash_1 = require("src/webparts/huromAxPlm/components/Dash.js");
 const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
 const work_1 = require("src/webparts/huromAxPlm/model/work.js");
 const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
@@ -3970,7 +4946,7 @@ function ItemDetail(props) {
     return (React.createElement("div", { "data-ax-item-detail": p.id },
         React.createElement("div", { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 } }, props.items.map(x => React.createElement("button", { key: x.id, "data-ax-item-pick": x.id, onClick: () => { props.onPick(x.id); setPick(undefined); }, style: Object.assign(Object.assign({}, ui_1.btn), { background: x.id === p.id ? ui_1.C.text : ui_1.C.card, color: x.id === p.id ? '#fff' : ui_1.C.sub, borderColor: x.id === p.id ? ui_1.C.text : ui_1.C.line2 }) }, codeOf(x)))),
         React.createElement("div", { style: { display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' } },
-            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+            React.createElement("div", { style: { flex: '1 1 260px', minWidth: 0 } },
                 React.createElement("div", { style: { fontSize: 12.5, color: ui_1.C.faint, fontWeight: 600, fontVariantNumeric: 'tabular-nums' } },
                     codeOf(p),
                     top ? ` · Rev ${top.rev}` : ''),
@@ -3982,6 +4958,7 @@ function ItemDetail(props) {
                     " \u00B7 ",
                     ti.drawing,
                     p.baseItem ? ` · 기반 모델 ${p.baseItem}` : '')),
+            React.createElement(Dash_1.AiButton, { pid: p.id, kinds: ['ecr', 'bomdiff', 'oldrev', 'vendor', 'chase', 'certlist'] }),
             React.createElement("button", { "data-ax-to-project": true, onClick: props.onProject, style: ui_1.btn }, "\uD504\uB85C\uC81D\uD2B8 \uC77C\uC815 \uBCF4\uAE30")),
         React.createElement("div", { style: { display: 'flex', gap: 2, borderBottom: `1px solid ${ui_1.C.line}`, margin: '14px 0 16px', overflowX: 'auto' } }, tabs.map(t => React.createElement("button", { key: t[0], "data-ax-item-tab": t[0], onClick: () => go(t[0]), style: { border: 'none', background: 'transparent', padding: '10px 12px', fontSize: 14, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', color: tab === t[0] ? ui_1.C.text : ui_1.C.faint, boxShadow: tab === t[0] ? `inset 0 -2px 0 ${ui_1.C.text}` : 'none' } },
             t[1],
