@@ -249,6 +249,19 @@ details.rulel{margin-top:14px}details.rulel>summary{cursor:pointer;color:var(--s
 .rgpost{white-space:pre-wrap;background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px;font:13.5px/1.7 inherit;max-width:820px}
 @media(max-width:760px){.g2{grid-template-columns:1fr}}
 @media print{nav,.bar,#tabs,.tabs,.rgbar,.top,.btn,#toast{display:none!important}.rg.paper{border:0;overflow:visible}main{padding:0!important}}
+
+.pf{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.pf .av{width:56px;height:56px;border-radius:50%;background:var(--brand-50,#F3EEE6);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;flex:none}
+.pf .nm{font-size:20px;font-weight:700}
+.pf .ln{font-size:13px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px}
+.pf-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.pf-k{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:12px}
+.pf-k>div{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.pf-k small{display:block;font-size:12px;color:var(--sub)}
+.pf-k b{font-size:20px}
+.pf-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}
+.pf-2 h4{margin:0 0 6px;font-size:13px}
+@media (max-width:900px){.pf .av{width:40px;height:40px;font-size:16px}.pf .nm{font-size:18px}.pf-k{grid-template-columns:repeat(2,1fr)}.pf-2{grid-template-columns:1fr}}
 </style></head><body>
 <div class="app">
 <nav id="nav"></nav>
@@ -409,12 +422,38 @@ V.people=(fd)=>{
  (PL.length?'<table><tr><th>사번</th><th>이름</th><th>부서</th><th class="hide-m">직급</th><th>직책</th><th class="hide-m">입사일</th><th>상태</th><th class="right">잔여 연차</th></tr>'+
  PL.map(p=>{const b=bal(p.no);return '<tr class="ck" data-go="#card/'+p.no+'"><td>'+p.no+'</td><td><b>'+esc(p.name)+'</b></td><td>'+(fd&&p.dept!==fd?esc(fd)+' <span class="tag">(겸)</span>':esc(p.dept)+(kjOf(p).length?'<div class="tag">겸 '+esc(kjTxt(p).replace(/\(겸\)/g,''))+'</div>':''))+'</td><td class="hide-m">'+p.grade+'</td><td>'+(fd&&p.dept!==fd?esc((kjOf(p).find(k=>k.dept===fd)||{}).pos||''):p.pos)+'</td><td class="hide-m">'+p.join+'</td><td>'+'<span class="st '+(p.status==='재직'?'o':p.status==='휴직'?'w':'n')+'">'+p.status+'</span></td><td class="right">'+b.rem+' / '+b.grant+'</td></tr>'}).join('')+'</table>':'<div class="empty">아직 등록된 인원이 없습니다</div>')+'</div></section>'};
 
+function pfJump(t){const h=[...document.querySelectorAll('section.card .hd b')].find(b=>b.textContent.trim().startsWith(t));if(h)h.closest('section').scrollIntoView({behavior:'smooth',block:'start'})}
+function cardProfile(p){
+ const hr=st.role==='hr',me=st.role==='emp'&&st.me===p.no,tn=tenure(p),y=String(new Date().getFullYear());
+ const ty=Math.floor(tn.cur),tm=Math.floor((tn.cur-ty)*12),tt=(ty?ty+'년 ':'')+tm+'개월';
+ const ev=st.evals.filter(e=>e.no===p.no&&e.grade).slice(-1)[0];
+ const ed=st.edus.filter(e=>e.no===p.no&&e.year===y),edn=ed.filter(e=>e.done).length;
+ const b=bal(p.no),pay=((+p.base||0)+(+p.allow||0))*12;
+ const lic=st.lic.filter(l=>l.no===p.no).map(l=>l.name),sk=(p.skills||[]);
+ const mv=st.moves.filter(m=>m.no===p.no).slice().sort((a,c)=>a.date<c.date?1:-1);
+ if(!mv.some(m=>m.kind==='입사')&&p.join)mv.push({kind:'입사',date:p.join,memo:''});
+ const tabs=[['기본','인사카드'],['연차','연차'],['근태','근태 기록'],['레벨','커리어레벨'],['교육','교육 이력'],['자격','자격증']].filter(t=>t[0]!=='교육'&&t[0]!=='자격'||hr||me);
+ return '<section class="card"><div class="bd">'+
+ '<div class="pf"><div class="av">'+esc((p.name||'?').replace(/^[0-9]+번\s*/,'').slice(0,1)||'?')+'</div><div style="flex:1;min-width:220px"><div class="nm">'+esc(p.name)+' <span class="st '+(p.status==='재직'?'o':p.status==='휴직'?'w':'n')+'">'+p.status+'</span></div>'+
+ '<div class="ln">'+[p.co==='H'?'휴롬':'휴롬엘에스',p.dept,(p.grade||'')+(p.pos&&p.pos!=='팀원'?' · '+p.pos:''),p.emp,'사번 '+p.no,'입사 '+p.join,'근속 '+tt].filter(Boolean).map(x=>'<span>'+esc(x)+'</span>').join('')+'</div></div></div>'+
+ '<div class="pf-tabs">'+tabs.map(t=>'<button class="btn sm" onclick="pfJump(\''+t[1]+'\')">'+t[0]+'</button>').join('')+'</div>'+
+ '<div class="pf-k">'+
+  '<div><small>지금 레벨 체류</small><b>'+yrs(p.clAt||p.join).toFixed(1)+'</b>년</div>'+
+  '<div><small>최근 평가 등급</small><b>'+(ev?esc(ev.grade):'—')+'</b> <span class="tag">'+(ev?esc(ev.cycle):'평가 전')+'</span></div>'+
+  '<div><small>연차 잔여</small><b>'+b.rem+'</b>일</div>'+
+  '<div><small>올해 교육 이수</small><b>'+edn+'</b>/'+ed.length+'건</div>'+
+  '<div><small>연봉</small>'+(hr?'<b>'+won(pay)+'</b>원':'<b>🔒</b> <span class="tag">급여 담당만</span>')+'</div>'+
+ '</div>'+
+ '<div class="pf-2"><div><h4>자격 · 특기</h4>'+((lic.length||sk.length)&&(hr||me)?lic.concat(sk).map(x=>'<span class="st c">'+esc(x)+'</span>').join(' '):'<span class="tag">'+(hr||me?'등록된 자격·특기가 없습니다':'본인·인사만 보입니다')+'</span>')+
+ '<h4 style="margin-top:12px">역량</h4><span class="tag">평가 결과로만 채워집니다 · 지금은 평가 전</span></div>'+
+ '<div><h4>히스토리</h4><div class="tl">'+mv.slice(0,8).map(m=>'<p><b>'+esc(m.kind)+'</b> '+esc(m.chg||m.memo||'')+' <small>'+m.date+'</small></p>').join('')+'</div></div></div>'+
+ '</div></section>'}
 V.card=(no)=>{
  if(st.role==='emp')no=st.me;if(!no)no=(st.people[0]||{}).no;const p=person(no);
  if(!p)return '<div class="top"><h1>인사카드</h1></div><section class="card"><div class="empty">등록된 인원이 없습니다<br><a class="btn sm p" href="#people">인원 명부로</a></div></section>';
  const b=bal(no),rs=st.reqs.filter(r=>r.no===no).sort((a,c)=>a.at<c.at?1:-1),hr=st.role==='hr';
- return '<div class="top"><h1>인사카드</h1>'+(st.role!=='emp'?'<select id="c_sel" class="btn sm">'+st.people.map(x=>'<option value="'+x.no+'"'+(x.no===no?' selected':'')+'>'+esc(x.name)+' ('+x.no+')</option>').join('')+'</select>':'<span class="tag">내 카드</span>')+'</div>'+
- '<section class="card"><div class="hd"><b>'+esc(p.name)+' <span class="tag">'+p.no+'</span></b><span class="st '+(p.status==='재직'?'o':p.status==='휴직'?'w':'n')+'">'+p.status+'</span></div><div class="bd"><div class="info">'+
+ return '<div class="top"><h1>인사카드</h1>'+(st.role!=='emp'?'<select id="c_sel" class="btn sm">'+st.people.map(x=>'<option value="'+x.no+'"'+(x.no===no?' selected':'')+'>'+esc(x.name)+' ('+x.no+')</option>').join('')+'</select>':'<span class="tag">내 카드</span>')+'</div>'+cardProfile(p)+
+ '<section class="card"><div class="hd"><b>인사카드 · '+esc(p.name)+' <span class="tag">'+p.no+'</span></b><span class="st '+(p.status==='재직'?'o':p.status==='휴직'?'w':'n')+'">'+p.status+'</span></div><div class="bd"><div class="info">'+
  [['회사',p.co==='H'?'휴롬':'휴롬엘에스'],['부서',p.dept],['직책',p.pos],...(kjOf(p).length?[['겸직',kjTxt(p)]]:[]),['레벨',clOf(p)||'계약직 (레벨 없음)'],['입사일',p.join],['고용',p.emp],['결재선',(p.pos==='팀장'?'본부장':'팀장')+' → 인사'+(kjOf(p).some(k=>k.pos==='팀장')?' · 겸직 팀 결재도 함':'')],['근속',grant(p)>=15?Math.floor(((Date.now()-new Date(p.join))/31557600000))+'년':'1년 미만']].map(x=>'<div><small>'+x[0]+'</small>'+esc(x[1])+'</div>').join('')+'</div>'+
  (hr?'<div style="margin-top:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="tag">상태 바꾸기</span>'+['재직','휴직','퇴직'].map(s=>'<button class="btn sm" data-ps="'+s+'"'+(s===p.status?' disabled':'')+'>'+s+'</button>').join('')+'</div>'+'<div style="margin-top:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="tag">겸직</span>'+kjOf(p).map((k,i)=>'<span class="st">'+esc(k.dept)+' '+esc(k.pos)+' <a href="#" data-kjdel="'+i+'" title="겸직 해제">×</a></span>').join(' ')+'<select id="kj_d" class="btn sm">'+st.depts.filter(d=>!deptsOf(p).includes(d)).map(d=>'<option>'+esc(d)+'</option>').join('')+'</select><select id="kj_p" class="btn sm"><option>팀원</option><option>팀장</option></select><button class="btn sm" id="kj_add">겸직 추가</button></div>':'')+'</div></section>'+
  '<section class="card"><div class="hd"><b>연차</b><span class="tag">잔여 = 발생 − 사용 − 예약 · 예약은 팀장 승인 때, 사용은 인사 확정 때</span></div><div class="bd"><div class="bal">'+
