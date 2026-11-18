@@ -93,6 +93,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = AxWork;
 const React = __importStar(require("react"));
+const Guide_1 = require("src/webparts/huromAxPlm/components/Guide.js");
 const store_1 = require("src/webparts/huromDevHub/model/store.js");
 const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
 const work_1 = require("src/webparts/huromAxPlm/model/work.js");
@@ -229,9 +230,9 @@ function AxWork(props) {
             err || '불러오는 중…');
     const mine = (0, work_1.todos)(items, who);
     const cur = items.filter(x => x.id === sel)[0] || items[0];
-    const tabs = [['dash', '대시보드', undefined], ['todo', '내 할 일', mine.length], ['project', '프로젝트', undefined], ['sched', '전체 일정', undefined], ['item', '품목', items.length], ['vendor', '협력사', undefined], ['all', '전체 현황', items.length]];
+    const tabs = [['dash', '대시보드', undefined], ['todo', '내 할 일', mine.length], ['project', '프로젝트', undefined], ['sched', '전체 일정', undefined], ['item', '품목', items.length], ['vendor', '협력사', undefined], ['all', '전체 현황', items.length], ['guide', '기본 업무', undefined]];
     return (React.createElement(Dash_1.AiCtx.Provider, { value: aiApi },
-        React.createElement("div", { "data-axplm": true, "data-ax-v": "134", className: "axw" },
+        React.createElement("div", { "data-axplm": true, "data-ax-v": "136", className: "axw" },
             React.createElement("style", null, ui_1.CSS),
             React.createElement("div", { className: "axw-pad axw-top", style: { background: ui_1.C.card, borderBottom: `1px solid ${ui_1.C.line}`, padding: '0 24px', display: 'flex', alignItems: 'center', gap: 20, position: 'sticky', top: 0, zIndex: 10, height: 56 } },
                 React.createElement("span", { style: { fontSize: 15, fontWeight: 800, letterSpacing: '-.01em', whiteSpace: 'nowrap' } }, "AX-PLM"),
@@ -256,6 +257,7 @@ function AxWork(props) {
                 view === 'sched' && React.createElement(Dash_1.AllSchedule, { items: items, onOpen: open }),
                 view === 'todo' && React.createElement(TodoView, { list: mine, items: items, who: who, onOpen: open }),
                 view === 'all' && React.createElement(AllView, { items: items, onOpen: open }),
+                view === 'guide' && React.createElement(Guide_1.Guidebook, { items: items }),
                 view === 'vendor' && React.createElement(Vendors_1.VendorsView, { items: items, who: who, update: update, onItem: id => { setItemSel(id); setView('item'); } }),
                 view === 'item' && !items.filter(x => x.id === itemSel).length && React.createElement(Items_1.ItemsList, { items: items, onOpen: setItemSel }),
                 view === 'item' && items.filter(x => x.id === itemSel).map(x => React.createElement(Items_1.ItemDetail, { key: x.id, p: x, items: items, who: who, update: fn => update(x.id, fn), onPick: setItemSel, onProject: () => open(x.id) })),
@@ -432,6 +434,7 @@ function ProjectView(props) {
         mode === 'work' && React.createElement("div", { className: "axw-main", style: { marginTop: 16 } },
             React.createElement("div", { style: { minWidth: 0 } },
                 React.createElement(StageList, { p: p, k: k, pick: props.pick, setPick: props.setPick }),
+                React.createElement(Guide_1.BaseList, { p: p, k: k, who: who, update: update }),
                 React.createElement(Dash_1.StageAi, { p: p, k: k }),
                 React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { marginTop: 16 }) },
                     React.createElement("div", { style: { display: 'flex', gap: 2, borderBottom: `1px solid ${ui_1.C.line}`, padding: '0 8px', overflowX: 'auto' } }, [['issue', '이슈·리스크', (p.issues || []).filter(i => !i.done).length], ['change', '사양 변경', (p.changes || []).length], ['ai', '사전 검토', (p.asks || []).filter(a => !a.answer).length], ['log', '기록', undefined]].map(t => React.createElement("button", { key: t[0], "data-ax-tab": t[0], onClick: () => setTab(t[0]), style: { border: 'none', background: 'transparent', padding: '12px 10px', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: tab === t[0] ? ui_1.C.text : ui_1.C.faint, boxShadow: tab === t[0] ? `inset 0 -2px 0 ${ui_1.C.text}` : 'none', whiteSpace: 'nowrap' } },
@@ -862,6 +865,1794 @@ function NewForm(props) {
         !t && React.createElement("div", { style: { marginTop: 10 } },
             React.createElement("button", { onClick: props.onCancel, style: ui_1.btn }, "\uCDE8\uC18C"))));
 }
+
+};
+__m["src/webparts/huromAxPlm/components/Guide.js"]=function(module,exports,require){"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.HATCH = void 0;
+exports.Guidebook = Guidebook;
+exports.BaseList = BaseList;
+const React = __importStar(require("react"));
+const base_1 = require("src/webparts/huromAxPlm/model/base.js");
+const hatch_1 = require("src/webparts/huromAxPlm/model/hatch.js");
+const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
+const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
+const NO = ['①', '②', '③', '④', '⑤', '⑥', '⑦'];
+const ST_COL = { screen: ui_1.C.ok, auto: ui_1.C.accent, none: ui_1.C.line2 };
+exports.HATCH = `repeating-linear-gradient(135deg, #F1F1F1 0 6px, #E2E2E2 6px 7px)`;
+function Bar3(props) {
+    const n = props.list.length || 1;
+    const c = (s) => props.list.filter(b => (0, hatch_1.baseState)(b) === s).length;
+    return (React.createElement("div", { style: { display: 'flex', height: props.h || 8, borderRadius: 99, overflow: 'hidden', background: ui_1.C.hover } }, ['screen', 'auto', 'none'].map(s => React.createElement("div", { key: s, "data-ax-bar": s, style: { width: `${c(s) / n * 100}%`, background: ST_COL[s] } }))));
+}
+function Count(props) {
+    return (React.createElement("span", { style: { display: 'inline-flex', gap: 12, fontSize: 12.5, color: ui_1.C.sub, fontVariantNumeric: 'tabular-nums', flexWrap: 'wrap' } }, ['screen', 'auto', 'none'].map(s => React.createElement("span", { key: s, "data-ax-cnt": s, style: { display: 'inline-flex', alignItems: 'center', gap: 5 } },
+        React.createElement("span", { style: { width: 8, height: 8, borderRadius: 2, background: ST_COL[s], display: 'inline-block' } }),
+        hatch_1.BASE_STATE_LABEL[s],
+        " ",
+        React.createElement("b", { style: { color: ui_1.C.text } }, props.list.filter(b => (0, hatch_1.baseState)(b) === s).length)))));
+}
+const Line = (props) => (React.createElement("div", { style: { display: 'grid', gridTemplateColumns: '64px minmax(0,1fr)', gap: 8, fontSize: 12.5, lineHeight: 1.5 } },
+    React.createElement("span", { style: { color: ui_1.C.faint, fontWeight: 600 } }, props.l),
+    React.createElement("div", { style: { minWidth: 0, color: ui_1.C.sub } }, props.children)));
+function Quest(props) {
+    const { b } = props;
+    const [open, setOpen] = React.useState(false);
+    const st = (0, hatch_1.baseState)(b);
+    const off = props.t ? (0, hatch_1.taskOff)(props.t, b) : undefined;
+    return (React.createElement("div", { "data-ax-quest": b.id, "data-ax-quest-state": st, "data-ax-off": off ? '1' : '', title: off, style: Object.assign(Object.assign({}, ui_1.card), { padding: 14, display: 'flex', flexDirection: 'column', gap: 8, background: off ? exports.HATCH : ui_1.C.card, opacity: off ? 0.75 : 1, borderLeft: `3px solid ${ST_COL[st]}` }) },
+        React.createElement("div", { style: { display: 'flex', gap: 8, alignItems: 'baseline' } },
+            React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: ui_1.C.faint, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } }, b.id),
+            React.createElement("span", { style: { fontSize: 11, color: ui_1.C.faint, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, b.grp),
+            React.createElement("span", { "data-ax-quest-badge": true, style: { fontSize: 11, fontWeight: 700, color: st === 'none' ? ui_1.C.faint : ST_COL[st], whiteSpace: 'nowrap' } }, b.soon ? `${b.soon}에 생김` : hatch_1.BASE_STATE_LABEL[st])),
+        React.createElement("div", { style: { fontSize: 14.5, fontWeight: 700, lineHeight: 1.35 } }, b.t),
+        off && React.createElement("div", { "data-ax-off-why": true, style: { fontSize: 12, color: ui_1.C.sub, fontWeight: 600 } },
+            "\uD574\uB2F9 \uC5C6\uC74C \u00B7 ",
+            off),
+        React.createElement(Line, { l: "\uBAA9\uD45C" }, b.goal || '—'),
+        React.createElement(Line, { l: "\uD544\uC694\uD55C \uAC83" }, props.prev && props.prev.out.length ? `${props.prev.id} ${props.prev.out.slice(0, 2).join(', ')}` : '이 챕터 시작'),
+        React.createElement(Line, { l: "\uC5BB\uB294 \uAC83" },
+            React.createElement("b", { style: { color: ui_1.C.text, fontWeight: 600 } }, b.out.length ? b.out.join(' · ') : '—')),
+        React.createElement(Line, { l: "\uB2F4\uB2F9" },
+            b.own || '—',
+            " ",
+            React.createElement("span", { style: { color: ui_1.C.faint } },
+                "\u00B7 ",
+                sched_1.LANES[b.lane])),
+        (b.scr || b.ai.length > 0) && React.createElement(Line, { l: "\uB3C4\uAD6C" },
+            b.scr && React.createElement("span", { "data-ax-quest-scr": true, style: { marginRight: 8 } },
+                "\u25B8 ",
+                b.scr),
+            b.ai.map(k => React.createElement("span", { key: k, "data-ax-quest-ai": k, style: { marginRight: 8, color: ui_1.C.accent } },
+                "AI ",
+                (0, ai_1.kindInfo)(k).label.split(' — ')[0]))),
+        open && b.chk.length > 0 && React.createElement(Line, { l: "\uACF5\uB7B5 \uD301" },
+            React.createElement("ul", { style: { margin: 0, paddingLeft: 16 } }, b.chk.map((x, i) => React.createElement("li", { key: i }, x)))),
+        open && b.how.length > 0 && React.createElement(Line, { l: "\uC21C\uC11C" },
+            React.createElement("ol", { style: { margin: 0, paddingLeft: 16 } }, b.how.map((x, i) => React.createElement("li", { key: i }, x)))),
+        open && React.createElement(Line, { l: "\uAC1C\uBC1C \uC720\uD615" },
+            React.createElement("span", { style: { display: 'inline-flex', gap: 4, flexWrap: 'wrap' } }, hatch_1.HTYPES.map(h => {
+                const w = (0, hatch_1.taskOff)(h[0], b);
+                return React.createElement("span", { key: h[0], "data-ax-quest-type": h[0], "data-ax-on": w ? '0' : '1', title: w || '해당', style: { fontSize: 11.5, padding: '1px 7px', borderRadius: 4, border: `1px solid ${ui_1.C.line2}`, background: w ? exports.HATCH : ui_1.C.card, color: w ? ui_1.C.faint : ui_1.C.text, textDecoration: w ? 'line-through' : 'none' } }, h[1]);
+            }))),
+        (b.chk.length > 0 || b.how.length > 0 || !open) && React.createElement("button", { "data-ax-quest-more": true, onClick: () => setOpen(!open), style: Object.assign(Object.assign({}, ui_1.btn), { alignSelf: 'flex-start', padding: '3px 10px', fontSize: 12 }) }, open ? '접기' : '공략 보기')));
+}
+function Guidebook(props) {
+    const [t, setT] = React.useState('');
+    const [q, setQ] = React.useState('');
+    const [only, setOnly] = React.useState('');
+    const [openCh, setOpenCh] = React.useState({ 0: true });
+    const hit = (b) => (!only || (0, hatch_1.baseState)(b) === only) && (!q || `${b.id} ${b.grp} ${b.t} ${b.out.join(' ')} ${b.own}`.indexOf(q) >= 0);
+    const extra = base_1.BASE_TASKS.filter(b => b.x).length;
+    return (React.createElement("div", { "data-ax-guide": true },
+        React.createElement("div", { style: { display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 14 } },
+            React.createElement("div", { style: { flex: '1 1 320px', minWidth: 0 } },
+                React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { letterSpacing: '.08em' }) }, "AX-PLM \uACF5\uB7B5\uC9D1"),
+                React.createElement("h1", { style: { fontSize: 22, fontWeight: 800, margin: '2px 0 4px', letterSpacing: '-.01em' } }, "\uAE30\uBCF8 \uC5C5\uBB34 \uC810\uAC80\uD45C"),
+                React.createElement("div", { style: { fontSize: 13, color: ui_1.C.sub } },
+                    "\uD504\uB85C\uC138\uC2A4 \uD45C ",
+                    base_1.BASE_TASKS.length - extra,
+                    "\uC5C5\uBB34 + \uD45C\uC5D0 \uC5C6\uB294 \uAE30\uBCF8 ",
+                    extra,
+                    "\uAC1C = ",
+                    React.createElement("b", { "data-ax-guide-total": true, style: { color: ui_1.C.text } }, base_1.BASE_TASKS.length),
+                    "\uAC1C. \uB2E8\uACC4\uAC00 \uCC55\uD130, \uC5C5\uBB34 \uD558\uB098\uAC00 \uACF5\uB7B5 \uCE74\uB4DC\uC608\uC694.")),
+            React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { padding: '12px 14px', flex: '1 1 340px', minWidth: 0 }) },
+                React.createElement("div", { style: { marginBottom: 8 } },
+                    React.createElement(Count, { list: base_1.BASE_TASKS })),
+                React.createElement(Bar3, { list: base_1.BASE_TASKS, h: 10 }),
+                React.createElement("div", { style: { fontSize: 11.5, color: ui_1.C.faint, marginTop: 6 } }, "\uD654\uBA74\uC5D0 \uC788\uC74C = \uC804\uC6A9 \uD654\uBA74\uC5D0\uC11C \uCC98\uB9AC \u00B7 \uC790\uB3D9\uD654\uB428 = AI\uAC00 \uCD08\uC548\u00B7\uC810\uAC80 \u00B7 \uC5C6\uC74C = \uD504\uB85C\uC81D\uD2B8\uC5D0\uC11C \uCCB4\uD06C\uB9CC"))),
+        React.createElement("div", { style: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 } },
+            React.createElement("span", { style: Object.assign(Object.assign({}, ui_1.label), { marginRight: 2 }) }, "\uAC1C\uBC1C \uC720\uD615"),
+            ([['', '전체']].concat(hatch_1.HTYPES)).map(h => React.createElement("button", { key: h[0] || 'all', "data-ax-guide-type": h[0] || 'all', onClick: () => setT(h[0]), style: Object.assign(Object.assign({}, ui_1.btn), { padding: '4px 10px', background: t === h[0] ? ui_1.C.text : ui_1.C.card, color: t === h[0] ? '#fff' : ui_1.C.sub, borderColor: t === h[0] ? ui_1.C.text : ui_1.C.line2 }) }, h[1])),
+            React.createElement("span", { style: { width: 10 } }),
+            ['', 'screen', 'auto', 'none'].map(s => React.createElement("button", { key: s || 'all', "data-ax-guide-only": s || 'all', onClick: () => setOnly(s), style: Object.assign(Object.assign({}, ui_1.btn), { padding: '4px 10px', background: only === s ? ui_1.C.accentBg : ui_1.C.card, borderColor: only === s ? ui_1.C.accent : ui_1.C.line2, color: only === s ? ui_1.C.accent : ui_1.C.sub }) }, s ? hatch_1.BASE_STATE_LABEL[s] : '상태 전체')),
+            React.createElement("input", { "data-ax-guide-q": true, placeholder: "\uC5C5\uBB34 \u00B7 \uC0B0\uCD9C\uBB3C \uCC3E\uAE30", value: q, onChange: e => setQ(e.target.value), style: { border: `1px solid ${ui_1.C.line2}`, borderRadius: 6, padding: '5px 9px', fontSize: 13, width: 180 } }),
+            React.createElement("span", { style: { flex: 1 } }),
+            React.createElement("button", { "data-ax-guide-all": true, onClick: () => { const o = {}; NO.forEach((_, i) => { o[i] = true; }); setOpenCh(o); }, style: ui_1.btn }, "\uBAA8\uB450 \uD3BC\uCE58\uAE30")),
+        t && React.createElement("div", { "data-ax-guide-hatch": true, style: { fontSize: 12.5, color: ui_1.C.sub, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 } },
+            React.createElement("span", { style: { width: 22, height: 12, background: exports.HATCH, border: `1px solid ${ui_1.C.line2}`, display: 'inline-block' } }),
+            "\uBE57\uAE08 \uCE74\uB4DC = \uC774 \uC720\uD615\uC5D0\uC120 \uD574\uB2F9 \uC5C6\uC74C (\uC9C4\uCC99\uB960 \u00B7 \uC9C0\uC5F0\uC5D0\uC11C \uBE60\uC9D0). \uB9C8\uC6B0\uC2A4\uB97C \uC62C\uB9AC\uBA74 \uC774\uC720\uAC00 \uBCF4\uC5EC\uC694."),
+        NO.map((no, k) => {
+            const all = (0, hatch_1.baseOfStage)(k);
+            const list = all.filter(hit);
+            const on = !!openCh[k] || !!q;
+            const offN = t ? all.filter(b => (0, hatch_1.taskOff)(t, b)).length : 0;
+            return (React.createElement("section", { key: k, "data-ax-chapter": k, style: Object.assign(Object.assign({}, ui_1.card), { marginBottom: 12, overflow: 'hidden' }) },
+                React.createElement("button", { "data-ax-chapter-head": k, onClick: () => setOpenCh(Object.assign(Object.assign({}, openCh), { [k]: !on })), style: { width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', padding: '14px 16px', display: 'grid', gridTemplateColumns: '56px minmax(0,1fr) auto', gap: 14, alignItems: 'center' } },
+                    React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: ui_1.C.faint, lineHeight: 1.1 } },
+                        "CHAPTER",
+                        React.createElement("br", null),
+                        React.createElement("span", { style: { fontSize: 24, color: ui_1.C.text } }, k + 1)),
+                    React.createElement("span", { style: { minWidth: 0 } },
+                        React.createElement("span", { style: { display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 6 } },
+                            React.createElement("b", { style: { fontSize: 16 } },
+                                no,
+                                " ",
+                                ui_1.SHORT[k]),
+                            React.createElement("span", { style: { fontSize: 12.5, color: ui_1.C.faint } },
+                                "\uC5C5\uBB34 ",
+                                all.length,
+                                "\uAC1C",
+                                offN ? ` · 빗금 ${offN}` : ''),
+                            React.createElement(Count, { list: all })),
+                        React.createElement(Bar3, { list: all })),
+                    React.createElement("span", { style: { fontSize: 13, color: ui_1.C.faint } }, on ? '접기 ▴' : '펼치기 ▾')),
+                on && React.createElement("div", { style: { padding: '0 16px 16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 10 } },
+                    list.map(b => React.createElement(Quest, { key: b.id, b: b, t: t || undefined, prev: all[all.indexOf(b) - 1] })),
+                    !list.length && React.createElement("div", { style: { fontSize: 13, color: ui_1.C.faint } }, "\uB9DE\uB294 \uC5C5\uBB34\uAC00 \uC5C6\uC5B4\uC694."))));
+        }),
+        React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint } },
+            "\uB2E8\uACC4 \uCE78\uC774 \uBE48 \uC5C5\uBB34 ",
+            base_1.BASE_TASKS.filter(b => b.g).length,
+            "\uAC1C\uB294 \uD45C\uC758 \uC55E \uC5C5\uBB34 \uB2E8\uACC4\uB97C \uB530\uB77C \uB123\uC5C8\uC5B4\uC694. \uD504\uB85C\uC81D\uD2B8\uB9C8\uB2E4 \uCCB4\uD06C\uB294 \u300C\uD504\uB85C\uC81D\uD2B8 \u2192 \uB2E8\uACC4\u00B7\uC0B0\uCD9C\uBB3C \u2192 \uAE30\uBCF8 \uC5C5\uBB34\u300D\uC5D0\uC11C \uD574\uC694. \uB4F1\uB85D\uB41C \uD504\uB85C\uC81D\uD2B8 ",
+            props.items.length,
+            "\uAC1C.")));
+}
+function BaseList(props) {
+    const { p, k } = props;
+    const [open, setOpen] = React.useState(false);
+    const t = (0, hatch_1.htypeOf)(p);
+    const list = (0, hatch_1.baseOfStage)(k);
+    const pr = (0, hatch_1.baseProgress)(p, k);
+    const toggle = (b) => props.update(x => {
+        const key = (0, hatch_1.baseKey)(b);
+        const cur = x.docs[key] || {};
+        const done = !cur.done;
+        return Object.assign(Object.assign({}, x), { docs: Object.assign(Object.assign({}, x.docs), { [key]: Object.assign(Object.assign({}, cur), { done, by: props.who, at: (0, ui_1.nowIso)() }) }), log: x.log.concat([{ at: (0, ui_1.nowIso)(), who: props.who, kind: 'doc', what: `기본 업무 ${b.id} ${b.t} ${done ? '완료' : '완료 취소'}` }]) });
+    });
+    const setOdm = (m) => props.update(x => (Object.assign(Object.assign({}, x), { odmMold: m, log: x.log.concat([{ at: (0, ui_1.nowIso)(), who: props.who, kind: 'edit', what: `ODM ${hatch_1.ODM_LABEL[m]}` }]) })));
+    return (React.createElement("div", { "data-ax-base": k, style: Object.assign(Object.assign({}, ui_1.card), { marginTop: 16 }) },
+        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', flexWrap: 'wrap' } },
+            React.createElement("b", { style: { fontSize: 14 } }, "\uAE30\uBCF8 \uC5C5\uBB34"),
+            React.createElement("span", { "data-ax-base-cnt": true, style: { fontSize: 12.5, color: ui_1.C.sub, fontVariantNumeric: 'tabular-nums' } },
+                "\uD504\uB85C\uC138\uC2A4 \uD45C ",
+                pr.done,
+                "/",
+                pr.total,
+                " \uC644\uB8CC",
+                pr.off ? ` · 빗금 ${pr.off}개 제외` : ''),
+            (0, devtype_1.typeOf)(p) === 'odm' && React.createElement("select", { "data-ax-odm": true, value: (0, hatch_1.odmOf)(p), onChange: e => setOdm(e.target.value), style: { border: `1px solid ${ui_1.C.line2}`, borderRadius: 6, padding: '3px 6px', fontSize: 12.5 } }, ['public', 'private'].map(m => React.createElement("option", { key: m, value: m },
+                "ODM ",
+                hatch_1.ODM_LABEL[m]))),
+            React.createElement("span", { style: { flex: 1 } }),
+            React.createElement("button", { "data-ax-base-open": true, onClick: () => setOpen(!open), style: ui_1.btn }, open ? '접기' : `펼치기 (${list.length})`)),
+        open && React.createElement("div", { style: { borderTop: `1px solid ${ui_1.C.line}` } }, list.map(b => {
+            const off = (0, hatch_1.taskOff)(t, b);
+            const s = p.docs[(0, hatch_1.baseKey)(b)] || {};
+            return (React.createElement("div", { key: b.id, "data-ax-base-row": b.id, "data-ax-off": off ? '1' : '', title: off, style: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderTop: `1px solid ${ui_1.C.line}`, background: off ? exports.HATCH : 'transparent', color: off ? ui_1.C.faint : ui_1.C.text, minHeight: 40 } },
+                React.createElement("input", { type: "checkbox", "data-ax-base-chk": b.id, disabled: !!off || props.demo, checked: !!s.done, onChange: () => toggle(b), style: { width: 16, height: 16, flex: '0 0 16px' } }),
+                React.createElement("span", { style: { fontSize: 11.5, color: ui_1.C.faint, width: 66, flex: '0 0 66px', fontVariantNumeric: 'tabular-nums' } }, b.id),
+                React.createElement("span", { style: { flex: 1, minWidth: 0, fontSize: 13.5, textDecoration: off ? 'line-through' : 'none' } },
+                    b.t,
+                    React.createElement("span", { className: "axw-hide-sm", style: { color: ui_1.C.faint, fontSize: 12 } },
+                        " \u00B7 ",
+                        b.out.slice(0, 2).join(', '))),
+                React.createElement("span", { className: "axw-hide-sm", style: { fontSize: 12, color: ui_1.C.faint, whiteSpace: 'nowrap' } }, off ? '해당 없음' : sched_1.LANES[b.lane])));
+        }))));
+}
+
+};
+__m["src/webparts/huromAxPlm/model/base.js"]=function(module,exports,require){"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.BASE_TASKS = void 0;
+exports.BASE_TASKS = [{ "id": "PROC-01", "st": 0, "g": false, "grp": "요구사항 접수·분석", "t": "권역·채널별 요구사항 분류·분석 및 기획 Input 정리", "goal": "신규·파생·ODM 요청과 권역·채널별 바이어 요구를 분류·분석해, 기획 초기 데이터와 착수 범위·일정을 확정한다.", "own": "상품전략팀", "out": ["요구사항 분석표", "도입 요청 정리표", "시장성 검토 결과서", "의결 기록"], "chk": ["휴롬 PM 구분 : 개발 등급 A~D", "운영 상품도 대상 권역의 시장성 사전 검토"], "how": ["신규 과제, 요청 접수 및 유형 구분 (신규 / 파생 / ODM)", "요구사항 분류 및 분석 (공통 / 권역 전용, 사양·가격·수량·출시 시점)", "기획 Input 정리 및 착수 범위·일정 확정", "해영과 합의된 상품도입 프로세스 기준"], "lane": 0, "ai": ["g_market"], "scr": "" }, { "id": "PROC-02A", "st": 0, "g": false, "grp": "시장조사 & 인사이트 도출", "t": "기존 모델 판매 History 분석", "goal": "기존 모델의 판매·재고·CS 이력을 분석해, 신제품에서 유지할 강점과 개선할 약점의 근거를 확보한다.", "own": "상품전략팀", "out": ["신제품 기획안"], "chk": ["강점·약점 정리", "POD 후보 도출"], "how": ["판매·재고·CS 이력 데이터 요청", "유지할 강점 / 개선할 약점 정리", "차별화 포인트(POD) 후보 도출"], "lane": 0, "ai": ["g_market", "j_plan"], "scr": "" }, { "id": "PROC-02B", "st": 0, "g": false, "grp": "시장조사 & 인사이트 도출", "t": "글로벌/주요 국가 시장조사", "goal": "목표 권역의 시장 규모·성장세·채널·규제·기술 변화를 파악해, 제품 방향성의 시장 근거를 만든다.", "own": "상품디자인팀", "out": ["시장·전시 동향 보고서 (조사 근거·주요 인사이트·기획 및 디자인 적용 "], "chk": [], "how": ["상품디자인팀이 조사 대상·범위를 설정하고 글로벌 시장·주요 전시 동향 리서치", "시장·소비·제품 트렌드 분석 및 기획·디자인 인사이트 도출", "상품전략1팀의 타깃·권역 정보와 의견을 참고해 적용 방향 정리·공유"], "lane": 0, "ai": ["g_market", "weekly"], "scr": "" }, { "id": "PROC-02C", "st": 0, "g": false, "grp": "시장조사 & 인사이트 도출", "t": "권역별 시장 동향", "goal": "주력 권역의 주요 채널 판매 상위 모델을 비교해 시장 동향을 파악하고, 가격·사양 기준이 될 레퍼런스 모델을 정한다.", "own": "상품전략팀 상품디자인팀", "out": ["권역별 동향·레퍼런스 모델 비교표 (판매 상위 모델", "가격대", "사양·소구점", "레퍼런스 모델"], "chk": ["PROC-02C(경쟁 모델 벤치마킹)를 이 Task로 통합"], "how": ["주력 출시 권역 설정", "권역별 주요 채널 판매 상위 모델·가격대 확인", "상위 모델 사양·가격·구성품·소구점 비교", "법인 현지 동향 의견 확인"], "lane": 1, "ai": ["g_market"], "scr": "" }, { "id": "PROC-02D", "st": 0, "g": false, "grp": "시장조사 & 인사이트 도출", "t": "영업/고객 VOC·Pain Point 분석 및 기획 Input 정리", "goal": "자사·타사 고객의 불만과 요구를 분류해, 신제품에 반영할 개선 사항을 우선순위로 정리한다.", "own": "상품전략팀 상품디자인팀", "out": ["Pain Point 리스트 (VOC", "영업 VOC 구분"], "chk": ["Pain Point 리스트 작성", "우선순위 정리"], "how": ["자사(국내/해외) VOC·현지 CS 이슈 수집", "영업 VOC 수집 (거래선 요구, 판매 현장 불만)", "온라인 리뷰 조사", "Pain Point 리스트 작성 및 우선순위 정리"], "lane": 0, "ai": ["j_voc", "g_market"], "scr": "" }, { "id": "PROC-02E", "st": 0, "g": false, "grp": "시장조사 & 인사이트 도출", "t": "디자인 트렌드 조사 및 적용 방향 도출", "goal": "목표 고객·권역의 디자인 트렌드를 조사해 제품의 형태·CMF·사용 경험 방향에 반영한다.", "own": "상품디자인팀", "out": ["디자인 트렌드 리포트 (출처·무드보드·적용 방향"], "chk": [], "how": ["목표 고객·권역 및 조사 범위 설정", "제품·인접 분야의 형태·CMF·UI 트렌드 조사", "브랜드 적합성·차별성·구현 가능성 검토", "컨셉 적용 방향 정리·공유"], "lane": 0, "ai": ["g_market"], "scr": "" }, { "id": "PROC-03", "st": 0, "g": false, "grp": "제품 아이디어 및 컨셉 기획", "t": "제품 방향성, 컨셉 설정 및 고객 가치 정의", "goal": "시장·고객 조사에서 발견한 기회를 바탕으로 타깃 고객과 해결할 문제를 정의하고, 제품이 제공할 핵심 가치와 차별화 방향을 설정한다.", "own": "상품전략팀", "out": ["신제품기획안 초안 (레퍼런스 모델 기반 공급가 제안 포함", "가격 제안표 (권역", "레퍼런스 모델", "판매가", "역산 공급가", "영업 협의 결과"], "chk": ["공급가 역산 시 권역별 마진 구조(법인·채널) 반영", "영업 협의 결과·차이 사유 기록"], "how": ["02A~02D 결과 1장 요약 (기존 모델 강점·약점, 경쟁 대비 차이, 주요 VOC Top 5)", "타깃 고객·사용 상황 정의 및 핵심 USP 1~3개 선정", "레퍼런스 모델(02B) 권역별 판매가 확인", "판매가 역산 → 휴롬→휴롬엘에스 공급가(안) 권역별 산출"], "lane": 0, "ai": ["j_plan"], "scr": "" }, { "id": "PROC-04A", "st": 0, "g": false, "grp": "제품 아이디어 및 컨셉 기획", "t": "컨셉 디자인 및 개념 방향 탐색", "goal": "핵심 고객가치를 사용 경험과 디자인 개념으로 전환하고, 제품의 인상·형태·기능·CMF가 지향할 컨셉 방향을 탐색한다.", "own": "상품디자인팀", "out": ["컨셉 방향안·개념 보드 (핵심 경험·디자인 키워드·대안 비교"], "chk": [], "how": ["핵심 고객가치에 따른 사용 경험·디자인 키워드 도출", "형태·기능·CMF의 개념을 이미지·스케치·무드보드로 표현", "컨셉 대안의 고객가치·브랜드 적합성·차별성 비교", "컨셉 방향과 후속 검토 과제 정리"], "lane": 0, "ai": ["j_plan"], "scr": "" }, { "id": "PROC-04B", "st": 0, "g": false, "grp": "제품 아이디어 및 컨셉 기획", "t": "컨셉 사양 기획", "goal": "컨셉의 기능·성능·UX 사용성 조건을 구체화하고 우선순위를 정한다.", "own": "상품전략팀", "out": ["컨셉 사양 리스트 (목표 조건·우선순위·디자인 검토 의견 반영"], "chk": [], "how": ["신제품기획안 초안의 타깃·핵심 고객가치·USP·목표 가격 확인", "앞 단계의 컨셉 디자인과 크기·소재·CMF·사용성 조건 검토", "고객가치·USP 구현에 필요한 기능·성능·UX 목표 조건 구체화", "디자인 반영 가능성·사용성 제약을 검토하고 상품전략팀과 조정"], "lane": 1, "ai": ["j_plan"], "scr": "" }, { "id": "PROC-05", "st": 0, "g": false, "grp": "제품 아이디어 및 컨셉 기획", "t": "컨셉 기획 경영진 보고 및 컨펌", "goal": "컨셉의 고객가치·차별성과 시장·사업성 검토 내용을 경영진에 보고하고, 추진 방향 및 보완 과제에 대한 의사결정을 받는다.", "own": "상품전략팀, 상품디자인팀", "out": ["컨셉 보고자료·결정 사항 기록·후속 검토 과제"], "chk": ["보고 완료", "보완 사항 반영 계획 수립"], "how": ["컨셉·고객가치·시장성·사업성 및 주요 리스크 정리", "대표이사 보고 및 추진 방향 협의", "승인·보완·보류 사항 기록", "후속 검토 과제·담당·일정 정리 및 공유"], "lane": 0, "ai": ["j_plan", "weekly"], "scr": "" }, { "id": "PROC-06A", "st": 0, "g": false, "grp": "기술 조사 및 구현 가능성 검토", "t": "기술 옵션 및 개발 방식 검토", "goal": "적용 가능한 기술안과 개발 방식(내재화·공동개발·ODM)을 비교해 최적의 방식을 고른다.", "own": "개발본부", "out": ["기술 옵션·개발 방식 비교표"], "chk": ["개발 방식 비교 완료"], "how": ["핵심 기술·적용안 조사", "개발 방식별(내재화·공동개발·ODM) 비용·일정·리스크 비교", "개발 방식 제안안 정리"], "lane": 0, "ai": [], "scr": "" }, { "id": "PROC-06B", "st": 0, "g": false, "grp": "기술·소싱 검토", "t": "구매 Pool 활용 후보 상품·제조처 비교 및 선정", "goal": "기존 업체 Pool을 먼저 활용하고 신규 업체의 개발·품질·거래 위험을 확인해 기획 구현 가능한 제조처를 선정한다.", "own": "상품전략2팀", "out": ["업체 비교·선정표", "초기 견적서", "제조처 정보", "샘플 확보 내역"], "chk": ["구매 사전 협의·담당 지정 완료", "선정 근거와 견적 조건 확보"], "how": ["구매 담당자와 기존 Pool 후보를 확인", "신규 후보의 재무 건전성·R&D·고객 대응·품질관리·거래조건을 검토.", "스펙·초기단가·MOQ 및 선정 사유를 기록하고 검토용 샘플을 확보"], "lane": 3, "ai": ["g_quote", "g_vendor"], "scr": "협력사 · 샘플" }, { "id": "PROC-07", "st": 0, "g": false, "grp": "기술·소싱 검토", "t": "RFP 정의 (목표가·스펙·주요 기술·기능·디자인 특징)", "goal": "목적에 맞는 상품을 런칭하기 위한 스펙 및 특징을 정의한다.", "own": "상품전략팀", "out": ["상품 요구사항 정의서 (RFP: 타깃·고객가치·차별화 포인트", "목표가·스펙·주요 기술·기능·디자인 요구조건", "필수·선택 구분 및 평가 기준"], "chk": [], "how": ["시장·고객 조사 및 선행 검토 결과를 바탕으로 타깃·고객가치·차별화 포인트 정리", "목표가·스펙·주요 기술·기능·디자인 특징을 RFP 초안으로 작성", "개발·디자인·구매·품질부서와 필수·선택 요구사항 및 평가 기준 협의·조율", "협의 결과를 반영한 RFP를 공유하고 제조처 제안 요청·비교 평가에 활용"], "lane": 3, "ai": [], "scr": "" }, { "id": "PROC-08", "st": 0, "g": false, "grp": "기술·소싱 검토", "t": "제조처 후보군 선정", "goal": "경쟁력 있는 상품 및 원할한 운영을 위한 제조처 비교를 통한 제조처 선정", "own": "상품전략팀", "out": ["제조처 비교·평가표 (RFP 충족 여부", "기술·품질·가격·MOQ·납기·거래 위험", "최종 제조처 선정 보고서 (선정 근거 및 추가 확인사항"], "chk": [], "how": ["RFP 기준으로 구매 Pool·신규 업체 후보 및 제안·견적 확보", "개발·구매·품질부서와 기술·품질·가격·납기·거래 위험 비교 평가", "선정 근거를 정리하여 최종 제조처 선정 및 보고"], "lane": 3, "ai": ["g_vendor", "weekly"], "scr": "협력사" }, { "id": "PROC-09", "st": 0, "g": false, "grp": "기술·소싱 검토", "t": "기술 검토를 위한 개발 계약", "goal": "제조처의 프로젝트 범위를 확정하고 리스크관리를 위해 제조처와 개발 계약을 체결하고 개발을 공식 착수한다.", "own": "상품전략1팀 상품전략2팀", "out": ["개발계약서"], "chk": ["개발 계약 진행 및 착수 일정 관리"], "how": ["제조처와 개발 범위·일정·비용·역할 및 권리·검수·종료 조건 협의", "계약서 작성 후 법무 검토·내부 결재 및 계약 체결", "계약 내용·역할·일정을 공유하고 개발 Kick-Off 진행"], "lane": 3, "ai": [], "scr": "" }, { "id": "PROC-10A", "st": 0, "g": false, "grp": "기술·소싱 검토", "t": "기술 가능성 확인 및 적용 기술 협의 결과 도출", "goal": "고객가치·차별점을 구현할 핵심 기술이 가능한지 컨셉 확정 전에 확인해, 개발 검토 단계의 USP 변경을 줄인다.", "own": "상품전략본부, 개발본부", "out": ["개발 요구사항서 (성능 기준", "개발 요구사항 적용 결과서"], "chk": ["사전 확인 수준으로 진행 — 상세 구현 방안 검토는 ② 단계"], "how": ["핵심 기능·성능 기준 정리", "개발본부 사전 기술 검토 요청 (개발검토 요청서 상신)", "구현 가능 여부·난이도·원가 영향 의견 수렴", "어려운 항목 대안 기술·사양 검토"], "lane": 3, "ai": [], "scr": "" }, { "id": "PROC-10B", "st": 0, "g": false, "grp": "컨셉 기획", "t": "UI/UX 기획 및 개선 방향 수립", "goal": "제품 사용 흐름과 기능별 UI/UX 기준을 세워 디자인·개발이 같은 기준으로 진행하게 한다.", "own": "상품전략팀", "out": ["UI", "UX 기획안"], "chk": ["사용 흐름·조작 방식 정의", "기획안 공유"], "how": ["사용 흐름(조립·작동·세척) 정의", "정보 구조·조작 방식 정의", "기존 모델 UI/UX 개선 요소 정리", "UI/UX 기획안 공유"], "lane": 0, "ai": ["j_plan"], "scr": "" }, { "id": "PROC-11", "st": 0, "g": false, "grp": "컨셉 기획", "t": "제품 컨셉 구체화 및 개발 방향성 수립", "goal": "조사·기술 검토 결과로 타깃·핵심 USP와 목표 사양·구성을 확정해 신제품기획안으로 정리한다.", "own": "상품전략팀", "out": ["신제품기획안 (v1 컨셉"], "chk": ["타깃·USP 정의 완료", "VOC 반영 항목 선별 완료"], "how": ["컨셉 가설 검증 (조사·기술 검토 결과 반영)", "타깃·포지셔닝·핵심 USP 확정", "목표 사양·구성 기획 (기능·성능, 구성품·컬러, 인쇄물 구성 초안)", "신제품기획안 작성"], "lane": 0, "ai": ["j_plan"], "scr": "" }, { "id": "PROC-12", "st": 0, "g": false, "grp": "컨셉·사업성 승인 검토", "t": "컨셉·수익성·투자 타당성 검토", "goal": "판매가·원가·투자비·수익성을 기준으로 사업 타당성을 심의해 개발 추진 여부를 판단한다.", "own": "상품전략팀", "out": ["사업성 검토서"], "chk": ["기준 MOQ 확인·영업 공유", "심의 완료", "결정 사항 기록"], "how": ["사업성 자료 작성 (판매가·원가·개발비·금형비)", "기준 MOQ 확인 (개발·구매 제시) → 영업 공유 (추후 FCST 설정 시 참고용)", "투자 회수 시점 산출", "일정·핵심 리스크 정리"], "lane": 0, "ai": ["j_plan", "g_cost"], "scr": "" }, { "id": "PROC-13", "st": 0, "g": false, "grp": "디자인 개발·검증", "t": "형태·CMF·조작부 상세 디자인 및 실행 기준 수립", "goal": "확정된 제품 방향과 시장·고객 인사이트를 구체적인 디자인으로 구현하고, 휴롬의 디자인 아이덴티티가 반영된 실행 기준과 디자인안을 마련한다.", "own": "상품디자인팀", "out": ["상세 디자인안 (외관 3D·주요 치수·CMF·조작", "표시부·로고", "인쇄 위치", "디자인 아이덴티티·조사 인사이트 반영표", "목업 검증 결과"], "chk": ["컨셉 재수립이 아닌 확정 방향의 디자인 실행에 집중", "아이덴티티 적용 근거 및 조사 결과별 반영 내용·미반영 사유 기록", "구조·제조 협의가 필요한 항목은 후속 검토 사항으로 구분"], "how": ["시장·전시·경쟁 제품·사용 관찰·디자인 트렌드 조사(02A~02E)의 적용 항목 정리", "휴롬 디자인 아이덴티티 기준·승인 제품을 검토해 적용 원칙 설정", "형태·비례·주요 치수·부품 구성 및 외관 3D 구체화", "소재·색상·표면처리·질감·광택 등 CMF와 로고·인쇄 위치 구체화"], "lane": 7, "ai": [], "scr": "품목 · 도면 판" }, { "id": "PROC-14A", "st": 0, "g": false, "grp": "디자인 개발·검증", "t": "상세 디자인 구현성·사용성 검토 및 수정안 반영", "goal": "구체화된 디자인의 구조·금형·생산·사용성 적합성을 검증하고, 휴롬 디자인 아이덴티티와 조사에서 도출한 핵심 고객가치를 유지하며 수정안을 반영한다.", "own": "상품디자인팀", "out": ["디자인 구현성·사용성 검토 결과", "수정 디자인안·변경 내역·잔여 이슈 목록"], "chk": ["수정 전후 아이덴티티·핵심 고객가치 유지 여부 확인", "디자인 실행 기준과 변경 내역 일치 확인", "미해결 항목의 영향·후속 확인 시점 명시"], "how": ["상세 디자인안·실행 기준 및 인사이트 반영 항목 개발본부 공유", "구조·금형·생산 제약과 형태·CMF 구현 가능성 공동 검토", "목업으로 조립·조작·그립·세척·보관 사용성 검증", "제약·문제별 대안을 비교하고 디자인 아이덴티티·고객가치 영향 확인"], "lane": 7, "ai": [], "scr": "프로젝트 · 이슈·리스크" }, { "id": "PROC-14B", "st": 0, "g": false, "grp": "디자인/기획 사양 검토", "t": "선행 IP(지식재산권) 검토", "goal": "개발 착수 전 타사 지식재산권 침해 리스크를 확인해 사양·디자인에 반영한다.", "own": "지식재산본부", "out": ["IP 검토 결과"], "chk": ["IP 검토 결과 수령", "수정 필요 사항 반영 완료"], "how": ["컨셉안·사양 초안 지식재산본부 전달", "침해 리스크 검토 결과 수령", "리스크 항목 사양·디자인 수정 반영"], "lane": 1, "ai": [], "scr": "" }, { "id": "PROC-14C", "st": 0, "g": false, "grp": "디자인/기획 사양 검토", "t": "영업 요구사항 반영 및 협의", "goal": "PROC-03에서 협의한 가격을 기준으로 권역·채널별 필수 사양·목표가·출시 시점을 개발 검토 전에 확정해 이후 사양 변경을 줄인다.", "own": "상품전략팀", "out": ["신제품 기획안 (영업 요구 반영"], "chk": ["여기서 한 번만 취합하고, PROC-14·16A·17은 이 결과를 재사용 (중복 요청 방지)"], "how": ["기획안·디자인안 영업 공유 (PROC-03 가격 제안표 포함)", "권역·채널별 필수 사양·출시 시점 확인", "PROC-03 협의 가격 기준 목표가 확정", "적용 여부 협의 및 기획안 반영"], "lane": 1, "ai": ["j_plan"], "scr": "" }, { "id": "PROC-15", "st": 0, "g": false, "grp": "디자인 개발·검증", "t": "디자인-개발 핸드오프 리뷰", "goal": "디자인 목업·이미지 프레젠테이션으로 디자인 의도와 주요 특징을 공유하고, 개발에 필요한 설계 입력이 정확히 전달되도록 확인한다.", "own": "상품디자인팀", "out": ["핸드오프 리뷰 결과", "디자인 프레젠테이션 자료 (목업·이미지"], "chk": ["검토용 기준본 이관: 3D·주요 치수·CMF·표시 위치·미해결 이슈 및 버전 명시"], "how": ["디자인 산출물 및 프레젠테이션 자료 준비 (목업·이미지·도면·CMF·UI/UX)", "목업·이미지를 활용한 디자인 의도·주요 특징 프레젠테이션 및 개발본부 이관 리뷰", "질의·제조성 검토 의견 정리 및 반영", "이관 완료 확인"], "lane": 0, "ai": ["j_voc"], "scr": "" }, { "id": "PROC-16", "st": 0, "g": false, "grp": "승인·보고", "t": "[G1] 경영진 보고 및 컨펌", "goal": "기획 방향·사양·일정·투자 규모를 경영진에 보고해 개발 검토 진행 여부를 결정받는다.", "own": "상품전략팀", "out": ["경영진 보고자료", "결정 사항 기록"], "chk": ["개발 검토 진행 여부 결정 완료"], "how": ["보고자료 작성 (방향·사양·일정·투자 규모)", "경영진 보고", "결정·보완 사항 기록"], "lane": 0, "ai": ["weekly"], "scr": "" }, { "id": "PROC-17", "st": 1, "g": false, "grp": "프로젝트 Pre-Kick Off", "t": "PM 선정", "goal": "프로젝트 유형, 개발 난이도 및 추진 범위에 적합한 PM을 지정하여 개발 일정 및 부서 간 협업을 통합 관리할 책임자를 확정한다.", "own": "상품전략본부, 개발본부, 품질본부", "out": ["PM 지정 결과", "프로젝트 조직도 및 업무 R&R"], "chk": [], "how": ["프로젝트 유형·개발 난이도·추진 범위 확인", "PM 선정 기준에 따라 담당 PM 지정", "PM 역할·책임과 프로젝트 조직도 정리·공유"], "lane": 0, "ai": ["minutes"], "scr": "" }, { "id": "PROC-18", "st": 1, "g": false, "grp": "프로젝트 Pre-Kick Off", "t": "개발 검토 요청", "goal": "개발본부가 개발 가능성·일정·원가를 검토할 수 있도록 기획 내용을 정해진 양식으로 전달한다.", "own": "휴롬/엘에스 PM", "out": ["개발검토요청서"], "chk": ["요청서 발신 완료"], "how": ["개발 검토 요청서 작성 (제품 스펙 포함)", "기안 상신", "개발본부 발신"], "lane": 0, "ai": ["minutes"], "scr": "" }, { "id": "PROC-19", "st": 1, "g": false, "grp": "프로젝트 Pre-Kick Off", "t": "사전 검토 단계, 개발 일정 수립", "goal": "개발 착수 전 부서별 반영 요구를 한 번에 취합하고 개발 일정·범위를 맞춘다.", "own": "휴롬/엘에스 PM", "out": ["신제품기획안 (디자인 포함", "개발 요청 사항 LIST"], "chk": ["부서마다 요청 Format이 없어 걸러내는 작업이 안 됨 → 요청 양식 통일 필요"], "how": ["부서별 요구사항 요청 (공통 양식)", "요구 취합·중복 정리", "개발 요청 사항 LIST 확정", "개발 일정·범위 사전 협의"], "lane": 0, "ai": ["j_plan", "replan"], "scr": "일정표" }, { "id": "PROC-20", "st": 1, "g": false, "grp": "프로젝트 Pre-Kick Off", "t": "사양·디자인·재료비 검토, Pivoting", "goal": "기획 사양·디자인의 개발 가능성과 목표 원가 충족 여부를 확인하고, 필요 시 조정한다.", "own": "휴롬/엘에스 PM", "out": ["신제품 기획안 (조정 반영"], "chk": ["재료비 목표 원가 충족 확인", "조정 사항 기획안 반영"], "how": ["개발본부 리뷰 (사양·디자인·재료비)", "목표 원가 초과·개발 불가 항목 확인", "사양·디자인 조정(Pivoting) 협의", "조정 사항 기획안 반영"], "lane": 1, "ai": ["j_plan", "minutes"], "scr": "" }, { "id": "PROC-21", "st": 1, "g": false, "grp": "최종 사양·출시 계획 확정", "t": "권역별 런칭 계획", "goal": "재료비 검토(PROC-20)로 사양·원가가 확정되면 공급가를 영업에 공유하고 최초 출시 국가를 취합해, 공용·개별 인쇄물 범위와 언어 구성을 개발발의서에 반영한다.", "own": "상품전략팀", "out": ["최초 출시 국가 리스트", "공용·개별 인쇄물 범위표 (국가", "언어", "공용·개별 구분"], "chk": ["이 시점에는 FCST·MOQ 취합 불가 (출시 국가만 취합) → FCST·MOQ·초도 발주안은 DPP 샘플 배포 후, MP 가…"], "how": ["확정 사양·공급가 영업 공유 (PROC-15 결과 기준)", "최초 출시 국가 취합(희망) — 기본: 법인, 한국, 중국, 미국, 유럽 / 그 외 국가는 계획 있을 때만 추가 (없으면 이후…", "출시 국가 기준 공용 / 국가별 개별 인쇄물 구분", "국가별 필요 언어·인증 문구 범위 정리"], "lane": 7, "ai": ["j_manual"], "scr": "" }, { "id": "PROC-22", "st": 1, "g": false, "grp": "최종 사양·출시 계획 확정", "t": "최종 사양 확정 및 개발발의서 작성", "goal": "개발발의 전에 사양(인쇄물 범위 포함)·구성·원가·일정·출시 권역을 하나로 확정한다.", "own": "상품전략팀", "out": ["최종 사양서 (신제품 기획안 최종"], "chk": ["사양·원가·일정·출시 권역 확정"], "how": ["국가·채널별 영업 계획 수립 요청", "예상 원가·전체 일정·출시 계획 정리", "최종 사양서 확정"], "lane": 1, "ai": ["j_plan", "j_req"], "scr": "" }, { "id": "PROC-23", "st": 1, "g": false, "grp": "승인·보고", "t": "[G2] 개발발의서 작성 및 상신", "goal": "확정된 사양·투자·일정을 결재받아 개발본부·품질본부·생산본부에 개발을 의뢰한다.", "own": "상품전략팀", "out": ["개발발의서"], "chk": ["결재 완료", "개발 의뢰 메일 발송"], "how": ["확정 사양·구성·인쇄물 범위·출시 권역·인증 계획·투자비·일정을 개발발의서에 정리", "유관부서 검토·합의 의견을 반영해 개발발의서 상신 및 결재 완료", "승인된 개발발의서를 개발·품질·생산본부에 공유하고 개발 의뢰 메일 발송"], "lane": 0, "ai": ["weekly"], "scr": "" }, { "id": "X-02", "st": 1, "g": false, "grp": "1차 → 2차 → PP → 봉인", "t": "샘플 요청", "goal": "협력사에 차수별 샘플을 요청하고 평가해 다음 차수나 봉인 샘플로 넘긴다.", "own": "AX팀", "out": ["샘플 요청서", "샘플 평가표"], "chk": [], "how": [], "lane": 3, "ai": ["g_sample", "chase"], "scr": "협력사 · 샘플", "x": true, "soon": "" }, { "id": "PROC-24", "st": 2, "g": false, "grp": "개발 착수", "t": "개발 Kick-Off 및 CFT 구성", "goal": "프로젝트 개발 착수를 공식화하고,  ", "own": "상품전략팀 PM", "out": ["Kick off 회의록", "대일정표"], "chk": ["프로젝트 대일정표 전산화 관리 필요", "초기에는 디자인·CS 중심으로 운영하고, 제품 방향이 구체화되면 영업 추가 (Lesson Learned)", "※ CFT는 런칭까지 계속 운영"], "how": ["제품 기획,컨셉,사양 정리", "개발 대일정 수립", "부서별 담당자 지정", "Kick-Off 회의 진행"], "lane": 0, "ai": ["replan", "minutes"], "scr": "일정표" }, { "id": "PROC-25", "st": 2, "g": false, "grp": "설계·DR", "t": "설계 FMEA 실시 (실패 사례·고객 VOC·기능·사용환경 기반 설계 리스크 도출 및 설계 반영)", "goal": "제품의 기능 및 요구사항을 기반으로 잠재적 설계 실패 요인을 사전에 분석하고, 과거 실패사례 및 품질 리스크를 반영하여 설계 초기 단계의 예방 대책과 개선 요구사항을 도출한다.", "own": "개발본부(설계) 품질본부", "out": ["FMEA(설계표준화", "유관부서 제품반영 요청사항 LIST", "신규 구조 잠재적 고장 형태 및 과거 실패사례 분석"], "chk": ["※FMEA 진행 절차 방법 기준수립 필요", "작성 및 관리 포멧 자동화 필요"], "how": ["제품 기능 및 요구사항 분석", "기존 모델 및 유사 제품의 실패사례 수집", "CFT 참여 부서별 잠재 설계 실패 유형 도출", "설계 위험도 및 개선 우선순위 평가"], "lane": 1, "ai": ["j_voc", "j_risk"], "scr": "" }, { "id": "PROC-26", "st": 2, "g": false, "grp": "설계·DR", "t": "상세 구조 설계 및 목업(설계 검증용) 제작", "goal": "확정 사양·디자인 및 FMEA 결과반영 상세 구조 설계 실시", "own": "개발본부(설계)", "out": ["3D도면", "Part list 초안", "제품규격서 초안", "구조해석 결과서"], "chk": ["Part List 포멧 자동화 필요", "제품 규격서 전산화 필요"], "how": ["FMEA 결과반영 상세 구조 설계", "3D 도면 작도 및 설계 검증용 목업 제작"], "lane": 7, "ai": ["j_bom", "j_dr"], "scr": "품목 · BOM" }, { "id": "PROC-27A", "st": 2, "g": false, "grp": "설계·DR", "t": "설계, 목업(설계 검증용)DR 실시 및 설계 보완", "goal": "고객 요구사항의 설계 반영 여부 확인.", "own": "개발본부(설계)", "out": ["설계", "목업 DR 결과서", "설계 가단가(R&D 기준"], "chk": ["설계/목업DR 이슈List 전산화 필요"], "how": ["회의 소집 및 설계DR 주관", "부서별 발의 의견 List UP 및 설계 보완", "설계 보완 반영 결과 합의"], "lane": 3, "ai": ["j_dr"], "scr": "" }, { "id": "PROC-27B", "st": 2, "g": false, "grp": "시제품 평가·사양 합의", "t": "구성품 표준 명칭 확정", "goal": "주요 부품 명칭을 한·영·중으로 통일해 BOM·기술문서·사용설명서·서비스 문서의 용어 혼용을 막는다.", "own": "상품전략1팀", "out": ["핵심 부품 표준 명칭 LIST (한·영·중"], "chk": ["표준 명칭 LIST 확정", "관련 부서 공유"], "how": ["주요 부품 LIST 확인 (개발본부)", "한·영·중 표준 명칭 정의", "유관부서 검토 및 명칭 확정", "표준 명칭 적용 기준 공유"], "lane": 5, "ai": [], "scr": "" }, { "id": "PROC-28", "st": 2, "g": false, "grp": "시제품 평가·사양 합의", "t": "설계/목업DR 결과 반영 워킹 목업 제작", "goal": "Working 목업을 제작, 기존 모델·레퍼런스와 비교 평가하고 유관부서 의견을 모아, 금형 착수 전 제품 사양을 합의한다.", "own": "개발본부/상품전략팀", "out": ["시제품 비교 평가 결과서", "개선사항 LIST", "제품 사양 합의 결과"], "chk": ["시제품 성능 미달 및 부서 간 사양 이견 발생 시 개선 방향과 후속 조치 합의 필요"], "how": ["평가 일정 수립", "성능 비교 테스트 진행", "품평 및 의견 취합", "개선 요구사항 도출 및 제품 사양 합의"], "lane": 5, "ai": ["j_dr"], "scr": "" }, { "id": "PROC-29A", "st": 2, "g": true, "grp": "인쇄물 기획·콘텐츠", "t": "사용설명서 초안 작성 안내서 작성", "goal": "제품 사용설명서 제작을 위한 구조, 작동, 조작법 기초 data를 개발한다.", "own": "PM", "out": ["본체 조작부", "작동법", "전장 사양서 Draft"], "chk": ["DPP 3M 전 완료", "DPP 이벤트 3M 전 완료"], "how": ["사용설명서 초안 작성에 필요한 기술자료 항목·제공 일정 확인", "기구설계·전장제어 담당자가 제품 구조·작동 원리·조작 방법 및 전장 사양 초안 정리", "PM이 자료를 취합하고 누락·불명확 사항 보완 요청", "사용설명서 초안 작성용 안내자료를 상품전략팀에 전달"], "lane": 7, "ai": ["j_req", "j_manual"], "scr": "" }, { "id": "PROC-29B", "st": 2, "g": true, "grp": "협력사·설비 검토", "t": "부품 제조 협력사 평가 및 최종 선정", "goal": "제품 개발 사양에 적합한 제조 역량, 품질 수준, 원가 및 납기 대응 능력을", "own": "구매1팀", "out": ["신규부품 Part List", "업체선정(금형배분 외) 기안서"], "chk": ["금형·사출 협력사 간 개발 수행 체계 및 업무 관계 정립 필요", "협력사 운영 유형", "금형처 ↔ 휴롬 ↔ 사출처", "(금형·사출 분리 운영)"], "how": ["협력사 발굴 및 견적 비교", "생산 CAPA 및 생산 대응 능력 검토", "유관부서 의견 취합, 업체선정 기안 상신"], "lane": 2, "ai": ["g_vendor"], "scr": "품목 · 금형·시사출" }, { "id": "PROC-29C", "st": 2, "g": true, "grp": "협력사·설비 검토", "t": "신규 설비·치공구 제작 필요성 검토 및", "goal": "제품 및 부품 생산에 필요한 신규 설비·치공구를 사전 검토하여 요구상항 및", "own": "PM(개발,생산.공정 기술)", "out": ["신규 설비 치공구 제작 관리대장"], "chk": ["신규 치공구/설비 제작 관리 주관처 명확화 필요 개발관리List 전산화 필요"], "how": ["개발·생산·품질부서별 신규 설비·치공구·검사구 필요 항목 및 요구사항 취합", "기존 설비·치공구 활용 가능 여부와 신규 제작 필요성 검토", "제작 대상·요구 사양·담당 부서·예상 비용·완료 목표일 정리", "제작 관리대장 초안을 확정·공유하고 제작 진행사항 관리"], "lane": 3, "ai": ["g_vendor"], "scr": "협력사" }, { "id": "PROC-30", "st": 2, "g": true, "grp": "승인·보고", "t": "개발 검토단계 Stage Gate (개발검토단계 → T단계)", "goal": "개발 요구사항과 관계부서 개선 요구사항에 준하여 개발 검토가 되었는지", "own": "PM", "out": ["Stage Gate 결과서", "LS개발발의서(개발요구사양서", "제품디자인시방서", "FMEA 검토 결과서.", "설계", "목업 DR결과서"], "chk": ["Stage Gate 결과 승인"], "how": ["회의 소집 및 주관", "검토 자료,결과 공유", "CFT 부서별 검토 의견, 미해결 이슈 및 추가 개선사항 취합", "검토 결과 종합 및 차기 단계 진행 여부 협의"], "lane": 0, "ai": ["j_req", "j_dr"], "scr": "프로젝트 · 관문 승인" }, { "id": "PROC-31", "st": 2, "g": true, "grp": "승인·보고", "t": "휴롬 개발발의서 작성 및 상신", "goal": "확정된 사양·투자비·일정을 승인 받아 정식 개발을 착수 한다", "own": "PM", "out": ["휴롬 개발 발의서"], "chk": ["투자비 산정을 위한 협력사 빠른 확정", "필요"], "how": ["개발발의서 작성(확정 개발 사양,투자비,개발 일정 외)", "경영진 보고 및 개발 승인 후 정식 개발 착수"], "lane": 0, "ai": ["weekly"], "scr": "" }, { "id": "PROC-32", "st": 2, "g": true, "grp": "설계·DR", "t": "제작용 도면 및 기술자료 확정·출도", "goal": "확정된 제품 설계 사양을 기반으로 금형 제작 및 부품 제조에 필요한", "own": "개발본부(설계,전장설계)", "out": ["부품도면(2D", "조립", "분해도(2D"], "chk": ["협력사 및 사내 도면 공유 룰,시스템정비 필요", "자사 CATIA ENOVIA 접근 권한 한정.", "설계담당자 도면 수정 후 PDF로 전환하여 업체,사내 개별 공유중"], "how": ["제품도면 작도", "내부 검도 및 승인", "협력사, 유관부서 도면 배포"], "lane": 1, "ai": ["j_dr"], "scr": "품목 · 도면 판" }, { "id": "PROC-33", "st": 2, "g": true, "grp": "제조처 확정", "t": "개발 계약 종료·잔금 지급 및 최종 제조처 선정", "goal": "개발만 하고 양산으로 진행하지 않을 시, 개발비 지급하고 개발 계약을 종료한다.", "own": "상품전략2팀", "out": ["개발 샘플", "개발 완료 보고서", "개발비 견적서"], "chk": [], "how": ["최종 개발 샘플 확보", "개발 완료 보고서 작성", "개발비 산출 및 지급"], "lane": 3, "ai": ["g_quote", "g_vendor"], "scr": "협력사 · 샘플" }, { "id": "PROC-34", "st": 2, "g": true, "grp": "제조처 확정", "t": "가견적 확인 (개발 사양 확정 → 제조처 가견적 회신 → 내부 공유·의사결정)", "goal": "금형전 도입시 견적을 제조처와 확인 하고, 가격경쟁력을 내부적으로 합의 한다.", "own": "상품전략2팀", "out": ["개발 샘플", "제품 사양", "BOM", "제품 단가"], "chk": [], "how": ["최종 개발 샘플을 확보", "최종 개발 제품의 사양을 확정", "제조처를 통해 BOM과 제품 단가 초안을 확보", "내부 영업본부와 합의 및 의사결정을 통해 진행여부 확인"], "lane": 3, "ai": ["j_bom", "g_quote"], "scr": "품목 · BOM" }, { "id": "X-01", "st": 2, "g": false, "grp": "가품목 → 정식 품번", "t": "품목 생성 요청", "goal": "설계 초기에 품목 코드를 먼저 받아 금형 발주·샘플·구매가 막히지 않게 한다.", "own": "AX팀", "out": ["품목 생성 요청서", "ERP 엑셀"], "chk": [], "how": [], "lane": 1, "ai": [], "scr": "", "x": true, "soon": "1.0.137" }, { "id": "PROC-35", "st": 3, "g": false, "grp": "금형 계약·투자", "t": "금형 제작 계약 협의", "goal": "금형 제작업체와 계약을 맺어 금형 제작을 착수하고, 휴롬엘에스의 금형 소유권을 확보한다.", "own": "상품전략팀", "out": ["금형 및 구매거래계약서", "기안서 (계약 체결용"], "chk": ["계약 체결 완료"], "how": ["금형 투자 대상 확인", "업체 정보·견적 수령", "법무팀 계약서 검토 의뢰", "업체 검토·수정 협의"], "lane": 2, "ai": [], "scr": "품목 · 금형·시사출" }, { "id": "PROC-36", "st": 3, "g": false, "grp": "금형 계약·투자", "t": "금형 투자비 집행 및 자산 등록", "goal": "계약 조건에 따라 금형 투자비를 적기에 집행하고, 금형을 휴롬엘에스 자산으로 등록한다.", "own": "상품전략팀", "out": ["계약금 세금계산서", "ERP 전표", "지출결의서", "이체증"], "chk": ["ERP 계정과목·세목 오등록 시 회계 오류 (SOP 참고)"], "how": ["계약금 전자세금계산서 요청", "ERP 전표 등록", "지출결의서 상신", "지급 완료 확인·이체증 수령"], "lane": 2, "ai": [], "scr": "품목 · 금형·시사출" }, { "id": "PROC-37", "st": 3, "g": false, "grp": "금형 제작·시사출", "t": "제품 설계 의도 및 구조 설명회 및", "goal": "업체(금형처) 설계사양/구조 설명", "own": "개발본부(설계)", "out": ["금형 설계  반영  요구사항 List", "회의록 및 검토 의견"], "chk": ["금형 설계  반영  요구사항 협의 완료"], "how": [], "lane": 2, "ai": ["j_trial", "minutes"], "scr": "품목 · 금형·시사출" }, { "id": "PROC-38", "st": 3, "g": false, "grp": "금형 제작·시사출", "t": "금형 설계 검토 및 DR 실시", "goal": "제품 설계 사양을 기반으로 금형 구조 및 성형 방안을 검토하고, 제작 전 금형 설계의 적합성 및 제조 가능성을 검증하여 금형 수정 및 양산 리스크를 최소화한다.", "own": "개발본부/생산본부 (금형,사출)", "out": ["금형설계 DR 결과서"], "chk": ["※사내 금형제작.사출try 진행 업무에 대한 오너쉽을", "가지고 업무를 할 수 있는 전담 부서 또는 인원 지정 필요", "금형설계DR 체크리스트에 준하여 금형DR 실시"], "how": ["금형 제작처 금형 정보, 설계 자료 제출", "유관부서 및 양산 사출처 자료 공유", "회의 소집 및 주관(금형 설계 개선사항 취합 및 반영 협의)", "금형 설계 확정 및 제작 승인"], "lane": 2, "ai": ["j_dr", "j_trial"], "scr": "품목 · 금형·시사출" }, { "id": "PROC-39", "st": 3, "g": false, "grp": "금형 제작·시사출", "t": "금형 제작", "goal": "금형 제작 일정을 확인하고 후속 일정 계획 수립한다", "own": "개발본부/생산본부 (금형,사출)", "out": ["금형제작 사양서"], "chk": ["부품별 try 일정 및 개선 진척사항 관리", "전산화 하여 공유 필요"], "how": ["금형 제작 일정 확인", "진행 현황 모니터링", "T0 Try일정 확정·공유"], "lane": 2, "ai": ["j_req", "j_trial"], "scr": "품목 · 금형·시사출" }, { "id": "PROC-40", "st": 3, "g": false, "grp": "금형 제작·시사출", "t": "금형 제작처 시사출 Try (금형 동작·성형성 검증)", "goal": "금형 제작 완료 후 최초 시사출을 통해 금형 작동 상태 및 제품 성형성을 확인하고, 금형 및 부품의 개선사항을 도출한다.", "own": "개발본부/생산본부 (금형,사출)", "out": ["시사출 검토서", "치수검토서"], "chk": ["시사출 완료 및 금형 작동·", "성형 상태 확인", "주요 문제점 도출 및", "개선 조치 완료"], "how": ["금형 제작 완료 및 시사출 준비 상태 확인", "외관·치수 및 주요 품질 문제점 도출", "개선사항 정리, 후속 일정 수립"], "lane": 2, "ai": ["j_trial"], "scr": "품목 · 금형·시사출" }, { "id": "PROC-41", "st": 3, "g": false, "grp": "금형 제작·시사출", "t": "금형처 시사출 문제점 개선 재검증 및 결과 확인", "goal": "시사출 과정에서 도출된 금형 및 부품 문제점을 개선하고, 재시사출을 통해 개선 효과와 금형 작동 및 제품 성형 품질의 적합성을 검증한다.", "own": "개발본부/생산본부 (금형,사출)", "out": ["시사출 검토서", "치수 검토서"], "chk": ["주요 문제점 개선 조치 완료"], "how": [], "lane": 2, "ai": ["j_trial", "minutes"], "scr": "품목 · 금형·시사출" }, { "id": "PROC-42A", "st": 3, "g": false, "grp": "패키징 개발", "t": "제품 패키징 사양(박스 및 포장재) 개발", "goal": "제품 보호 및 유통 안정성을 확보하고, 물류 요구사항을 반영한 포장 박스를 개발한다.", "own": "개발본부(포장설계)", "out": ["제품 포장박스 조립 공정도", "제품 포장박스 도면", "포장재 사양 및 수량"], "chk": ["인쇄물 사양(종류, 수량, 사이즈 확인 반영)", "DPP 이벤트 3M 전 완료"], "how": ["제품·구성품의 크기·중량 및 목업·시제품 확인", "동봉 인쇄물의 종류·수량·사이즈와 물류 요구사항 확인", "포장 구조·완충재·배치 및 포장재 사양·수량 설계", "포장 샘플 제작 후 제품 보호성·수납성·포장 작업성 검토 및 보완"], "lane": 7, "ai": ["g_pack"], "scr": "품목 · 도면 판" }, { "id": "PROC-42B", "st": 3, "g": false, "grp": "인쇄물 기획·콘텐츠", "t": "인쇄물 목록 작성", "goal": "권역별 인쇄물 목록과 언어 범위를 확정하고,", "own": "상품전략팀, 커뮤니케이션디자인팀", "out": ["권역별 인쇄물 적용 LIST (확정", "인쇄물 마스터(공용) 리스트", "사용설명서 초안", "인쇄물 개발 일정표"], "chk": ["추가 런칭 국가·언어 누락 여부", "국가별 인증문구 반영 필요 여부", "공용/국가별 전용 설명서 구분", "디자인팀 인쇄물 리드타임 확보"], "how": ["권역별 인쇄물·언어 범위 확정 (PROC-16A 기준)", "인쇄물 마스터 리스트 작성·자재코드 생성 요청", "사용설명서·명판 초안 작성", "인쇄물 제작 일정 협의"], "lane": 7, "ai": ["replan", "j_manual"], "scr": "일정표" }, { "id": "PROC-43A", "st": 3, "g": false, "grp": "제품 인증", "t": "인증용 사용설명서 사전 준비", "goal": "T 샘플 확보 즉시 인증을 접수할 수 있도록 인증 자료를 미리 준비한다.", "own": "상품전략팀", "out": ["인증용 사용설명서"], "chk": ["명판·사용설명서 전달 완료"], "how": ["인증용 사용설명서 준비 (PROC-25D 초안 활용)", "사용설명서 등록"], "lane": 4, "ai": ["certlist", "j_manual"], "scr": "품목 · 인증" }, { "id": "PROC-43B", "st": 3, "g": false, "grp": "제품 인증", "t": "인증용 명판 준비", "goal": "T 샘플 확보 즉시 인증을 접수할 수 있도록 인증 자료를 미리 준비한다.", "own": "상품디자인팀", "out": ["인증별 제품 명판"], "chk": [], "how": ["인증별 제품 명판 확정", "명판 마스터 등록"], "lane": 4, "ai": ["certlist"], "scr": "품목 · 인증" }, { "id": "PROC-44A", "st": 3, "g": false, "grp": "인쇄물 기획·콘텐츠", "t": "QR코드 생성 대상 정리 및 요청", "goal": "인쇄물·제품에 넣을 QR 대상(영상·매뉴얼·지원 페이지)을 정리해 생성을 요청한다.", "own": "상품전략팀", "out": ["QR 대상 리스트"], "chk": ["인쇄 후에는 QR 변경 불가 — 링크 대상이 바뀌어도 되는 고정 URL(리다이렉트) 사용 권장"], "how": ["QR 적용 인쇄물·위치 정리", "국가·언어별 연결 콘텐츠·URL 정리", "QR 생성 요청 (마케팅)"], "lane": 7, "ai": ["j_manual"], "scr": "" }, { "id": "PROC-44B", "st": 3, "g": false, "grp": "인쇄물 기획·콘텐츠", "t": "법무, 고객경영 등 유관부서 검토", "goal": "인쇄물의 법적 표기·경고 문구·고객 응대 내용을 디자인 의뢰 전에 검토받는다.", "own": "상품전략팀", "out": ["검토 의견 반영 콘텐츠"], "chk": ["부서별 검토 완료"], "how": ["인쇄물 콘텐츠 검토 요청", "부서별 의견 취합", "수정 반영"], "lane": 7, "ai": ["j_manual"], "scr": "" }, { "id": "PROC-45", "st": 3, "g": false, "grp": "인쇄물 디자인·검수", "t": "인쇄물 디자인 의뢰", "goal": "확정 콘텐츠와 자료를 디자인팀에 전달해, DPP 일정에 맞춰 인쇄물 디자인을 의뢰한다.", "own": "상품전략팀", "out": ["디자인 양산 인쇄물 신청서"], "chk": ["M-4 (출시 4개월 전) 의뢰 기준"], "how": ["디자인 양산 인쇄물 신청서 작성·자재코드 생성 요청", "콘텐츠(PPT)·리스트·STP 파일 전달", "양산 일정별 우선순위 전달"], "lane": 7, "ai": ["j_manual"], "scr": "" }, { "id": "PROC-46", "st": 3, "g": false, "grp": "인쇄물 디자인·검수", "t": "1차 인쇄물 검수", "goal": "기준 향지(Master) 시안의 내용·사양·표기 오류를 검수한다.", "own": "상품전략팀", "out": ["1차 검수 의견"], "chk": ["Master 확정 이후 번역 진행"], "how": ["Master 시안 수령", "내용·사양·표기 검수", "수정 요청 취합·전달"], "lane": 7, "ai": ["j_manual"], "scr": "" }, { "id": "PROC-47", "st": 3, "g": true, "grp": "인쇄물 디자인·검수", "t": "인쇄물 시방서·스티커류 부착 위치 지정서 완료", "goal": "인쇄물 제작 사양과 스티커류 부착 위치·방법을 문서로 확정해, 권역별 요구사항이 발주·생산에 일관되게 적용되도록 한다.", "own": "상품전략팀 커뮤니케이션팀", "out": ["인쇄물 시방서 (자재코드·규격·재질·인쇄 사양·적용 권역", "스티커류 부착 위치 지정서 (적용 권역·위치·방향·부착 방법", "유관부서 배포 내역"], "chk": ["DPP 생산 수립 계획 전 완료", "DPP 생산 3주전"], "how": ["인쇄물별 자재코드·규격·재질·인쇄 사양·적용 권역 정리", "영업의 권역별 별도 부착 위치 요구사항 확인", "제품·포장 도면을 기준으로 스티커별 부착 위치·방향·방법 지정", "개발·생산부서의 기술적 제약·작업성 검토 및 구매부서의 제작 사양·납기 확인 의견 반영"], "lane": 7, "ai": ["j_manual"], "scr": "" }, { "id": "PROC-48", "st": 3, "g": false, "grp": "사양·BOM 확정", "t": "개발 Master BOM 생성 및 ERP 등록", "goal": "제품 구성 부품 및 자재 정보를 체계적으로 등록하여 개발 사양과 양산 사양의 일관성을 확보하고 자재 조달 및 생산 관리의 기준 정보를 구축한다.", "own": "개발본부(설계)", "out": ["ERP BOM"], "chk": ["ERP BOM 등록 완료"], "how": ["확정 Part List 및 제품·부품별 자재코드 확인", "조립 구조에 따라 상·하위 품목과 소요 수량 정리", "구성품·포장재·인쇄물의 누락 및 사양별 적용 여부 확인", "개발 Master BOM 작성 및 ERP 등록"], "lane": 1, "ai": ["j_bom"], "scr": "품목 · BOM" }, { "id": "PROC-49", "st": 3, "g": false, "grp": "금형 제작·시사출", "t": "금형 이관 및 양산 사출처 인수·인계 관리", "goal": "금형 제작처에서 제작 완료된 금형을 양산 사출처로 이관", "own": "개발본부/생산본부 (금형,사출)", "out": ["금형이관 합의서"], "chk": ["양산 사출처 금형이관 완료"], "how": [], "lane": 2, "ai": ["j_trial"], "scr": "품목 · 금형·시사출" }, { "id": "PROC-50", "st": 3, "g": false, "grp": "금형 제작·시사출", "t": "양산 사출처 시사출 및 양산성 검증", "goal": "실제 양산 사출처의 설비 및 생산환경에서 시사출을 진행하여 금형 작동 상태, 사출 조건 및 부품 품질을 검증하고 양산 적용 가능성을 확인한다.", "own": "개발본부/생산본부 (금형,사출)", "out": ["시사출 검토서", "양산성평가 보고서(협력사"], "chk": ["양산 초도 시사출 완료", "사출 양산성 확보"], "how": [], "lane": 2, "ai": ["j_trial", "g_vendor"], "scr": "품목 · 금형·시사출" }, { "id": "PROC-51", "st": 3, "g": false, "grp": "금형 제작·시사출", "t": "양산 사출처 시사출 문제점 개선 재검증 및 결과 확인", "goal": "시사출 과정에서 도출된 금형 및 부품 문제점을 개선하고, 재시사출을 통해 개선 효과와", "own": "개발본부/생산본부 (금형,사출)", "out": ["시사출 검토서", "치수 검토서", "문제점관리대장(Issue List"], "chk": ["문제점관리대장(Issue List) 양식 및 관리 전산화 필요"], "how": [], "lane": 2, "ai": ["j_trial", "minutes"], "scr": "품목 · 금형·시사출" }, { "id": "PROC-52A", "st": 3, "g": true, "grp": "사양·BOM 확정", "t": "디스플레이 디자인 · 컨텐츠 · 언어 검수", "goal": "디스플레이의 화면 구성·표시 내용·언어별 디자인 사양을 확정해, 고객이 정보를 쉽게 이해하고 개발본부가 동일한 기준으로 구현하도록 한다.", "own": "상품전략팀/상품디자인팀", "out": ["디스플레이 디자인 사양서 (화면별 구성·문구·아이콘·글자 크기·색상", "국가·언어별 표시 문구 및 적용표", "현지 언어 검수 결과·최종 확정본"], "chk": [], "how": ["디스플레이 화면별 표시 항목·문구·아이콘 및 언어별 적용 범위 정리", "상품디자인팀이 화면 구성·글자 크기·색상 등 디자인 사양 구체화", "해외영업·법인이 현지 언어 표현·표기 적합성 검수 및 수정 의견 회신", "개발본부와 표시 영역·해상도·문자 지원 등 구현 제약 확인 및 수정 반영"], "lane": 5, "ai": ["j_req", "j_bom"], "scr": "품목 · BOM" }, { "id": "PROC-52B", "st": 3, "g": false, "grp": "사양·BOM 확정", "t": "도면 SPEC(치수,재질, 관리SPEC) 및", "goal": "사출  완료된 부품의 치수, 외관 및 기능 요구사항을 확인 하고", "own": "개발본부(설계)", "out": ["부품도면(2D", "조립", "분해도(2D", "제품 디자인시방서(후공정 시방"], "chk": ["T1생산 확정도면 출도 및 배포"], "how": ["시사출 부품과 도면의 치수·재질·외관·조립 적합성 확인", "품질관리팀과 기능·성능 및 중점 관리 항목 점검", "상품디자인팀과 도장·인쇄 등 후공정 사양 확인", "점검 결과를 반영해 도면·후공정 사양·관리 기준 확정"], "lane": 7, "ai": ["j_bom"], "scr": "품목 · BOM" }, { "id": "PROC-53A", "st": 3, "g": false, "grp": "부품 패키징 개발", "t": "부품 입고 포장 사양 확정", "goal": "부품의 운송 및 보관 과정에서 발생할 수 있는 파손과 외관 손상을 방지하고, 입고·보관·생산 투입에 적합한 포장 기준을 확정한다.", "own": "구매1팀", "out": ["부품 포장사양서"], "chk": ["포장 단위 및 포장 방법 확정"], "how": [], "lane": 7, "ai": ["j_req", "g_pack"], "scr": "" }, { "id": "PROC-53B", "st": 3, "g": false, "grp": "출시 자료 준비", "t": "제품 소개서 초안 (USP·POD)", "goal": "고객 언어 중심의 소구점을 정리해, 설명회·영업·마케팅 자료의 기준 문서로 쓴다.", "own": "상품전략팀", "out": ["제품 소개서 v0.5 (초안"], "chk": ["3D, AR 시각자료 최종사양 반영​"], "how": ["타깃·사용 상황과 제품 특장점·USP·POD를 고객 언어로 정리하고 소개서 구성안 작성", "기능·성능 평가결과 및 기존·경쟁 모델 비교 등 소구점별 증빙자료 정리", "상품디자인팀에 렌더링·제품 사용 씬·디스플레이 UI 씬 등 필요한 이미지와 표현 의도 전달 및 제작 요청", "개발팀에 모터·주요 기능의 작동 원리·기술적 특징에 대한 보충자료 작성 및 기술 내용 확인 요청"], "lane": 7, "ai": [], "scr": "" }, { "id": "PROC-53C", "st": 3, "g": false, "grp": "T단계 준비·생산", "t": "제조·조립 공정 설계 및 생산 작업표준 수립", "goal": "확정된 제품 및 부품 사양을 기반으로 제조·조립 공정 흐름과 작업 조건을 수립하여 안정적인 생산 및 양산 운영 기반을 확보한다.", "own": "생산팀", "out": ["공정설계도(Lay out", "Process Flow Chart", "작업지도서"], "chk": ["T1 생산 제조·조립 공정 확정"], "how": [], "lane": 2, "ai": [], "scr": "품목 · 금형·시사출" }, { "id": "PROC-53D", "st": 3, "g": false, "grp": "T단계 준비·생산", "t": "제품 신뢰성 시험평가 항목 설정", "goal": "개발 모델의 특성에 적합한 시험평가 항목 및 기준을 수립하여 제품의 성능, 안전성 및 신뢰성을 검증한다.", "own": "품질보증팀", "out": ["시험규격서"], "chk": ["시험항목 확정"], "how": [], "lane": 2, "ai": [], "scr": "품목 · 금형·시사출" }, { "id": "PROC-53E", "st": 3, "g": false, "grp": "T단계 준비·생산", "t": "제품 유효성평가 계획 수립", "goal": "개발 모델의 특성에 적합한 시험평가 항목 및 기준을 수립하여 제품의 성능, 안전성 및 신뢰성을 검증한다.", "own": "개발본부(설계)", "out": ["제품 휴효성 평가서"], "chk": ["평가항목 수립"], "how": [], "lane": 2, "ai": [], "scr": "품목 · 금형·시사출" }, { "id": "PROC-54", "st": 3, "g": false, "grp": "T단계 준비·생산", "t": "T1 생산계획 수립 및 생산 준비 일정 관리", "goal": "T1 시제품 생산수량, 자재 입고 준비, 생산 일정을 사전에 계획 수립한다.", "own": "PM", "out": ["생산계획협의회의록"], "chk": ["T1생산 수량,사양,일정 확정", "향휴계획 합의"], "how": ["휴롬 개발 검토·평가·인증용 샘플 수량·사양·필요 일정 정리", "휴롬엘에스 영업·AS·고객만족·FnB·마케팅이 팀별 샘플 수요를 제출하고 상품전략이 취합·전달", "PM이 휴롬·휴롬엘에스 요청을 종합해 총 생산수량·사양 및 용도별 배정안 정리", "휴롬 개발·생산이 부품·자재 입고 및 생산 준비 상태·생산 가능 일정 확인"], "lane": 2, "ai": ["replan", "j_trial"], "scr": "품목 · 금형·시사출" }, { "id": "PROC-55", "st": 3, "g": false, "grp": "T단계 준비·생산", "t": "T1 이벤트 생산 및 생산 실적 관리", "goal": "T1 생산계획에 따라 제품을 생산하며 제조공정의 적합성 및 제품 이슈사항을 점검한다.", "own": "개발본부 생산팀", "out": ["T1 생산 제품"], "chk": [], "how": [], "lane": 2, "ai": ["j_trial"], "scr": "품목 · 금형·시사출" }, { "id": "PROC-56A", "st": 3, "g": true, "grp": "제품 인증", "t": "국가별 인증(전기안전·식검) 요구사항 확인", "goal": "출시 대상 국가 및 권역별 법규·인증 요구사항에 따라 전기안전 및 식품 접촉 관련 인증을 취득하여 제품의 판매·유통 요건을 확보한다.", "own": "개발본부(인증)", "out": ["국가·권역별 인증서", "시험성적서", "인증 진행 현황 및 미결사항 목록"], "chk": [], "how": ["출시 국가·권역 및 대상 모델·사양별 전기안전·식품 접촉 관련 인증 요구사항 확인", "인증별 제출 기술자료·명판·사용설명서 및 시료 준비", "시험기관 접수 후 시험·심사 일정 및 진행 현황 관리", "보완 요청·부적합 사항을 담당 부서에 전달하고 수정자료·개선 시료 제출"], "lane": 4, "ai": ["certlist"], "scr": "품목 · 인증" }, { "id": "PROC-56B", "st": 3, "g": true, "grp": "출시 자료 준비", "t": "제품 소개서 기반 영업·마케팅 설명회 진행", "goal": "실사용 테스트 전 - 영업에 특장점과 제품 설명을 진행(소개서로)", "own": "상품전략팀", "out": ["제품소개서·설명회 자료", "질의응답 및 추가 요청사항 목록"], "chk": [], "how": ["제품소개서와 제품 특장점·USP 설명자료 준비", "국내영업·해외영업·마케팅팀 대상 설명회 일정 안내 및 참석 요청", "제품소개서를 활용해 타깃·사용 상황·주요 기능·특장점·USP 및 차별화 근거 설명", "참석 부서의 질의에 답변하고 추가 설명·자료 요청사항 정리"], "lane": 7, "ai": [], "scr": "" }, { "id": "PROC-56C", "st": 3, "g": false, "grp": "T단계 평가·개선", "t": "제품 유효성평가", "goal": "개발 모델이 제품 규격에 적합하게 제작 되었는지 검증한다.", "own": "개발본부(설계) 품질본부", "out": ["제품 휴효성 평가 결과서"], "chk": ["제품유효성평가 완료", "문제점 도출"], "how": [], "lane": 2, "ai": [], "scr": "품목 · 금형·시사출" }, { "id": "PROC-56D", "st": 3, "g": false, "grp": "T단계 평가·개선", "t": "실사용평가 실시, 샘플 디자인 리뷰 및 사용성 테스트", "goal": "T 샘플이 기획안·개발발의서 사양을 반영했는지 확인하고, DPP 진행 가능 여부를 판단한다.", "own": "상품전략", "out": ["T0 실사용 테스트 평가서"], "chk": ["개발발의서 사양 반영 여부", "USP 구현 여부", "고객 입장에서 이해 어려운 요소"], "how": ["T0 디자인 리뷰 참석", "기획 사양 확인 (외관·핵심 기능·구성품)", "사용성 테스트 (조작·조립·세척)", "문제점 등록"], "lane": 2, "ai": ["j_voc", "j_trial"], "scr": "품목 · 금형·시사출" }, { "id": "PROC-57", "st": 3, "g": false, "grp": "T단계 평가·개선", "t": "실사용 결과 취합", "goal": "T 리뷰·테스트 결과를 취합하여 정리한다", "own": "상품전략팀, 개발본부", "out": ["T0 개선 사항 LIST"], "chk": ["DPP 반영 항목 확정"], "how": ["T0 Issue 정리·분류", "개선 우선순위 협의 (개발본부)", "DPP 반영 항목 확정·공유"], "lane": 2, "ai": ["j_trial"], "scr": "품목 · 금형·시사출" }, { "id": "PROC-58", "st": 3, "g": false, "grp": "T단계 평가·개선", "t": "문제점 통합 관리 및 개선 대책 수립·진척 관리", "goal": "T단계 샘플 제작 및 평가 과정에서 발생한 문제점을 체계적으로 취합·분석하고,", "own": "PM", "out": ["문제점관리대장(Issue List", "문제점 원인 분석 검토서", "개선 대책서"], "chk": ["발생 문제점의 등록 및", "담당 부서, 담당자 지정 완료", "문제점의 원인 분석 및", "개선 대책 수립 완료"], "how": ["평가 항목별 문제점취합", "(생산이슈,시험평가 결과,제품유효성평가,LS실사용평가)", "문제점 등록회의 및 개선대책회의 주관", "문제점별 발생 원인 및 심각도 등급 설정"], "lane": 2, "ai": ["minutes"], "scr": "품목 · 금형·시사출" }, { "id": "PROC-59", "st": 3, "g": false, "grp": "T단계 평가·개선", "t": "개선 검증 일정 및 부서별 진행 현황 관리,", "goal": "T단계 샘플 문제점에 대한 개선 조치의 적용 여부 및 개선 효과를 검증하여 제품 완성도와 양산 품질 확보", "own": "PM", "out": ["문제점관리대장(Issue List"], "chk": ["개선 미흡 항목 재개선 및 재검증", "개선 효과가 미흡한 항목은 원인 재분석 및 검증 재실시", "즉시개선항목과 지속 관리항목 구분 다음단계 진행 여부 판단", "※필요시 T2(T단계 2차 생산) 생산검증 진행."], "how": [], "lane": 2, "ai": ["replan", "minutes"], "scr": "품목 · 금형·시사출" }, { "id": "PROC-60A", "st": 3, "g": false, "grp": "검사 기준·부품 승인", "t": "부품 입고검사 기준 수립 및 검사 협정 체결", "goal": "입고 부품의 품질 적합성을 확보하기 위해 부품별 검사 항목, 검사 기준 및 판정 방법을 사전에 정의하여 수입검사 기준을 수립한다.", "own": "품질관리팀", "out": ["검사기준서", "검사성적서", "외관승인서", "Master Sample"], "chk": ["부품 검사협정 완료"], "how": [], "lane": 5, "ai": ["g_fai"], "scr": "" }, { "id": "PROC-60B", "st": 3, "g": false, "grp": "검사 기준·부품 승인", "t": "완제품 출하검사(OQC) 기준 수립", "goal": "완제품의 출하 품질을 확보하기 위해 제품 성능, 외관, 기능 및 안전성에 대한 최종 검사 항목과 판정 기준을 수립한다.", "own": "품질관리팀", "out": ["제품검사기준서"], "chk": ["완제품 검사 항목, 검사 방법,", "판정 기준 확정"], "how": [], "lane": 5, "ai": ["g_fai"], "scr": "" }, { "id": "PROC-61", "st": 3, "g": false, "grp": "검사 기준·부품 승인", "t": "신규 부품 부품 승인", "goal": "신규 개발 부품 협력사 양산 승인", "own": "PM", "out": ["부품 승인원(PPAP"], "chk": ["부품별 승인 검토서류 승인 전산화 필요", "(현재 방식: 협력사 제출 서류 수기 사인 승인 후 스캔본 전자결재 진행)"], "how": [], "lane": 3, "ai": ["g_aprv", "g_fai"], "scr": "협력사 · 승인원" }, { "id": "PROC-62", "st": 3, "g": false, "grp": "승인·보고", "t": "개발단계 Stage Gate (Tn단계 -> DPP단계)", "goal": "T단계 개발 및 검증 결과를 종합적으로 검토하여 개발 요구사항 충족 여부와 양산 준비 수준을 확인하고,  DPP 단계 진입 여부를 결정한다.", "own": "PM", "out": ["Stage Gate 결과서", "[첨부]", "'-PM:부품승인원", "문제점관리대장", "신규 설비 치공구 제작 관리대장", "개발1팀:제품규격서"], "chk": ["※다음단계 진행 여부에 대한 명확한 기준 수립 필요"], "how": ["T1 개발 및 검증 및 문제점 개선 결과 자료 취합", "부서별 검토 자료 및 완료 실적 공유", "개발 요구사항 및 품질·생산 준비 상태 검토", "미결 문제점 및 잔여 리스크 확인"], "lane": 0, "ai": ["j_req", "j_bom"], "scr": "프로젝트 · 관문 승인" }, { "id": "PROC-63", "st": 3, "g": true, "grp": "도입단가 품의 및 발주", "t": "최종 도입조건 확인", "goal": "상품의 최종 도입조건과 단가를 확인하고 내부 확정한다.", "own": "상품전략2팀", "out": ["도입단가품의"], "chk": [], "how": ["스펙 확정", "FOC등 도입조건 최종 합의 (제조처, 영업본부)", "도입단가 품의"], "lane": 3, "ai": [], "scr": "" }, { "id": "PROC-64", "st": 3, "g": true, "grp": "AS파트리스트 선정 및 확정", "t": "AS가능 범위 확정", "goal": "상품 : AS가능 범위를 확정하고 범위별 필요한 부품을 재고로 등록가능 하도록 시스템화 한다.", "own": "AS팀 상품전략팀 개발본부", "out": ["AS 파트리스트 (수리 가능 범위·교체 및 공급 단위 포함", "AS 부품코드 및 시스템 등록 내역"], "chk": [], "how": ["개발 Part List·도면 및 제품 구성 확인", "AS팀·개발본부와 수리 가능 범위 및 부품별 교체·공급 단위 협의", "구매와 AS 부품 조달 가능 여부·공급조건 확인", "협의 결과를 반영하여 AS 파트리스트 확정"], "lane": 1, "ai": ["j_as"], "scr": "" }, { "id": "PROC-65", "st": 3, "g": false, "grp": "FCST·발주 계획", "t": "최종 도입조건 확인", "goal": "상품의 최종 도입조건과 단가를 확인하고 내부 확정한다.", "own": "영업기획", "out": ["권역별 FCST·초도 발주안"], "chk": ["신규 Task (PROC-16A에서 이동) — Task ID는 통합 시 부여"], "how": ["FCST 요청 (DPP 샘플 배포 후, MP 가능일 M-3 기한)", "국가·SKU·컬러·전압별 FCST 취합", "기준 MOQ(PROC-08) 대비 수량 검토", "MOQ 분할·초도·추가 발주안 협의"], "lane": 3, "ai": ["j_iqc", "j_as"], "scr": "" }, { "id": "PROC-66", "st": 3, "g": false, "grp": "출시 자료 준비", "t": "사용가이드 영상 기획", "goal": "CS 고객 배포와 공용으로 쓸 사용가이드 영상을 기획하고 촬영 일정을 확보한다.", "own": "고객경영본부(CS) 상품전략팀", "out": ["영상 촬영 기획안"], "chk": ["DPP 샘플"], "how": ["영상 촬영 기획안 작성", "CS 담당자와 내용 협의 → 최종 기획안", "촬영 미팅 및 일정 확보"], "lane": 0, "ai": ["j_plan", "j_as"], "scr": "" }, { "id": "PROC-67", "st": 3, "g": true, "grp": "DPP 준비·생산", "t": "DPP 적용 사양 및 샘플 구성 확정", "goal": "DPP 적용 사용 확정 점검", "own": "PM", "out": ["제품", "부품 규격 확정", "제품규격서", "도면", "부품승인원", "관리계획서"], "chk": ["인쇄물 디자인 시방서 3주전 확정 필요"], "how": ["PM이 CFT에 DPP 적용 사양 및 준비 완료 여부 확인 요청", "CFT 각 부서가 담당 항목의 확정 여부와 기준 자료 간 일치 여부 점검", "미확정·불일치 항목의 보완 내용과 완료 일정 협의", "PM이 점검 결과를 종합해 DPP 적용 사양·샘플 구성을 확정하고 적용 범위 공유"], "lane": 7, "ai": ["j_req", "j_bom"], "scr": "협력사 · 승인원" }, { "id": "PROC-68", "st": 3, "g": false, "grp": "DPP 준비·생산", "t": "DPP 제품 권역·사양 및 샘플 수량 확정", "goal": "DPP 제품 생산수량, 자재 입고 준비, 생산 일정을 사전에 계획 수립한다.", "own": "PM", "out": ["생산계획협의서"], "chk": ["영업용 Default 수량 확인", "중국영업 10대", "국내영업/마케팅 : 20대"], "how": ["상품전략1팀이 영업팀/바이어 배포용 LS 제공 수량·사양을 확정해 PM에게 공유", "개발팀이 검토 샘플 수량을, 품질보증팀이 시험 시료의 제품·부품별 수량을 확정·공유", "CFT 각 부서가 담당 부품의 입고 일정을 점검하고 생산 준비 가능 시점 공유", "PM이 부서별 요청과 입고 일정을 종합해 DPP 생산계획 협의"], "lane": 6, "ai": ["g_sample"], "scr": "협력사 · 샘플" }, { "id": "PROC-69", "st": 3, "g": true, "grp": "DPP 준비·생산", "t": "DPP 생산 자재 소요량 산출 및 발주·입고 관리", "goal": "DPP 생산을 위한 자재수량을 확인하고 발주 진행", "own": "구매본부", "out": ["DPP 자재 소요량 산출표"], "chk": ["※장납기 자재 선행 양산발주 진행을 위한 부품 사양 확정 협의 필요"], "how": [], "lane": 3, "ai": [], "scr": "" }, { "id": "PROC-70", "st": 3, "g": false, "grp": "DPP 준비·생산", "t": "DPP 이벤트 생산 및 생산 실적 관리", "goal": "DPP 생산계획에 따라 제품을 생산하며 제조공정의 적합성 및 제품 이슈사항을 점검한다.", "own": "생산팀", "out": ["DPP 생산 제품 및 생산 실적", "공정 점검 결과서", "생산 문제점 관리대장(Issue List"], "chk": [], "how": ["확정 생산계획 기준 사양별 작업 지시 및 자재·라인 준비 상태 확인", "DPP 생산 진행 및 제조·조립·포장 공정 점검", "생산품의 품질·사양 적합성 확인 및 발생 문제점 기록", "생산 실적과 공정 점검 결과를 정리하고 후속 개선 필요사항 공유"], "lane": 5, "ai": ["minutes"], "scr": "프로젝트 · 이슈·리스크" }, { "id": "PROC-71A", "st": 3, "g": false, "grp": "DPP 평가·개선", "t": "제품 신뢰성 시험평가 실시", "goal": "개발 모델의 신뢰성 시험을 통해 제품의 내구성 및 사용환경에서의 성능 유지 여부를 검증한다.", "own": "품질보증팀", "out": ["시험계획서", "시험결과서"], "chk": ["시험평가 완료", "Fail항목 재시험 완료"], "how": [], "lane": 4, "ai": [], "scr": "" }, { "id": "PROC-71B", "st": 3, "g": false, "grp": "DPP 평가·개선", "t": "제품 유효성평가", "goal": "개발 모델이 제품 규격(패키지/인쇄물 포함)에 적합하게 제작 되었는지 검증한다.", "own": "개발본부(설계) 개발본부(포장) 품질본부", "out": ["제품 휴효성 평가 결과서", "패키징 (도면", "공정도)시방서"], "chk": ["제품유효성평가 완료", "문제점 도출"], "how": [], "lane": 5, "ai": ["g_pack"], "scr": "품목 · 도면 판" }, { "id": "PROC-71C", "st": 3, "g": true, "grp": "출시 자료 준비", "t": "출시 자료 영상 촬영", "goal": "출시 국가별 사용 가이드 영상 촬영을 진행한다.", "own": "커뮤니케이션디자인팀", "out": ["기획안 영상 리스트 전체의 출시 국가·언어별 최종 사용가이드 영상"], "chk": [], "how": ["기획안의 영상 리스트와 출시 국가·언어별 제작 범위 확인", "DPP 샘플의 조작부·레이저 각인·디스플레이 언어를 확인하고 국가별 촬영 대상 구분", "국가별 언어가 적용된 샘플로 해당 장면을 각각 별도 촬영하고 영상별 편집·타이틀·자막 반영", "기획안 부합 여부와 촬영 내용·타이틀·자막에 대한 공동 검수 진행"], "lane": 0, "ai": ["j_plan"], "scr": "" }, { "id": "PROC-71D", "st": 3, "g": false, "grp": "DPP 평가·개선", "t": "DPP 샘플 점검 및 실사용 평가 (엘에스)", "goal": "DPP 샘플로 개선/기획 사양 구현 여부를 점검하고 검증한다", "own": "상품전략팀", "out": ["실사용 평가 결과서"], "chk": ["평가 결과 취합 완료"], "how": ["샘플 점검 (상품전략팀)", "법인·CS 실사용 평가", "영업·법인 합동 평가", "평가 결과 취합"], "lane": 5, "ai": ["g_sample"], "scr": "협력사 · 샘플" }, { "id": "PROC-71E", "st": 3, "g": false, "grp": "DPP 평가·개선", "t": "개선 검증사항 확인", "goal": "DPP 평가·설명회·테스트 피드백을 한 리스트로 모아, 개선이 검증 결과를 개발에 전달한다.", "own": "상품전략팀", "out": ["피드백·요청사항 체크리스트"], "chk": ["개선 요청 완료"], "how": ["피드백 통합 (체크리스트)", "개선 필요 항목 정리 및 개발 요청"], "lane": 5, "ai": [], "scr": "" }, { "id": "PROC-71F", "st": 3, "g": false, "grp": "FCST·발주 계획", "t": "권역별 FCST 취합 및 MOQ·초도 발주안 조율", "goal": "DPP 샘플 배포·평가 후 영업이 실물을 보고 판단한 FCST를 받아, MOQ 기준 초도·추가 발주안을 확정한다.", "own": "영업기획", "out": ["권역별 FCST·초도 발주안"], "chk": ["신규 Task (PROC-16A에서 이동) — Task ID는 통합 시 부여"], "how": ["FCST 요청 (DPP 샘플 배포 후, MP 가능일 M-3 기한)", "국가·SKU·컬러·전압별 FCST 취합", "기준 MOQ(PROC-08) 대비 수량 검토", "MOQ 분할·초도·추가 발주안 협의"], "lane": 3, "ai": ["j_iqc", "j_as"], "scr": "" }, { "id": "PROC-74", "st": 3, "g": false, "grp": "DPP 평가·개선", "t": "개선 검증 일정 및 부서별 진행 현황 관리,", "goal": "DPP단계 샘플 문제점에 대한 개선 조치의 적용 여부 및 개선 효과를 검증하여 제품 완성도와 양산 품질 확보", "own": "PM", "out": ["문제점관리대장(Issue List"], "chk": ["개선 미흡 항목 재개선 및 재검증", "개선 효과가 미흡한 항목은 '즉시개선항목'과 '지속 관리", "(초기유동 개선 진행)항목'으로 구분 하여 개선 또는", "차기 단계 진행 여부 판단"], "how": [], "lane": 5, "ai": ["replan", "minutes"], "scr": "프로젝트 · 이슈·리스크" }, { "id": "PROC-75", "st": 3, "g": false, "grp": "인쇄물 디자인·검수", "t": "인쇄물 수정", "goal": "Master를 확정하고 국가별 번역본을 만든다.", "own": "상품전략팀", "out": ["수정 시안", "국가별 번역본"], "chk": ["Master 확정", "번역본 적용"], "how": ["수정 반영 확인", "Master 확정", "국가별 파생 번역 의뢰·적용"], "lane": 7, "ai": ["j_manual"], "scr": "" }, { "id": "PROC-76", "st": 3, "g": false, "grp": "인쇄물 디자인·검수", "t": "2차 인쇄물 검수", "goal": "수정·번역본 반영 여부와 국가별 표기를 최종 검수한다.", "own": "상품전략팀", "out": ["최종 검수 완료 파일"], "chk": ["국가별 최종 승인"], "how": ["1차 수정 반영 여부 확인", "국가별 번역·인증 문구 검수", "최종 승인"], "lane": 7, "ai": ["j_manual"], "scr": "" }, { "id": "PROC-77A", "st": 3, "g": false, "grp": "인쇄물 디자인·확정", "t": "LPP 적용 인쇄물 배포", "goal": "LPP에서 양산품과 같은 상태로 적용할 수 있도록 최종 인쇄물을 배포한다.", "own": "상품전략팀", "out": ["최종 인쇄물 파일", "배포 내역"], "chk": ["배포 완료"], "how": ["최종 인쇄 파일 확정", "생산·구매 배포", "LPP 적용 일정 확인"], "lane": 7, "ai": ["j_manual"], "scr": "" }, { "id": "PROC-77B", "st": 3, "g": false, "grp": "인쇄물 디자인·확정", "t": "스티커류 부착 위치 지정", "goal": "양산 라인에서 스티커가 정확한 위치에 붙도록 기준을 문서로 정한다.", "own": "상품전략팀", "out": ["스티커류 부착 위치 지정서"], "chk": ["지정서 공유 완료"], "how": ["부착 위치 협의 (커뮤니케이션디자인팀, 생산)", "영업 요청 별도 스티커 협의", "부착 위치 지정서 작성·공유"], "lane": 7, "ai": ["j_manual"], "scr": "" }, { "id": "PROC-78", "st": 3, "g": false, "grp": "승인·보고", "t": "개발단계 Stage Gate  (DPP단계 → LPP)", "goal": "T1 개발 및 검증 결과를 종합적으로 검토하여 개발 요구사항 충족 여부와 양산 준비 수준을 확인하고, PP 단계 진입 여부를 결정한다.", "own": "PM", "out": ["Stage Gate 결과서", "[첨부]", "'-PM:부품승인원", "문제점관리대장", "신규 설비 치공구 제작 관리대장", "개발1팀:제품규격서"], "chk": ["Stage Gate 평가 기준 만족", "Stage Gate 결과 기안 합의/승인"], "how": [], "lane": 0, "ai": ["j_req", "j_bom"], "scr": "프로젝트 · 관문 승인" }, { "id": "PROC-79", "st": 3, "g": true, "grp": "BOM 생성", "t": "품목코드·BOM 등록 요청 및 자재코드 생성", "goal": "생산 확정된 국가 법인(기본) 향지의 품목코드와 BOM 등록 요청", "own": "상품전략팀", "out": ["모델명", "품목명(자재명", "품번(자재코드"], "chk": [], "how": ["모델명 채번", "품목명/자재명 채번", "품번 채번", "자재코드 채번"], "lane": 1, "ai": ["j_bom"], "scr": "품목 · BOM" }, { "id": "PROC-80", "st": 3, "g": true, "grp": "LPP 준비·생산", "t": "LPP 사양 확정", "goal": "LPP 적용 사용 확정 점검", "own": "PM,상품전략팀", "out": ["리스트업 필요", "표준류"], "chk": [], "how": [], "lane": 6, "ai": [], "scr": "" }, { "id": "PROC-81", "st": 3, "g": true, "grp": "LPP 준비·생산", "t": "양산 검증용 디자인 시방서 사전 배포 및 한도 합의 (LPP 외관·CMF·명판·인쇄 사양 검증 → 양산용 최…", "goal": "LPP 전 양산 검증용 디자인 시방서를 사전 배포하고, LPP에서 최종 사양·외관·CMF 재현성을 검증한 뒤 양산용 최종본을 확정·배포한다.", "own": "상품디자인팀", "out": [], "chk": [], "how": [], "lane": 7, "ai": [], "scr": "" }, { "id": "PROC-82", "st": 3, "g": false, "grp": "LPP 준비·생산", "t": "LPP 생산계획 수립 및 생산 준비 일정 관리", "goal": "LPP 시제품 생산수량, 자재 입고일정, 생산 일정을 사전에 계획 수립한다.", "own": "PM", "out": ["생산계획협의서"], "chk": ["LPP 샘플의 경우 향지별 디자인 시방서 3주전 완료 필요"], "how": [], "lane": 6, "ai": ["replan"], "scr": "일정표" }, { "id": "PROC-83", "st": 3, "g": true, "grp": "LPP 준비·생산", "t": "LPP 생산 자재 소요량 산출 및 발주·입고 관리", "goal": "LPP 및 양산 계획에 따른 자재 소요량을 산출하고 발주·입고 일정을 관리하여 계획된 생산 일정과 수량을 확보한다.", "own": "구매본부", "out": [], "chk": [], "how": [], "lane": 3, "ai": [], "scr": "" }, { "id": "PROC-83", "st": 3, "g": false, "grp": "LPP 준비·생산", "t": "LPP 이벤트 생산 및 생산 실적 관리", "goal": "LPP 생산계획에 따라 제품을 생산하며 제조공정의 적합성 및 제품 이슈사항을 점검한다.", "own": "생산팀", "out": ["T1 생산 제품"], "chk": [], "how": [], "lane": 2, "ai": ["j_trial"], "scr": "품목 · 금형·시사출" }, { "id": "PROC-83", "st": 3, "g": false, "grp": "승인·보고", "t": "개발단계 Stage Gate (LPP단계 → MP)", "goal": "LPP 생산 결과를 종합적으로 검토하여 양산 진행 여부를 최종 결정한다.", "own": "PM", "out": ["Stage Gate 결과서", "[첨부]", "'-PM:부품승인원", "문제점관리대장", "신규 설비 치공구 제작 관리대장", "개발1팀:제품규격서"], "chk": ["개발단계 문제점 개선 완료", "양산 준비 완료"], "how": [], "lane": 0, "ai": ["j_req", "j_bom"], "scr": "프로젝트 · 관문 승인" }, { "id": "X-03", "st": 3, "g": false, "grp": "시방서 Rev · 공장에 나간 판", "t": "디자인 시방서 판 관리", "goal": "회사 양식(카톤·기프트 박스·명판·사용 가이드·주의 라벨·자사 바코드)으로 시방서를 만들고 판을 관리한다.", "own": "AX팀", "out": ["디자인 시방서", "양산 시방서"], "chk": [], "how": [], "lane": 7, "ai": [], "scr": "", "x": true, "soon": "1.0.138" }, { "id": "PROC-84A", "st": 4, "g": false, "grp": "출시 자료 준비", "t": "FAQ 초안 자료 작성", "goal": "예상 고객 질문과 답변 초안을 만들어 설명회·CS·영업 자료의 기준으로 쓴다.", "own": "고객경영본부", "out": ["FAQ 초안 (핵심 Q&A"], "chk": ["FAQ 초안 작성"], "how": ["예상 질문 수집 (기존 모델 CS 문의, T0 이슈)", "핵심 Q&A 초안 작성", "CS 사전 검토"], "lane": 7, "ai": [], "scr": "" }, { "id": "PROC-84B", "st": 4, "g": false, "grp": "출시 자료 준비", "t": "법무·지식재산·고객경영 등 유관부서 검토", "goal": "출시 자료(USP, 웹기술서 등)의 표현·권리·고객 응대 이슈를 출시 전에 점검한다.", "own": "마케팅팀", "out": ["제품 USP", "웹기술서"], "chk": ["부서별 검토 완료"], "how": ["Material별 검토 일정 수립", "부서별 검토 요청", "수정 반영"], "lane": 7, "ai": [], "scr": "" }, { "id": "PROC-84C", "st": 4, "g": false, "grp": "출시 자료 준비", "t": "영상 업로드 및 국가·언어별 QR코드 연동", "goal": "사용가이드 영상을 올리고 국가·언어별 QR에 연결해 고객이 바로 볼 수 있게 한다.", "own": "상품전략팀", "out": ["영상 URL·QR 연동 리스트"], "chk": ["국가별 QR 연동 확인"], "how": ["국가·언어별 영상 업로드", "QR 연결 URL 설정", "인쇄물 QR 연동 테스트"], "lane": 0, "ai": [], "scr": "" }, { "id": "PROC-84D", "st": 4, "g": false, "grp": "출시 자료 준비", "t": "런칭 필요 서류 확보 및 PLM 업로드", "goal": "권역·채널별 런칭에 필요한 인증서·리포트를 확보 즉시 PLM에 업로드해, 필요한 부서가 언제든 찾아 쓰고 입점·출시 지연을 막는다.", "own": "상품전략팀", "out": ["각권역 : 안전 인증서", "유럽 : PPWR 서류"], "chk": ["권역별 필요 서류 PLM 업로드 완료"], "how": ["권역·채널별 필요 서류 리스트 확인", "추가 필요 서류 확인", "서류 확보되는 대로 PLM 업로드 (완료 시점마다 수시)"], "lane": 4, "ai": ["certlist"], "scr": "품목 · 인증" }, { "id": "PROC-85", "st": 4, "g": false, "grp": "승인·보고", "t": "권역별 출시 준비 및 출시 보고", "goal": "개발 완료 시점의 변경점·경쟁력·원가를 정리해 출시를 확정하고, 권역별 출시 자료를 배포한다.", "own": "상품전략팀/개발", "out": ["출시 준비 보고서", "신제품 소개서 (최종"], "chk": ["출시 확정", "권역별 자료 배포"], "how": ["출시 준비 문서 작성 (기획안 대비 변경점·POD·원가·경쟁사 MKT)", "출시 보고", "제품 소개서 최종본 배포"], "lane": 0, "ai": ["j_launch", "weekly"], "scr": "" }, { "id": "X-04", "st": 4, "g": false, "grp": "다음 번호 · 체크 숫자 · 중복 확인", "t": "88 바코드 발급", "goal": "제품 88 바코드를 발급하고 시방서 라벨에 넣는다.", "own": "AX팀", "out": ["88 바코드 번호"], "chk": [], "how": [], "lane": 7, "ai": [], "scr": "", "x": true, "soon": "1.0.138" }, { "id": "PROC-86", "st": 5, "g": false, "grp": "초도 양산·출하 검사", "t": "초도 생산·출하 확인", "goal": "초도 생산과 권역별 출하를 확인해 계획한 출시 일정을 지킨다.", "own": "생산", "out": ["초도 생산·출하 현황"], "chk": ["초도 생산 완료", "권역별 출하 완료"], "how": ["초도 생산 일정·수량 확인 (생산)", "권역별 출하 일정 확인 (영업본부)", "초도품 인쇄물·패키지 최종 확인"], "lane": 5, "ai": ["j_iqc"], "scr": "" }, { "id": "PROC-87", "st": 5, "g": false, "grp": "초도 양산·출하 검사", "t": "양산 검수", "goal": "품질 기준에 맞게 양산이 되는지 배송전 현지 검수를 통해 입고 후 품질 이슈가 없도록 사전 점검 한다.", "own": "품질본부 개발본부 구매본부 상품전략팀", "out": ["양산 검수 보고서"], "chk": ["양산 검수 결과 : PASS"], "how": ["양산 일정 확정", "양산 검수 계획", "양산 검수 진행 및 보고서 작성"], "lane": 5, "ai": ["j_iqc", "weekly"], "scr": "" }, { "id": "PROC-88", "st": 6, "g": false, "grp": "초기 품질·VOC 관리", "t": "출시 후 VOC·초기 품질 모니터링 및 대응", "goal": "출시 후 초기 고객 불만·불량을 분류·대응하고, 영업·법인이 공유한 판매 이상 징후와 연계해 원인을 파악하며, 미출시 권역에 미리 공유한다.", "own": "상품전략팀", "out": ["VOC 분석 리포트"], "chk": ["PROC-43A(초기 판매 모니터링)를 이 Task로 통합 — 판매 수량 검토는 영업 소관, 상품전략은 이상 징후만 공유받음"], "how": ["온라인 리뷰·CS 접수·글로벌 소비자 불만 모니터링", "불량·불편 사례 분류 및 대응", "영업·법인 공유 판매 이상 징후(반품·판매 급감 등) VOC와 연계 확인", "초기 출시 권역 사례 미출시 권역 공유"], "lane": 5, "ai": ["j_voc"], "scr": "" }, { "id": "PROC-89", "st": 6, "g": false, "grp": "초기 유동 관리", "t": "초기유동관리 CFT 이슈 회의 주관", "goal": "양산 초기 일정 기간 동안 생산 및 시장 품질을 집중 모니터링하고, 잔여 개선사항의 조치 완료 여부를 확인하여 안정적인 양산 체계를 확보한다.", "own": "PM", "out": ["초기유동 관리대장"], "chk": ["초기유동관리 3개월 끝나는 시점", "초기 유동 관리 기간 10 Lot 생산 완료 시점", "문제점 등록 개선 완료 시점", "※ 상기 3항 중 늦은 적용 시점으로 해제함."], "how": [], "lane": 0, "ai": [], "scr": "프로젝트 · 이슈·리스크" }, { "id": "PROC-90A", "st": 6, "g": false, "grp": "프로젝트 종료·회고", "t": "프로젝트 완료 검토 및 종료 승인", "goal": "개발 목표 및 주요 산출물의 완료 여부를 확인하고, 미결 사항과 운영 인계 항목을 정리하여 프로젝트를 공식 종료한다.", "own": "PM", "out": ["프로젝트종료협의서"], "chk": ["프로젝트종료 기안 합의/승인"], "how": [], "lane": 0, "ai": [], "scr": "" }, { "id": "PROC-90B", "st": 6, "g": true, "grp": "프로젝트 종료·회고", "t": "프로젝트 완료보고(품의)", "goal": "프로젝트를 공식적으로 종료하고 잔금 지급을 목적으로 한다.", "own": "PM(CFT)", "out": [], "chk": [], "how": [], "lane": 0, "ai": ["weekly"], "scr": "" }, { "id": "PROC-91", "st": 6, "g": false, "grp": "프로젝트 종료·회고", "t": "반기 Post-Mortem 리뷰", "goal": "반기 단위로 출시 제품의 목표 대비 결과를 돌아보고 프로세스를 개선한다.", "own": "상품전략팀", "out": ["반기 리뷰 자료"], "chk": ["개선 액션 프로세스 반영"], "how": ["목표 대비 결과 정리", "잘된 점·문제점 도출", "개선 액션 프로세스 반영"], "lane": 0, "ai": ["j_voc"], "scr": "" }];
+
+};
+__m["src/webparts/huromAxPlm/model/hatch.js"]=function(module,exports,require){"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.baseOfStage = exports.baseKey = exports.BASE_STATE_LABEL = exports.baseState = exports.taskOff = exports.laneOff = exports.htypeOf = exports.HTYPES = exports.ODM_LABEL = exports.odmOf = void 0;
+exports.offWhy = offWhy;
+exports.baseProgress = baseProgress;
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+const base_1 = require("src/webparts/huromAxPlm/model/base.js");
+const odmOf = (p) => p.odmMold || 'public';
+exports.odmOf = odmOf;
+exports.ODM_LABEL = { public: '공모 — 공장 기존 금형', private: '사모 — 우리 전용 새 금형' };
+exports.HTYPES = [['own', '자체'], ['derive', '파생'], ['oem', '중국 OEM'], ['odm', 'ODM 공모'], ['odm-private', 'ODM 사모'], ['sourcing', '소싱']];
+const htypeOf = (p) => { const t = (0, devtype_1.typeOf)(p); return t === 'odm' && (0, exports.odmOf)(p) === 'private' ? 'odm-private' : t; };
+exports.htypeOf = htypeOf;
+const KEEP_DESIGN = /외관|CMF|로고|디자인|인쇄|명판|컬러|색/;
+const KEEP_SPEC = /사양|승인|규격|명칭|요구/;
+// lane: sched.LANES 순서 (0 상품기획 1 설계 2 금형/시사출 3 구매/협력사 4 인증 5 품질 6 생산 7 인쇄물/마케팅)
+function offWhy(t, lane, text = '') {
+    if (lane === 1) {
+        if (t === 'odm' && !KEEP_DESIGN.test(text))
+            return 'ODM 공모 — 설계는 공장 것, 외관·CMF·로고만 우리가 정함';
+        if (t === 'odm-private' && !KEEP_SPEC.test(text) && !KEEP_DESIGN.test(text))
+            return 'ODM 사모 — 설계는 공장이 하고 우리는 사양·승인만';
+        if (t === 'sourcing')
+            return '소싱 — 완제품을 사 오므로 설계 없음';
+    }
+    if (lane === 2) {
+        if (t === 'odm')
+            return 'ODM 공모 — 금형은 공장 기존 것';
+        if (t === 'sourcing')
+            return '소싱 — 금형 없음';
+    }
+    if (lane === 6 && t === 'sourcing')
+        return '소싱 — 생산 대신 입고 검사로';
+    return undefined;
+}
+const laneOff = (p, lane) => offWhy((0, exports.htypeOf)(p), lane);
+exports.laneOff = laneOff;
+const taskOff = (t, b) => offWhy(t, b.lane, `${b.grp} ${b.t} ${b.out.join(' ')}`);
+exports.taskOff = taskOff;
+const baseState = (b) => (b.scr ? 'screen' : b.ai.length ? 'auto' : 'none');
+exports.baseState = baseState;
+exports.BASE_STATE_LABEL = { screen: '화면에 있음', auto: '자동화됨', none: '없음' };
+const baseKey = (b) => 'b:' + b.id;
+exports.baseKey = baseKey;
+const baseOfStage = (k) => base_1.BASE_TASKS.filter(b => b.st === k);
+exports.baseOfStage = baseOfStage;
+// 프로젝트의 기본 업무 진행 — 빗금 칸은 뺌
+function baseProgress(p, k) {
+    const t = (0, exports.htypeOf)(p);
+    let done = 0, total = 0, off = 0;
+    base_1.BASE_TASKS.forEach(b => { if (k !== undefined && b.st !== k)
+        return; if ((0, exports.taskOff)(t, b)) {
+        off++;
+        return;
+    } total++; const s = p.docs[(0, exports.baseKey)(b)]; if (s && (s.done || s.skip))
+        done++; });
+    return { done, total, off };
+}
+
+};
+__m["src/webparts/huromAxPlm/model/devtype.js"]=function(module,exports,require){"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.stagesOf = exports.SOURCING_KINDS = exports.typeInfo = exports.typeOf = exports.DEV_TYPES = void 0;
+exports.stagesFor = stagesFor;
+// AX-PLM 1.0.132 — 개발 유형 5가지 (심준보 2026-11-17 #ax-plm msg 10424760 '소싱·금형개발·ODM·OEM 종합적으로 반영', 곽두팔 msg 10425015)
+// 품목·프로젝트를 만들 때 유형부터 고르고, 그에 따라 단계 산출물·관문 승인 기준·BOM 범위·관리할 기록(금형·도면 배포·샘플·승인원)이 바뀜
+// 단계 7개(S1~S7)와 계획일 칸은 모든 유형이 같음 — 이름·하는 일·산출물·관문 위치만 유형별
+const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
+exports.DEV_TYPES = [
+    { id: 'own', label: '자체 개발 (신규 금형)', tag: '자체', desc: '우리가 설계하고 금형을 새로 팜', drawing: '우리 도면 · 전체 BOM',
+        bomNote: '전체 BOM — 상하위 제한 없음, 금형 부품은 금형 번호와 연결', bomDepth: 9, mold: true, release: false, sample: false, price: false, food: false },
+    { id: 'derive', label: '파생 개발', tag: '파생', desc: '기존 품목을 복사해 색상·일부 부품만 바꿈', drawing: '기반 모델 도면 · 바뀐 부품만 설계 변경',
+        bomNote: '기반 모델 BOM을 그대로 복사 — 바뀐 부품만 설계 변경으로 Rev 올림', bomDepth: 9, mold: false, release: false, sample: false, price: false, food: false },
+    { id: 'oem', label: 'OEM (우리 설계 · 업체 생산)', tag: 'OEM', desc: '도면은 우리 것, 중국 제조사가 생산', drawing: '우리 도면 · 업체에 나간 판 관리',
+        bomNote: '전체 BOM — 업체에 나간 도면 판과 초도품·수입검사 기준이 핵심', bomDepth: 9, mold: true, release: true, sample: false, price: true, food: false },
+    { id: 'odm', label: 'ODM (업체 설계 · 생산)', tag: 'ODM', desc: '업체가 설계·생산, 우리는 사양·샘플 평가·승인원·우리 명의 인증', drawing: '업체 도면 · 우리는 승인원',
+        bomNote: '주요 부품·재질·식품(물) 접촉부만 — 완제품 아래 한 층', bomDepth: 1, mold: false, release: false, sample: true, price: true, food: true },
+    { id: 'sourcing', label: '소싱 (완제품·부자재 구매)', tag: '소싱', desc: '만들어진 제품을 사 옴 — 업체 선정·샘플·규격서·인증서·단가·MOQ', drawing: '업체 규격서',
+        bomNote: '완제품 한 줄 + 포장·매뉴얼·라벨만', bomDepth: 1, mold: false, release: false, sample: true, price: true, food: true },
+];
+const typeOf = (p) => ((p && p.devType) || 'own');
+exports.typeOf = typeOf;
+const typeInfo = (t) => exports.DEV_TYPES.filter(x => x.id === t)[0] || exports.DEV_TYPES[0];
+exports.typeInfo = typeInfo;
+exports.SOURCING_KINDS = ['완제품', '포장', '매뉴얼', '라벨'];
+const d = (key, label, proc = '') => ({ key, label, proc });
+// 공통으로 쓰는 산출물
+const VOC = d('voc', 'Pain Point·VOC 근거', 'PROC-02D');
+const G1REP = d('g1rep', '경영진 보고·결정 기록', 'PROC-16');
+const RR = d('rr', 'PM 지정·R&R', 'PROC-17');
+const CERT = d('cert', '국가별 인증서 (우리 명의)', 'PROC-56A');
+const PRINT = d('print', '최종 인쇄물 파일', 'PROC-77A');
+const ISSUE = d('issue', '문제점 관리대장', 'PROC-74');
+const FAQ = d('faq', 'FAQ 초안', 'PROC-84A');
+const LAUNCH = d('launch', '출시 준비 보고서·소개서', 'PROC-85');
+const VOCR = d('vocr', 'VOC 분석 리포트', 'PROC-88');
+const CLOSE = d('close', '프로젝트 종료·회고', 'PROC-90A');
+const S7 = { name: '출시 후 유통관리', short: '출시 후', focus: '시장 반응·VOC 대응, 회고를 다음 제품에', docs: [VOCR, CLOSE] };
+const TPL = {
+    own: {
+        S1: { name: '컨셉·기획', short: '컨셉·기획', focus: '고객가치·차별점·기술 가능성 확인', gate: 'G1 기획 승인', rule: '기획안·사업성 검토 끝, 경영진 결정 기록', docs: [VOC, d('plan', '신제품 기획안 (컨셉)', 'PROC-11'), d('biz', '사업성 검토서', 'PROC-12'), G1REP] },
+        S2: { name: '공동검토·개발발의', short: '공동검토', focus: '요구사항·예산·일정·역할 합의', docs: [RR, d('spec', '최종 사양서', 'PROC-22'), d('kickoff', '개발발의서', 'PROC-23')] },
+        S3: { name: '설계·시제품검증', short: '설계·시제품', focus: '금형 착수 전 설계 방향·평가 계획 확정', docs: [d('sched', 'Kick off 회의록·대일정표', 'PROC-24'), d('cad', '3D 도면·Part list', 'PROC-26'), d('dr', '설계 DR 결과서', 'PROC-27A'), d('proto', '시제품 평가 결과서', 'PROC-28')] },
+        S4: { name: '금형·시사출 (T0~T2)', short: '금형·시사출', focus: '금형 발주 → T0·T1·T2 시사출 → 부품 승인, 인증·인쇄물 준비', gate: 'G2 금형 T1 합격', rule: '모든 금형이 T1 이상 시사출 합격 (금형 탭)',
+            docs: [d('mold', '금형 발주·계약서 (금형 번호·업체)', 'PROC-35'), d('t0', 'T0 시사출 검토서', 'PROC-40'), d('t1', 'T1 시사출 검토서', 'PROC-40'), d('t2', 'T2 수정·최종 승인', 'PROC-40'), d('ppap', '부품 승인원', 'PROC-61'), CERT, PRINT, ISSUE] },
+        S5: { name: '양산·출시준비', short: '양산준비', focus: '양산 품질·생산 준비, 영업·마케팅·CS 출시 지원', gate: 'G3 출시 승인', rule: '인증 모두 취득, 출시 자료 끝', docs: [FAQ, d('usp', '제품 USP·웹기술서', 'PROC-84B'), LAUNCH] },
+        S6: { name: '생산', short: '생산', focus: '초도 생산·출하·초도품 확인', docs: [d('first', '초도 생산·출하 현황', 'PROC-86'), d('mpqa', '양산 검수 보고서', 'PROC-87')] },
+        S7,
+    },
+    derive: {
+        S1: { name: '파생 기획', short: '파생 기획', focus: '기반 모델과 무엇이 다른지(색상·부품·사양) 정함', gate: 'G1 파생 기획 승인', rule: '기반 모델·바뀌는 부품 목록 확정', docs: [d('base', '기반 모델·바뀌는 부품 목록'), d('plan', '파생 기획안 (색상·사양 차이)', 'PROC-11'), G1REP] },
+        S2: { name: '변경 사양 합의', short: '변경 합의', focus: '바뀌는 것만 사양·원가·일정 합의', docs: [RR, d('spec', '변경 사양서', 'PROC-22')] },
+        S3: { name: '변경 설계', short: '변경 설계', focus: '바뀐 부품만 설계 변경(ECR→ECO), 색상 샘플 승인', gate: 'G2 변경 부품 승인', rule: '진행 중 설계 변경 없음, 바뀐 부품 모두 ECO 승인',
+            docs: [d('ecr', '설계 변경 요청·ECO'), d('cmf', '색상·CMF 승인 샘플'), d('dr', '변경 부품 DR', 'PROC-27A')] },
+        S4: { name: '변경 검증', short: '변경 검증', focus: '바뀐 부품 승인원, 인증 변경 신고, 인쇄물 변경분', docs: [d('ppap', '변경 부품 승인원', 'PROC-61'), d('certchg', '인증 변경·추가 신고'), d('print', '인쇄물·라벨 변경분', 'PROC-77A'), ISSUE] },
+        S5: { name: '양산·출시준비', short: '양산준비', focus: '파생 모델 출시 자료', gate: 'G3 출시 승인', rule: '인증 변경 끝, 출시 자료 끝', docs: [d('usp', '파생 모델 소개·상세페이지', 'PROC-84B'), LAUNCH] },
+        S6: { name: '생산', short: '생산', focus: '초도 생산·색상 확인', docs: [d('first', '초도 생산·출하 현황', 'PROC-86'), d('mpqa', '양산 검수 보고서', 'PROC-87')] },
+        S7,
+    },
+    oem: {
+        S1: { name: '컨셉·기획', short: '컨셉·기획', focus: '고객가치·차별점, 생산 업체 후보', gate: 'G1 기획 승인', rule: '기획안·사업성 검토 끝, 경영진 결정 기록', docs: [VOC, d('plan', '신제품 기획안 (컨셉)', 'PROC-11'), d('biz', '사업성 검토서 (업체 단가 포함)', 'PROC-12'), G1REP] },
+        S2: { name: '공동검토·생산 업체 선정', short: '업체 선정', focus: '사양 확정, 생산 업체 선정·계약', docs: [RR, d('spec', '최종 사양서', 'PROC-22'), d('vendor', '생산 업체 선정·계약서')] },
+        S3: { name: '설계·도면 배포', short: '설계·배포', focus: '우리 도면 확정, 업체에 나간 판 기록', docs: [d('cad', '3D 도면·Part list', 'PROC-26'), d('dr', '설계 DR 결과서', 'PROC-27A'), d('release', '업체 배포 도면 판 기록'), d('proto', '시제품 평가 결과서', 'PROC-28')] },
+        S4: { name: '업체 생산·초도품 검사', short: '초도품 검사', focus: '업체 금형·시사출 확인, 초도품 검사·수입검사 기준', gate: 'G2 초도품 검사 합격', rule: '업체에 나간 도면이 최신 판, 초도품 검사 성적서 합격',
+            docs: [d('mold', '업체 금형·시사출 확인', 'PROC-40'), d('fai', '초도품 검사 성적서'), d('iqc', '수입검사 기준서'), CERT, PRINT, ISSUE] },
+        S5: { name: '양산·출시준비', short: '양산준비', focus: '양산 품질·출시 자료', gate: 'G3 출시 승인', rule: '인증 모두 취득, 출시 자료 끝', docs: [FAQ, LAUNCH] },
+        S6: { name: '생산·수입검사', short: '수입검사', focus: '초도 입고·수입검사', docs: [d('first', '초도 입고·출하 현황', 'PROC-86'), d('mpqa', '수입검사 결과', 'PROC-87')] },
+        S7,
+    },
+    odm: {
+        S1: { name: '요구 사양·업체 선정', short: '요구 사양', focus: '무엇을 원하는지 사양서로, ODM 업체 후보 평가', gate: 'G1 요구 사양 승인', rule: '요구 사양서 확정, ODM 업체 선정', docs: [VOC, d('req', '요구 사양서'), d('vendor', 'ODM 업체 후보 평가·선정'), G1REP] },
+        S2: { name: '견적·개발 계약', short: '개발 계약', focus: '단가·MOQ·일정·금형비 합의', docs: [RR, d('quote', '견적·개발 계약서')] },
+        S3: { name: '샘플 차수 평가', short: '샘플 평가', focus: '1차·2차 샘플 평가, 주요 부품·재질·식품(물) 접촉부 확인', docs: [d('s1', '1차 샘플 평가서'), d('s2', '2차 샘플 평가서'), d('keyparts', '주요 부품·재질·접촉부 목록')] },
+        S4: { name: '승인원·인증', short: '승인원·인증', focus: '최종 샘플 합격 → 업체 승인원 승인 → 우리 명의 인증', gate: 'G2 승인원 승인', rule: 'ODM 업체 승인원 승인 (협력사 탭)',
+            docs: [d('s3', '최종 샘플 평가서'), d('aprv', '업체 승인원'), CERT, PRINT, ISSUE] },
+        S5: { name: '출시준비', short: '출시준비', focus: '출시 자료·CS', gate: 'G3 출시 승인', rule: '우리 명의 인증 모두 취득', docs: [FAQ, LAUNCH] },
+        S6: { name: '초도 입고', short: '초도 입고', focus: '초도 입고·수입검사', docs: [d('iqc', '초도 수입검사 결과'), d('first', '입고·출하 현황', 'PROC-86')] },
+        S7,
+    },
+    sourcing: {
+        S1: { name: '구매 기획', short: '구매 기획', focus: '팔 제품·판매가·목표 마진', gate: 'G1 구매 기획 승인', rule: '단가·MOQ 견적 비교 끝', docs: [d('plan', '구매 기획 (판매가·목표 마진)'), d('price', '단가·MOQ 견적 비교'), G1REP] },
+        S2: { name: '업체 선정', short: '업체 선정', focus: '공급 업체 선정, 업체 인증서 확인', docs: [RR, d('vendor', '공급 업체 선정')] },
+        S3: { name: '샘플·규격 확인', short: '샘플·규격', focus: '샘플 평가, 구매 규격서, 업체 인증서·성적서', gate: 'G2 샘플 승인', rule: '샘플 합격 + 업체 인증서 확인 (협력사 탭)',
+            docs: [d('sample', '샘플 평가서'), d('specsheet', '구매 규격서'), d('vcert', '업체 인증서·시험성적서 확인')] },
+        S4: { name: '포장·인증·발주', short: '포장·발주', focus: '포장·매뉴얼·라벨, 수입 신고·필요 인증, 발주', docs: [d('pack', '포장·매뉴얼·라벨 파일'), d('cert', '수입 신고·필요 인증'), d('po', '발주서')] },
+        S5: { name: '판매 준비', short: '판매 준비', focus: '상세페이지·판매 채널', gate: 'G3 판매 승인', rule: '인증·라벨 끝, 첫 입고 일정 확정', docs: [LAUNCH] },
+        S6: { name: '입고', short: '입고', focus: '입고 검사·출하', docs: [d('iqc', '입고 검사 결과'), d('first', '입고·출하 현황', 'PROC-86')] },
+        S7,
+    },
+};
+// 유형별 단계 — 같은 id(S1~S7)·번호, 사람/AI 역할은 기본 단계 것을 씀
+const CACHE = {};
+function stagesFor(t) {
+    if (CACHE[t])
+        return CACHE[t];
+    const tpl = TPL[t] || TPL.own;
+    CACHE[t] = ax_1.AX_STAGES.map(s => { const x = tpl[s.id]; return Object.assign(Object.assign({}, s), { name: x.name, short: x.short, focus: x.focus, gate: x.gate, gateRule: x.rule, docs: x.docs }); });
+    return CACHE[t];
+}
+const stagesOf = (p) => stagesFor((0, exports.typeOf)(p));
+exports.stagesOf = stagesOf;
+
+};
+__m["src/webparts/huromAxPlm/model/ax.js"]=function(module,exports,require){"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.allDone = exports.daysTo = exports.today = exports.setNow = exports.docsDone = exports.stageIdx = exports.stageOf = exports.AX_STAGES = void 0;
+exports.suggestPlan = suggestPlan;
+exports.careList = careList;
+exports.newProject = newProject;
+exports.moveTo = moveTo;
+exports.dday = dday;
+exports.fmt = fmt;
+exports.axSamples = axSamples;
+exports.simulate = simulate;
+exports.whereNow = whereNow;
+exports.stageElapsed = stageElapsed;
+const d = (key, label, proc) => ({ key, label, proc });
+// 단계별 핵심 산출물만 (엑셀 Task 약 125줄 중 단계마다 꼭 남을 것)
+exports.AX_STAGES = [
+    { id: 'S1', no: '①', name: '컨셉·기획', focus: '고객가치·차별점·기술 가능성 확인', gate: 'G1 기획 승인', docs: [
+            d('voc', 'Pain Point·VOC 근거', 'PROC-02D'), d('plan', '신제품 기획안 (컨셉)', 'PROC-11'), d('biz', '사업성 검토서', 'PROC-12'), d('g1rep', '경영진 보고·결정 기록', 'PROC-16')
+        ] },
+    { id: 'S2', no: '②', name: '공동검토·개발발의', focus: '요구사항·예산·일정·역할 합의', gate: 'G2 개발발의 승인', docs: [
+            d('rr', 'PM 지정·R&R', 'PROC-17'), d('spec', '최종 사양서', 'PROC-22'), d('kickoff', '개발발의서', 'PROC-23')
+        ] },
+    { id: 'S3', no: '③', name: '설계·시제품검증', focus: '금형 착수 전 설계 방향·평가 계획 확정', docs: [
+            d('sched', 'Kick off 회의록·대일정표', 'PROC-24'), d('cad', '3D 도면·Part list', 'PROC-26'), d('dr', '설계 DR 결과서', 'PROC-27A'), d('proto', '시제품 평가 결과서', 'PROC-28')
+        ] },
+    { id: 'S4', no: '④', name: '개발·검증', focus: '금형·T0~DPP~LPP 검증, 인쇄물·인증 준비', docs: [
+            d('mold', '금형 계약서', 'PROC-35'), d('trial', '시사출 검토서', 'PROC-40'), d('ppap', '부품 승인원', 'PROC-61'), d('cert', '국가별 인증서', 'PROC-56A'),
+            d('print', '최종 인쇄물 파일', 'PROC-77A'), d('issue', '문제점 관리대장', 'PROC-74')
+        ] },
+    { id: 'S5', no: '⑤', name: '양산·출시준비', focus: '양산 품질·생산 준비, 영업·마케팅·CS 출시 지원', gate: 'G3 출시 승인', docs: [
+            d('faq', 'FAQ 초안', 'PROC-84A'), d('usp', '제품 USP·웹기술서', 'PROC-84B'), d('launch', '출시 준비 보고서·소개서', 'PROC-85')
+        ] },
+    { id: 'S6', no: '⑥', name: '생산', focus: '초도 생산·출하·초도품 확인', docs: [
+            d('first', '초도 생산·출하 현황', 'PROC-86'), d('mpqa', '양산 검수 보고서', 'PROC-87')
+        ] },
+    { id: 'S7', no: '⑦', name: '출시 후 유통관리', focus: '시장 반응·VOC 대응, 회고를 다음 제품에', docs: [
+            d('vocr', 'VOC 분석 리포트', 'PROC-88'), d('close', '프로젝트 종료·회고', 'PROC-90A')
+        ] },
+];
+// 단계마다 사람이 하는 일 / AI가 하는 일 (심준보 msg 10342690 'AI들이 어디서 개입하고 사람이 무엇을 하고')
+const ROLES = {
+    S1: { human: ['컨셉·타깃 결정', 'G1 기획 승인 보고'], ai: ['시장·경쟁 제품 조사, VOC 정리', '사업성 계산 초안', '나라별 규제 미리 확인'] },
+    S2: { human: ['요구사항·예산·일정 합의', 'G2 개발발의 승인'], ai: ['사양서·개발발의서 초안', '과거 비슷한 모델 불량·교훈 찾아 주기'] },
+    S3: { human: ['설계 방향 결정, DR 주관', '시제품 평가'], ai: ['DR 체크리스트·과거 불량 미리 검토', '재질·부품 규제 확인(식품 접촉·RoHS 등)'] },
+    S4: { human: ['금형·시사출 확인', '인증 접수·문제 해결'], ai: ['인증 일정·서류 빠짐 챙기기', '문제점 대장 정리·같은 불량 이력 찾기', '인쇄물 문구 규제 검토'] },
+    S5: { human: ['양산 준비 점검', 'G3 출시 승인'], ai: ['FAQ·USP·출시 자료 초안', '나라별 표시사항 마지막 점검'] },
+    S6: { human: ['초도 생산·출하 확인'], ai: ['초도품 검수 결과 요약', '출하 일정 지연 알림'] },
+    S7: { human: ['VOC 대응 결정', '회고'], ai: ['VOC 분류·주간 요약', '회고 초안, 다음 제품에 넘길 교훈 정리'] },
+};
+exports.AX_STAGES.forEach(s => { const r = ROLES[s.id]; if (r) {
+    s.human = r.human;
+    s.ai = r.ai;
+} });
+const stageOf = (id) => exports.AX_STAGES.filter(s => s.id === id)[0] || exports.AX_STAGES[0];
+exports.stageOf = stageOf;
+const stageIdx = (id) => Math.max(0, exports.AX_STAGES.map(s => s.id).indexOf(id));
+exports.stageIdx = stageIdx;
+const docsDone = (p, s) => s.docs.filter(x => (p.docs[x.key] || {}).done).length;
+exports.docsDone = docsDone;
+// 시작일·출시 목표일로 단계별 목표일 나눠 주기 — 출시 = ⑥ 생산 끝(첫 출하), ⑦은 출시 뒤 90일
+const W = { S1: 15, S2: 8, S3: 15, S4: 42, S5: 12, S6: 8 };
+const ymd = (t) => `${t.getFullYear()}-${('0' + (t.getMonth() + 1)).slice(-2)}-${('0' + t.getDate()).slice(-2)}`;
+const day = (s) => new Date(s + 'T00:00:00');
+function suggestPlan(start, target) {
+    const a = day(start).getTime();
+    const z = day(target).getTime();
+    const out = {};
+    if (!(z > a))
+        return out;
+    let acc = 0;
+    ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].forEach(k => { acc += W[k]; out[k] = ymd(new Date(a + (z - a) * acc / 100)); });
+    out.S6 = target;
+    out.S7 = ymd(new Date(z + 90 * 86400000));
+    return out;
+}
+// 시간 손잡이(시뮬레이션) 중에는 '오늘'을 그 날짜로 바꿔 모든 계산이 같이 움직임 (심준보 msg 10366339)
+let NOW;
+const setNow = (d) => { NOW = d; };
+exports.setNow = setNow;
+const today = () => NOW || ymd(new Date());
+exports.today = today;
+const daysTo = (s, now = (0, exports.today)()) => (s ? Math.round((day(s).getTime() - day(now).getTime()) / 86400000) : undefined);
+exports.daysTo = daysTo;
+// 마지막 단계 산출물까지 다 채우면 끝난 것으로 봄
+const allDone = (p) => p.stage === exports.AX_STAGES[exports.AX_STAGES.length - 1].id && (0, exports.docsDone)(p, exports.AX_STAGES[exports.AX_STAGES.length - 1]) === exports.AX_STAGES[exports.AX_STAGES.length - 1].docs.length;
+exports.allDone = allDone;
+function careList(p, now = (0, exports.today)()) {
+    const out = [];
+    const s = (0, exports.stageOf)(p.stage);
+    if ((0, exports.allDone)(p))
+        return out;
+    const end = (p.plan || {})[s.id];
+    const left = s.docs.length - (0, exports.docsDone)(p, s);
+    const dl = (0, exports.daysTo)(end, now);
+    if (!p.owner)
+        out.push({ level: 'amber', text: 'PM이 안 정해졌어요' });
+    if (!end)
+        out.push({ level: 'amber', text: '단계 목표일이 없어요 — 시작일·출시 목표일을 넣으면 자동으로 나눠요' });
+    else if (dl !== undefined && dl < 0)
+        out.push({ level: 'red', text: `${s.no} ${s.name} 목표일 ${-dl}일 지남` });
+    else if (dl !== undefined && dl <= 7 && left > 0)
+        out.push({ level: 'amber', text: `${s.no} 목표일까지 ${dl}일 — 산출물 ${left}개 남음` });
+    if (s.gate && left > 0 && dl !== undefined && dl <= 14)
+        out.push({ level: 'amber', text: `${s.gate.split(' ')[0]} 앞 — ${s.docs.filter(x => !(p.docs[x.key] || {}).done).map(x => x.label).join(', ')}` });
+    const t = (0, exports.daysTo)(p.target, now);
+    if (t !== undefined && t < 0 && (0, exports.stageIdx)(p.stage) < 5)
+        out.push({ level: 'red', text: `출시 목표일 ${-t}일 지남` });
+    const last = p.log.length ? p.log[p.log.length - 1].at.slice(0, 10) : p.created.slice(0, 10);
+    const idle = -((0, exports.daysTo)(last, now) || 0);
+    if (idle >= 7)
+        out.push({ level: 'amber', text: `${idle}일째 기록 없음 — 진행 상황 한 줄 남겨 주세요` });
+    if (!p.next)
+        out.push({ level: 'amber', text: '다음 할 일이 비어 있어요' });
+    const open = (p.asks || []).filter(x => !x.answer).length;
+    if (open)
+        out.push({ level: 'amber', text: `AI 사전 검토 ${open}건 답 기다리는 중` });
+    return out;
+}
+function newProject(name, who, owner, target, start) {
+    const now = new Date().toISOString();
+    const st = start || now.slice(0, 10);
+    const id = 'ax' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+    return { id, code: id, name, updated: now, created: now, stage: 'S1', owner: owner || who, target, start: st, plan: target ? suggestPlan(st, target) : undefined, docs: {}, gates: {}, log: [{ at: now, who, what: `프로젝트 시작 — ${name}`, kind: 'edit' }] };
+}
+// 단계 옮기기 — 막지 않음. 관문 단계에서 앞으로 가면 관문 통과 기록(빠진 산출물 수와 함께)
+function moveTo(p, to, who) {
+    const from = (0, exports.stageOf)(p.stage);
+    const dest = (0, exports.stageOf)(to);
+    if (from.id === dest.id)
+        return p;
+    const at = new Date().toISOString();
+    const fwd = (0, exports.stageIdx)(dest.id) > (0, exports.stageIdx)(from.id);
+    const log = [];
+    const gates = Object.assign({}, p.gates);
+    if (fwd) {
+        exports.AX_STAGES.slice((0, exports.stageIdx)(from.id), (0, exports.stageIdx)(dest.id)).forEach(s => {
+            if (!s.gate)
+                return;
+            const missing = s.docs.length - (0, exports.docsDone)(p, s);
+            gates[s.gate] = { at, by: who, missing };
+            log.push({ at, who, kind: 'gate', what: `${s.gate} 통과${missing ? ` (산출물 ${missing}개 빈 채로)` : ''}` });
+        });
+    }
+    log.push({ at, who, kind: 'move', what: `${from.no} ${from.name} → ${dest.no} ${dest.name}` });
+    return Object.assign(Object.assign({}, p), { stage: dest.id, gates, log: p.log.concat(log) });
+}
+function dday(target, today = day(NOW || ymd(new Date()))) {
+    if (!target)
+        return '';
+    const t = new Date(target + 'T00:00:00');
+    const n = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const diff = Math.round((t.getTime() - n.getTime()) / 86400000);
+    return diff === 0 ? 'D-day' : diff > 0 ? `D-${diff}` : `D+${-diff}`;
+}
+function fmt(iso) {
+    if (!iso)
+        return '';
+    const x = new Date(iso);
+    return `${x.getMonth() + 1}.${x.getDate()} ${('0' + x.getHours()).slice(-2)}:${('0' + x.getMinutes()).slice(-2)}`;
+}
+// 미리보기·처음 화면용 예시 — 음식물처리기·초음파 가습기 (심준보 msg 10366320 '이렇게 2개 샘플로'). 실제 목록이 비면 저장 없이 보여 줌
+function axSamples() {
+    const who = '심준보';
+    const iso = (d, h = 10) => `${d}T${('0' + h).slice(-2)}:00:00.000Z`;
+    const a = newProject('음식물처리기 (건조·분쇄형)', who, '심준보', '2027-03-31', '2026-06-01');
+    a.id = 'ax-sample-food';
+    a.code = a.id;
+    a.aiHelper = 'PC-곽두팔';
+    a.docs = { voc: { done: true }, plan: { done: true }, biz: { done: true }, g1rep: { done: true }, rr: { done: true }, spec: { done: true }, kickoff: { done: true }, sched: { done: true }, cad: { done: true }, dr: { done: true }, proto: { done: true }, mold: { done: true } };
+    const a2 = moveTo(moveTo(moveTo(a, 'S2', who), 'S3', who), 'S4', who);
+    a2.next = '시사출 검토 (T0) — 분쇄날 하우징 변형 확인';
+    a2.log = a2.log.concat([
+        { at: iso('2026-11-12', 1), who: 'PC-곽두팔', kind: 'doc', ai: true, what: '냄새 필터(활성탄) 교체 주기 VOC 212건 분류 — "3개월 전에 냄새남" 1순위, 인쇄물 문구에 반영 권고' },
+        { at: iso('2026-11-15', 2), who: 'PC-곽두팔', kind: 'note', ai: true, what: '같은 품목 해외 리콜 4건(과열·분쇄날 노출) 찾아 문제점 관리대장에 넣음' }
+    ]);
+    a2.brief = [{ at: iso('2026-11-17', 0), who: 'PC-곽두팔', text: '④ 개발·검증 일정대로예요. 이번 주 T0 시사출에서 분쇄날 하우징 변형과 건조 히터 주변 온도를 같이 보세요. KC 전기안전·EMC 시험은 1월 둘째 주 접수해야 출시 3/31에 맞아요.' }];
+    a2.asks = [{ id: 'q-food', at: iso('2026-11-14', 3), who: '심준보', stage: 'S4', text: '싱크대 분쇄기처럼 하수도로 흘려보내는 방식도 검토할까?', answer: '하수도로 흘려보내면 「주방용 오물분쇄기」라 환경부 인증(고형물 20% 미만 배출)이 따로 필요하고, 인증 없는 제품은 판매가 금지돼요. 지금 건조·분쇄형 그대로 가면 KC 전기안전·EMC로 충분해요.', answeredBy: 'PC-곽두팔', answeredAt: iso('2026-11-14', 5) }];
+    a2.start = '2026-06-01';
+    a2.plan = suggestPlan(a2.start, a2.target);
+    const b = newProject('초음파 가습기 (UV 살균 물통)', who, '김호철', '2027-08-31', '2026-11-03');
+    b.id = 'ax-sample-humid';
+    b.code = b.id;
+    b.aiHelper = 'PC-김호철(PLM)';
+    b.next = '경쟁 3사 물통 세척 구조 비교';
+    b.docs = { voc: { done: true } };
+    b.log = b.log.concat([{ at: iso('2026-11-16', 6), who: 'PC-김호철(PLM)', kind: 'doc', ai: true, what: '가습기 VOC 1,340건 정리 — "물통 세척 어려움"·"하얀 가루" 상위 2개를 Pain Point로 붙임' }]);
+    b.brief = [{ at: iso('2026-11-17', 0), who: 'PC-김호철(PLM)', text: 'G1까지 기획안·사업성 검토가 남았어요. 초음파 방식은 수돗물 미네랄이 "하얀 가루"로 퍼지는 불만이 많아 필터 카트리지를 기획에 넣길 권해요. 살균·항균을 광고하려면 시험 근거가 먼저 있어야 해요.' }];
+    b.asks = [{ id: 'q-humid', at: iso('2026-11-16', 7), who: '심준보', stage: 'S1', text: 'UV 살균 넣으면 광고에 "세균 99.9% 제거" 써도 돼?', answer: '공인 시험성적서(시험 균주·조건 명시)가 있어야 쓸 수 있고, 문구에 시험 조건을 같이 적어야 해요. 물에 살균제를 넣는 방식은 쓰지 마세요 — 가습기 살균제는 별도 승인 대상이에요.', answeredBy: 'PC-김호철(PLM)', answeredAt: iso('2026-11-16', 8) }];
+    b.plan = suggestPlan(b.start, b.target);
+    return [b, a2];
+}
+// 시간 손잡이 — 그 날짜까지 계획대로 흘렀다면 화면이 어떻게 채워지는지 만들어 보여 줌 (저장 안 함, 심준보 msg 10366339 '끝까지 닿으면 모든 내용 채워지고')
+function simulate(p, at) {
+    const plan = p.plan || {};
+    if (!p.start || !Object.keys(plan).length)
+        return p;
+    const who = p.aiHelper || 'AI 도우미';
+    const pm = p.owner || 'PM';
+    const t = day(at).getTime();
+    const end7 = plan.S7 ? day(plan.S7).getTime() : 0;
+    const all = end7 && t >= end7;
+    let exp = exports.AX_STAGES.length - 1;
+    if (!all)
+        for (let k = 0; k < exports.AX_STAGES.length; k++) {
+            const v = plan[exports.AX_STAGES[k].id];
+            if (v && day(v).getTime() >= t) {
+                exp = k;
+                break;
+            }
+        }
+    const docs = {};
+    const gates = {};
+    const log = [p.log[0]];
+    let curFrac = 1;
+    exports.AX_STAGES.forEach((s, k) => {
+        if (k > exp)
+            return;
+        const end = plan[s.id];
+        const beg = k === 0 ? p.start : plan[exports.AX_STAGES[k - 1].id];
+        const a = beg ? day(beg).getTime() : t;
+        const z = end ? day(end).getTime() : t;
+        const frac = k < exp || all ? 1 : Math.max(0, Math.min(1, (t - a) / Math.max(1, z - a)));
+        if (k === exp)
+            curFrac = frac;
+        const nd = Math.floor(s.docs.length * frac + 1e-9);
+        s.docs.forEach((d, i) => { if (i < nd)
+            docs[d.key] = { done: true, by: i % 2 ? who : pm, at: new Date(a + (z - a) * (i + 1) / (s.docs.length + 1)).toISOString() }; });
+        (s.ai || []).forEach((task, i) => {
+            const f = (i + 1) / ((s.ai || []).length + 1);
+            if (frac >= f)
+                log.push({ at: new Date(a + (z - a) * f).toISOString(), who, kind: 'doc', ai: true, what: `${s.no} ${task} — 끝냄` });
+        });
+        if (k < exp || all) {
+            const at2 = new Date(z).toISOString();
+            if (s.gate) {
+                gates[s.gate] = { at: at2, by: pm, missing: 0 };
+                log.push({ at: at2, who: pm, kind: 'gate', what: `${s.gate} 통과` });
+            }
+            if (k < exports.AX_STAGES.length - 1)
+                log.push({ at: at2, who: pm, kind: 'move', what: `${s.no} ${s.name} → ${exports.AX_STAGES[k + 1].no} ${exports.AX_STAGES[k + 1].name}` });
+        }
+    });
+    const st = exports.AX_STAGES[exp];
+    const left = st.docs.filter(d => !(docs[d.key] || {}).done);
+    const brief = { at: new Date(t).toISOString(), who, text: all
+            ? `출시 후 90일까지 모두 끝났어요. 7단계 산출물 ${exports.AX_STAGES.reduce((n, s) => n + s.docs.length, 0)}개, 관문 3개 통과, AI 작업 ${exports.AX_STAGES.reduce((n, s) => n + (s.ai || []).length, 0)}건이 기록됐어요. 회고는 다음 제품에 넘겨요.`
+            : `${st.no} ${st.name} ${Math.round(curFrac * 100)}% 지점이에요. 산출물 ${st.docs.length - left.length}/${st.docs.length}${left.length ? ` — 다음은 ${left[0].label}` : ' 다 채움'}. AI는 지금 「${(st.ai || [])[Math.min((st.ai || []).length - 1, Math.floor(curFrac * (st.ai || []).length))] || ''}」 하는 중.` };
+    return Object.assign(Object.assign({}, p), { stage: st.id, docs, gates, log: log.sort((x, y) => (x.at < y.at ? -1 : 1)), brief: (p.brief || []).concat([brief]), next: all ? '회고를 다음 제품에' : left.length ? left[0].label : '다음 관문 준비', closed: false });
+}
+function whereNow(p, now = (0, exports.today)()) {
+    const cur = (0, exports.stageIdx)(p.stage);
+    const plan = p.plan || {};
+    if ((0, exports.allDone)(p))
+        return { cur, exp: cur, pct: 1, state: 'ok', lateDays: 0, label: '모든 단계 완료 ✓' };
+    if (!p.start || !p.target || !Object.keys(plan).length)
+        return { cur, exp: cur, pct: 0, state: 'none', lateDays: 0, label: '일정 없음' };
+    const a = day(p.start).getTime();
+    const z = day(p.target).getTime();
+    const n = day(now).getTime();
+    const pct = Math.max(0, Math.min(1, (n - a) / Math.max(1, z - a)));
+    let exp = exports.AX_STAGES.length - 1;
+    for (let k = 0; k < exports.AX_STAGES.length; k++) {
+        const v = plan[exports.AX_STAGES[k].id];
+        if (v && day(v).getTime() >= n) {
+            exp = k;
+            break;
+        }
+    }
+    const end = plan[exports.AX_STAGES[cur].id];
+    const dl = (0, exports.daysTo)(end, now);
+    const lateDays = dl !== undefined && dl < 0 ? -dl : 0;
+    if (cur < exp)
+        return { cur, exp, pct, state: 'behind', lateDays, label: `${exp - cur}단계 뒤처짐${lateDays ? ` · ${lateDays}일 늦음` : ''}` };
+    if (lateDays)
+        return { cur, exp, pct, state: 'late', lateDays, label: `${lateDays}일 늦음` };
+    if (cur > exp)
+        return { cur, exp, pct, state: 'ahead', lateDays, label: `${cur - exp}단계 앞섬` };
+    return { cur, exp, pct, state: 'ok', lateDays, label: dl !== undefined ? `일정대로 · 단계 마감 D-${dl}` : '일정대로' };
+}
+// 단계 안에서 시간이 얼마나 흘렀나 (0~1) — 카드의 작은 진행 막대
+function stageElapsed(p, now = (0, exports.today)()) {
+    const plan = p.plan || {};
+    const i = (0, exports.stageIdx)(p.stage);
+    const end = plan[exports.AX_STAGES[i].id];
+    const beg = i === 0 ? p.start : plan[exports.AX_STAGES[i - 1].id];
+    if (!end || !beg)
+        return undefined;
+    const a = day(beg).getTime();
+    const z = day(end).getTime();
+    const n = day(now).getTime();
+    return Math.max(0, Math.min(1, (n - a) / Math.max(1, z - a)));
+}
+
+};
+__m["src/webparts/huromAxPlm/model/ai.js"]=function(module,exports,require){"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.APPLY_NOTE = exports.SYSTEM = exports.jobState = exports.AI_STATE_LABEL = exports.kindInfo = exports.kindsFor = exports.BRANCH_LABEL = exports.branchOf = exports.AI_KINDS = void 0;
+exports.aiOnline = aiOnline;
+exports.askAi = askAi;
+exports.buildAsk = buildAsk;
+exports.applyJob = applyJob;
+// AX-PLM 1.0.134 — 「AI에게 맡기기」 (심준보 2026-11-18 #ax-plm msg 10483498 'ai가 할꺼 할 수 있는 거 다 반영', 곽두팔 msg 10483554 4·5번)
+// 연결: E-HR 휴글과 같은 중계 (곽두팔 PC의 relay.py → Claude). 주소는 hurom-ehr 저장소 relay.json 에서 읽음
+// 규칙: AI 결과는 「확인 대기」로만 들어오고 사람이 「반영」을 눌러야 데이터가 바뀜. 연결이 안 되면 결과를 만들지 않고 「AI 연결 전」
+const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+const item_1 = require("src/webparts/huromAxPlm/model/item.js");
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
+const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
+const K = (id, label, branch, stage, x = {}) => (Object.assign({ id, label, branch, stage, group: stage ? `${'①②③④⑤⑥⑦'[stage - 1]} 단계` : '공통' }, x));
+exports.AI_KINDS = [
+    // ── 원액기 (23)
+    K('j_voc', 'VOC·리뷰 분석 — 불만 TOP·원하는 기능', 'juicer', 1, { ask: 'VOC·리뷰 내용을 붙여 넣어 주세요', do: '붙여 넣은 VOC·리뷰를 분류해 불만 TOP5와 원하는 기능 TOP5를 건수와 함께 정리하고, 기획에 넣을 것 3가지를 제안해라.' }),
+    K('j_comp', '경쟁 스펙 비교표', 'juicer', 1, { ask: '비교할 경쟁 제품 (모델명·알고 있는 스펙)', autoInput: '데이터에 있는 경쟁 정보만', do: '경쟁 원액기 스펙(착즙 방식·RPM·모터 W·용량·소음·가격)을 비교표처럼 목록으로 정리하고 우리 차별점을 3줄로. 모르는 수치는 「확인 필요」.' }),
+    K('j_plan', '기획서 초안', 'juicer', 1, { do: '신제품 기획서 초안: 배경·타깃·핵심 가치(USP)·주요 사양 목표·목표 원가/판가·일정·리스크. 데이터에 없는 수치는 「확인 필요」.' }),
+    K('j_dup', '중복 확인 — 휴롬 개발승인원에 이미 한 것', 'juicer', 1, { nodata: '휴롬 개발승인원 데이터 연결 전' }),
+    K('j_req', '요구 사양서 초안 — 착즙률·소음·RPM 목표', 'juicer', 2, { do: '요구 사양서 초안: 착즙률·소음(dB)·RPM·모터·용량·재질·안전·인증 목표를 항목별로. 목표 수치가 데이터에 없으면 「확인 필요」와 함께 일반적 범위를 참고로.' }),
+    K('j_back', '일정 거꾸로 채우기 — 출시일 → 단계', 'juicer', 2, { local: true }),
+    K('j_risk', '리스크 목록 — 과거 이슈 기반', 'juicer', 2, { others: true, do: '이 프로젝트와 다른 프로젝트의 이슈·설계 변경 이력을 근거로 이 제품에서 생길 리스크 목록(리스크·근거·미리 할 일)을 써라.' }),
+    K('j_juice', '착즙 성능 DB 비교 — 스크류·드럼 사양별 착즙률', 'juicer', 3, { nodata: '착즙 성능 데이터(정경임 님) 연결 전' }),
+    K('j_food', '식품 접촉 재질 점검 — 재질·용출 기준', 'juicer', 3, { item: true, do: 'BOM에서 식품(즙·물) 접촉 가능 부품을 골라 재질별 식품용 기구 기준(국내 식품위생법 기구·용기 규격, 유럽 10/2011·LFGB, 미국 FDA 21 CFR) 확인 항목과 빠진 재질 정보를 정리해라.' }),
+    K('j_bom', 'BOM 초안·원가 합산', 'juicer', 3, { item: true, do: 'BOM을 보고 빠진 구성(체결·포장·라벨 등)을 짚고, 단가 정보가 있으면 원가를 합산해라. 단가가 없으면 「확인 필요」 목록.' }),
+    K('j_dr', 'DR 체크리스트', 'juicer', 3, { item: true, others: true, do: '설계 DR 체크리스트를 이 제품(원액기 구조: 스크류·드럼·브러시·모터·하우징)에 맞춰 만들고, 과거 이슈에서 반드시 볼 항목을 표시해라.' }),
+    K('ecr', '설계 변경 영향 — 바뀌는 부품·도면', 'juicer', 3, { item: true }),
+    K('j_trial', '시사출 결과 요약 — 결함·수정 LIST 분류', 'juicer', 4, { item: true, do: '금형별 시사출 기록을 요약하고 결함을 수정 LIST(치수·외관·변형·기타)로 분류, 다음 차수에서 볼 것을 적어라.' }),
+    K('j_t1', 'T1 합격 점검 — 금형별', 'juicer', 4, { item: true, do: '금형마다 T1 이상 합격 여부를 점검해 합격/미합격/기록 없음으로 나누고, G2(모든 금형 T1 합격)까지 남은 것을 적어라.' }),
+    K('j_aprv', '승인원 대조 — 도면 판 vs 승인원', 'juicer', 4, { item: true, do: '도면·문서의 현재 판과 협력사 승인원 Rev를 대조해 어긋난 것과 승인원이 없는 부품을 찾아라.' }),
+    K('bomdiff', '파생: BOM 차이 — 기반 모델 대비', 'juicer', 4, { item: true }),
+    K('certlist', '나라별 필요 인증 — KC·CE·UL·FDA·LFGB', 'both', 5, { item: true, ask: '어느 나라에 팔아요? (예: 한국, 유럽, 미국, 독일)', autoInput: '한국, 유럽, 미국' }),
+    K('j_manual', '매뉴얼·인쇄물 다국어 초안', 'juicer', 5, { ask: '어느 언어로? (예: 영어, 독일어, 일본어)', autoInput: '한국어, 영어', do: '사용설명서·인쇄물에 들어갈 핵심 문구(안전 경고·사용법·세척·보증)를 요청 언어로 초안 작성. 규제 문구는 「확인 필요」 표시.' }),
+    K('j_launch', '출시 준비 보고서 초안', 'juicer', 5, { item: true, do: '출시 준비 보고서 초안: 제품 개요·USP·인증 현황·생산 준비·출시 일정·남은 리스크.' }),
+    K('j_iqc', '초도·수입검사 불량 분석 — 부품·업체별', 'juicer', 6, { item: true, do: '초도품·수입검사 관련 기록(이슈·승인원·샘플)을 부품·업체별로 묶어 불량 경향과 조치 우선순위를 정리해라. 검사 데이터가 없으면 무엇을 받아야 하는지 적어라.' }),
+    K('j_late', '납기 지연 감지 → 독촉 메일 초안', 'juicer', 6, { item: true, mail: true, do: '마감이 지났거나 임박한 협력사 일을 찾아 업체별 독촉 메일 초안(제목 1줄 + 본문 4~6문장)을 써라. 첫 줄은 "제목: ..."' }),
+    K('j_as', 'AS·VOC 원인 분류 — 스크류 파손·누수 등', 'juicer', 7, { ask: 'AS 이력·상담 내용을 붙여 넣어 주세요', do: '붙여 넣은 AS·VOC를 원인(스크류 파손·누수·모터·소음·사용 미숙 등)별로 분류해 건수·대표 사례·설계 개선 후보를 정리해라.' }),
+    K('j_next', '다음 파생 제안 — 개선 부품 목록', 'juicer', 7, { item: true, others: true, do: '이 제품의 이슈·설계 변경·VOC 기록을 근거로 다음 파생 모델 제안(바꿀 부품·이유·예상 효과)을 써라.' }),
+    // ── 상품 (18)
+    K('g_market', '시장·리뷰 분석', 'goods', 1, { ask: '시장·리뷰 내용을 붙여 넣어 주세요', do: '붙여 넣은 시장·리뷰 자료를 정리해 고객 불만 TOP5·원하는 기능·가격대를 요약하고 상품 정의에 넣을 것 3가지를 제안해라.' }),
+    K('g_def', '상품 정의서 초안', 'goods', 1, { do: '상품 정의서 초안: 대상 고객·핵심 기능·필수 사양·가격대·판매 채널·인증 범위·출시 시점.' }),
+    K('g_cost', '목표 원가 추정', 'goods', 1, { item: true, do: '판가·협력사 단가·MOQ 정보로 목표 원가(제품·포장·물류·관세·인증비) 구조를 추정해라. 없는 값은 「확인 필요」와 계산식만.' }),
+    K('g_vendor', '업체 후보 추천 — 협력사 DB·평가', 'goods', 2, { item: true, others: true, do: '이 프로젝트와 다른 프로젝트의 협력사 기록(역할·나라·평가 점수·샘플 결과)을 근거로 업체 후보 순위와 이유를 써라.' }),
+    K('g_quote', '견적 비교표 — 단가·MOQ·납기', 'goods', 2, { item: true, do: '협력사별 단가·MOQ·납기·금형비를 비교표처럼 목록으로 정리하고 추천 1곳과 협상 포인트를 적어라. 없는 값은 「확인 필요」.' }),
+    K('g_req', '요구 사양서 초안 (ODM)', 'goods', 2, { do: 'ODM 업체에 보낼 요구 사양서 초안(기능·성능·재질·식품 접촉부·안전·인증·포장·검사 기준)을 써라. 영어 업체면 영어 병기.' }),
+    K('g_sample', '샘플 평가표 초안', 'goods', 3, { item: true, do: '샘플 평가표 초안: 평가 항목(외관·치수·기능·성능·안전·식품 접촉·포장)·판정 기준·지난 차수 지적 사항 재확인 칸.' }),
+    K('vendor', '업체 인증서 점검 — 만료·누락', 'goods', 3, { item: true }),
+    K('chase', '보완 요청·독촉 메일 초안', 'goods', 3, { item: true, mail: true }),
+    K('g_aprv', '승인원 대조 — 사양서 vs 승인원', 'goods', 4, { item: true, do: '요구 사양서·샘플 평가 결과와 업체 승인원(제목·Rev·상태)을 대조해 어긋나거나 빠진 항목을 찾아라.' }),
+    K('oldrev', '옛 도면 판 감지 (OEM)', 'goods', 4, { item: true }),
+    K('g_fai', '초도품 검사 기준 초안', 'goods', 4, { item: true, do: '초도품 검사 기준서 초안: 검사 항목·방법·기준·샘플링·불합격 처리. 주요 부품·식품 접촉부는 꼭 포함.' }),
+    K('g_pack', '포장·매뉴얼·라벨 문구 초안', 'goods', 5, { ask: '판매 나라·언어 (예: 한국, 미국)', autoInput: '한국', do: '포장·매뉴얼·라벨 필수 표시 문구(제품명·모델·정격·제조원/수입원·KC 등 인증 표시·주의 문구·분리배출)를 초안으로. 규제 문구는 「확인 필요」.' }),
+    K('g_iqc', '수입검사 불량 경향 — 업체별', 'goods', 6, { item: true, do: '업체별 샘플·승인원·이슈 기록에서 불량 경향을 정리하고 수입검사에서 강화할 항목을 적어라.' }),
+    K('g_late', '입고 지연 감지', 'goods', 6, { item: true, mail: true, do: '입고·발주 일정 대비 늦어지는 것을 찾고 업체별 확인 메일 초안을 써라. 첫 줄은 "제목: ..."' }),
+    K('g_review', '리뷰·AS 분석', 'goods', 7, { ask: '리뷰·AS 내용을 붙여 넣어 주세요', do: '붙여 넣은 리뷰·AS를 원인별로 분류해 건수·대표 사례·업체에 요구할 개선을 정리해라.' }),
+    K('g_rescore', '업체 재평가 점수 — 품질·납기', 'goods', 7, { item: true, do: '협력사별 품질(샘플 결과·이슈)·납기·대응 기록으로 재평가 점수(5점)와 근거를 써라.' }),
+    // ── 공통 (6) — 항상 도는 AI
+    K('delay', '일정: 지연 예측·뒤 단계 영향', 'common', 0),
+    K('replan', '일정: 다시 짠 계획 제안', 'common', 0),
+    K('gate', '관문: 승인 기준 점검·요청 글 초안', 'common', 0, { item: true }),
+    K('minutes', '회의록 → 이슈·할 일 등록', 'common', 0, { ask: '회의록을 붙여 넣어 주세요' }),
+    K('weekly', '주간 보고 작성', 'common', 0),
+    K('similar', '비슷한 과거 이슈 찾기', 'common', 0, { ask: '어떤 문제와 비슷한 걸 찾을까요?', others: true }),
+    K('ask', '질문 — 근거와 함께 답', 'common', 0, { ask: '무엇이 궁금해요? (예: G2 왜 막혔어?)', item: true, others: true, do: '아래 질문에 이 데이터만 근거로 답하고, 근거가 된 줄을 「근거:」로 적어라.' }),
+    K('draft', '산출물 초안·점검', 'common', 0, { ask: '어떤 산출물? (예: 요구 사양서, 시사출 결과 보고서)', item: true }),
+    K('docchk', '산출물 점검·요약 (올라오면 자동)', 'common', 0, { ask: '어떤 산출물?', item: true, do: '방금 완료된 아래 산출물을 이 단계 목표·관문 기준·남은 산출물과 대조해 ① 요약 3줄 ② 빠졌거나 확인할 것 ③ 다음 할 일을 써라. 파일 내용은 볼 수 없으니 이름·링크·기록만 근거로.' }),
+];
+const branchOf = (t) => (t === 'own' || t === 'derive' ? 'juicer' : 'goods');
+exports.branchOf = branchOf;
+exports.BRANCH_LABEL = { juicer: '원액기', goods: '상품' };
+const kindsFor = (b, stage) => exports.AI_KINDS.filter(k => (k.branch === b || k.branch === 'both' || k.branch === 'common') && (stage === undefined || k.stage === stage));
+exports.kindsFor = kindsFor;
+const kindInfo = (k) => exports.AI_KINDS.filter(x => x.id === k)[0] || { id: k, label: k, group: '', branch: 'common' };
+exports.kindInfo = kindInfo;
+exports.AI_STATE_LABEL = { running: '진행 중', review: '확인 대기', applied: '반영됨', dismissed: '버림', offline: 'AI 연결 전', error: '실패', nodata: '데이터 연결 전', queued: '대기 중' };
+// 페이지를 닫아 '진행 중'으로 남은 것은 3분 지나면 중단으로 봄
+const jobState = (j) => (j.state === 'running' && Date.now() - new Date(j.at).getTime() > 180000 ? 'error' : j.state);
+exports.jobState = jobState;
+// ───────── 중계 연결
+const RELAY_JSON = 'https://simjb23-oss.github.io/hurom-ehr/relay.json';
+const RELAY_KEY = 'hurom-b7f25d'; // E-HR ai.js 와 같은 중계 열쇠 (중계는 분당 20회 제한)
+let relayUrl;
+async function relay() {
+    if (relayUrl)
+        return relayUrl;
+    const r = await fetch(RELAY_JSON + '?' + Date.now(), { cache: 'no-store' });
+    if (!r.ok)
+        throw new Error('offline');
+    const j = await r.json();
+    if (!j || !j.url)
+        throw new Error('offline');
+    const u = String(j.url).replace(/\/$/, '');
+    relayUrl = relayUrl || u; // eslint require-atomic-updates
+    return u;
+}
+async function aiOnline() {
+    try {
+        const u = await relay();
+        const r = await fetch(u, { method: 'GET' });
+        return r.ok;
+    }
+    catch (e) {
+        relayUrl = undefined;
+        return false;
+    }
+}
+async function askAi(system, user) {
+    let u;
+    try {
+        u = await relay();
+    }
+    catch (e) {
+        throw new Error('offline');
+    }
+    const ac = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
+    const tm = setTimeout(() => ac && ac.abort(), 110000);
+    try {
+        const r = await fetch(u + '/v1/messages', { method: 'POST', signal: ac && ac.signal,
+            headers: { 'content-type': 'application/json', 'x-api-key': RELAY_KEY, 'anthropic-version': '2023-06-01' },
+            body: JSON.stringify({ model: 'claude-haiku-5-5', max_tokens: 1500, system, messages: [{ role: 'user', content: user }] }) });
+        if (!r.ok) {
+            relayUrl = undefined;
+            throw new Error(r.status === 429 ? '잠시 뒤에 다시 (분당 20회)' : 'offline');
+        }
+        const j = await r.json();
+        const t = ((j && j.content) || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+        if (!t)
+            throw new Error('빈 답');
+        return t;
+    }
+    catch (e) {
+        const m = String((e && e.message) || e);
+        if (m.indexOf('잠시') === 0 || m === '빈 답')
+            throw e;
+        relayUrl = undefined;
+        throw new Error('offline');
+    }
+    finally {
+        clearTimeout(tm);
+    }
+}
+// ───────── 프롬프트 — 화면에 있는 사실만 넘기고, 없는 건 지어내지 말라고 함
+const ST_KO = { done: '완료', doing: '진행 중', late: '지연', wait: '대기' };
+const SYS = '너는 휴롬 AX팀 PLM(AX-PLM)의 업무 도우미다. 아래 「프로젝트 데이터」에 있는 사실만 근거로 한국어로 짧고 바로 쓸 수 있게 답한다. 데이터에 없는 숫자·날짜·업체명은 지어내지 말고 「확인 필요」라고 적는다. 머리말·인사 없이 본문만. 목록은 "- "로 시작한다. 마지막 줄에 「근거: 」로 어느 데이터 줄(단계·산출물·BOM·협력사·이슈 등)을 봤는지 적는다.';
+function facts(p, now) {
+    const ss = (0, work_1.stagesOf)(p);
+    const ck = (0, work_1.curIdx)(p);
+    const st = ss.map((s, k) => {
+        const sp = (0, sched_1.planSpan)(p, k);
+        const left = s.docs.filter(d => !(0, work_1.docOk)(p.docs[d.key])).map(d => `${d.label}${(p.docs[d.key] || {}).due ? `(마감 ${(p.docs[d.key] || {}).due})` : ''}`);
+        return `${s.no} ${s.name}${s.gate ? ` [관문 ${s.gate}]` : ''}: 계획 ${sp ? sp.a + '~' + sp.b : '없음'}, 실제 끝 ${(p.actual || {})[s.id] || '-'}, 상태 ${ST_KO[(0, sched_1.stageState)(p, k, now)]}${left.length ? `, 남은 산출물 ${left.join(', ')}` : ''}`;
+    });
+    const lines = [`프로젝트 ${p.name} (품번 ${p.itemCode || '-'}, 개발 유형 ${(0, devtype_1.typeInfo)((0, devtype_1.typeOf)(p)).label}, PM ${p.owner || '-'}, 승인자 ${p.approver || '-'})`,
+        `오늘 ${now}, 출시 목표 ${p.target || '-'}, 지금 단계 ${ss[ck].no} ${ss[ck].name}, 지연 ${(0, sched_1.lateDays)(p, now)}일`, '단계:', ...st];
+    const iss = (p.issues || []).filter(i => !i.done);
+    if (iss.length)
+        lines.push('열린 이슈·리스크: ' + iss.map(i => `${i.kind} ${i.text}(담당 ${i.owner || '-'}, 기한 ${i.due || '-'})`).join(' / '));
+    return lines.join('\n');
+}
+function itemFacts(p, now) {
+    const out = [];
+    if ((p.parts || []).length)
+        out.push('BOM: ' + (0, item_1.bomTree)(p.parts || []).map(x => `${'  '.repeat(x.depth)}${x.part.no} ${x.part.name} Rev${x.part.rev}${x.part.baseRev ? ` (기반 Rev${x.part.baseRev})` : ''}${x.part.material ? ' ' + x.part.material : ''}${x.part.supplier ? ' / ' + x.part.supplier : ''}`).join('\n'));
+    if ((p.docs2 || []).length)
+        out.push('도면·문서: ' + (p.docs2 || []).map(d => `${d.title}${d.part ? `(${d.part})` : ''} 현재 Rev${d.rev}`).join(', '));
+    if ((p.releases || []).length)
+        out.push('업체 배포 기록: ' + (p.releases || []).map(r => `${r.doc} Rev${r.rev} → ${r.vendor} (${r.at.slice(0, 10)})`).join(', '));
+    if ((p.ecrs || []).length)
+        out.push('설계 변경: ' + (p.ecrs || []).map(e => `${e.no} ${e.title} [${e.status}] 부품 ${e.parts.join(',')}${e.eco ? ' ' + e.eco : ''}`).join(' / '));
+    if ((p.certs || []).length)
+        out.push('인증: ' + (p.certs || []).map(c => `${c.name} ${c.status}${c.until ? ' ~' + c.until : ''}(${(0, item_1.certState)(c, now)})`).join(', '));
+    if ((p.vendors || []).length)
+        out.push('협력사: ' + (p.vendors || []).map(v => `${v.name}(${v.role}${v.contact ? ', ' + v.contact : ''}) 샘플 ${v.samples.map(s => `${s.round} ${s.result} ${s.at.slice(0, 10)}`).join('·') || '없음'}, 승인원 ${v.aprvs.map(a => `${a.title} Rev${a.rev} ${a.status}`).join('·') || '없음'}, 업체 인증서 ${(v.vcerts || []).map(c => `${c.name}${c.until ? ' ~' + c.until : ''}`).join('·') || '없음'}`).join(' / '));
+    return out.join('\n');
+}
+const ASK = {
+    delay: '지금 진행 속도와 남은 산출물을 보고 ① 어느 단계가 며칠 늦어질지 예측 ② 그게 뒤 단계·관문·출시 목표에 주는 영향을 정리해라. 근거가 된 줄을 같이 적어라.',
+    replan: '지연을 반영해 단계별 새 계획 끝 날짜(YYYY-MM-DD)를 제안해라. 형식: "- ① 컨셉·기획: 2026-12-01 (이유)". 출시 목표를 지킬 수 있는지와 줄일 수 있는 단계를 마지막에 한 줄.',
+    draft: '아래 요청한 산출물의 초안을 써라. 제목·목적·항목별 내용(표 대신 목록)·확인 필요한 것 순서. 데이터에 없는 수치는 「확인 필요」.',
+    gate: '지금 단계 관문의 승인 기준을 남은 산출물과 비교해 충족/미충족을 "- [충족] …" "- [미충족] …"으로 점검하고, 마지막에 승인자에게 보낼 승인 요청 글 초안(3~5문장)을 써라.',
+    ecr: '진행 중이거나 최근 설계 변경마다 영향 받는 부품(BOM 상하위 포함)·도면·인증·업체 배포 판을 찾아 정리해라.',
+    bomdiff: '기반 모델 대비 이 파생 모델의 BOM 차이(Rev가 기반과 다른 부품, 새 부품)를 목록으로 정리해라.',
+    oldrev: '업체 배포 기록의 Rev와 도면·문서의 현재 Rev를 비교해 업체가 옛 판을 갖고 있는 경우를 모두 찾고, 다시 보낼 판을 적어라.',
+    vendor: '협력사별 샘플·승인원·업체 인증서를 보고 만료됐거나 90일 안에 만료되는 것, 회신이 늦은 것을 정리해라.',
+    chase: '회신이 필요한 협력사마다 독촉 메일 초안을 써라(제목 한 줄 + 본문 4~6문장, 정중하게). 영어 업체면 영어로.',
+    certlist: '이 제품을 아래 나라에 팔 때 필요한 인증·신고(예: KC 전기안전·EMC·전파, CE LVD·EMC·RED, FCC, UL/ETL, FDA 식품접촉, LFGB, PSE 등)를 나라별 목록으로, 지금 인증 현황과 비교해 빠진 것 표시.',
+    minutes: '아래 회의록에서 이슈와 할 일만 뽑아라. 한 줄에 하나, 형식 "- [이슈] 내용 / 담당 이름 / 기한 YYYY-MM-DD" 또는 "- [할 일] …". 회의록에 없는 담당·기한은 비워라.',
+    weekly: '이번 주 주간 보고를 써라: 진행 한 줄, 이번 주 한 것, 다음 주 할 것, 지연·리스크, 도움 필요. 5~8줄.',
+    similar: '아래 문제와 비슷한 과거 이슈·사양 변경·설계 변경을 이 데이터(다른 프로젝트 포함)에서 찾고, 그때 어떻게 했는지 적어라. 없으면 없다고.',
+};
+function buildAsk(kind, p, items, input, now = (0, ax_1.today)()) {
+    const parts = ['프로젝트 데이터:', facts(p, now)];
+    const info = (0, exports.kindInfo)(kind);
+    if (info.item || ['ecr', 'bomdiff', 'oldrev', 'vendor', 'chase', 'certlist', 'draft', 'gate'].indexOf(kind) >= 0)
+        parts.push(itemFacts(p, now));
+    if (info.others || kind === 'similar')
+        parts.push('다른 프로젝트 이슈·변경: ' + items.filter(x => x.id !== p.id).map(x => `${x.name}: ` + (x.issues || []).map(i => `${i.kind} ${i.text}${i.done ? '(해결)' : ''}`).concat((x.changes || []).map(c => `변경 ${c.what}(${c.why})`)).concat((x.ecrs || []).map(e => `${e.no} ${e.title}`)).join(' / ')).join('\n'));
+    if (kind === 'bomdiff' && p.baseItem)
+        parts.push('기반 모델: ' + p.baseItem);
+    parts.push('', '할 일: ' + (info.do || ASK[kind] || info.label));
+    if (input)
+        parts.push('', '요청 내용:', input);
+    return parts.join('\n');
+}
+exports.SYSTEM = SYS;
+// ───────── 반영 — 사람이 「반영」을 눌렀을 때만
+function applyJob(p, j, who) {
+    const at = new Date().toISOString();
+    const text = j.result || '';
+    let next = Object.assign({}, p);
+    if (j.kind === 'weekly')
+        next.brief = (p.brief || []).concat([{ at, who: `${who} (AI 초안 반영)`, text: text.replace(/\n+/g, ' ').slice(0, 600) }]);
+    if (j.kind === 'minutes') {
+        const add = [];
+        text.split('\n').forEach((ln, i) => {
+            const m = ln.match(/^\s*-\s*\[(이슈|할 일|할일|리스크)\]\s*(.+)$/);
+            if (!m)
+                return;
+            const f = m[2].split('/').map(x => x.trim());
+            const owner = (f.filter(x => /^담당/.test(x))[0] || '').replace(/^담당\s*/, '') || undefined;
+            const due = ((f.filter(x => /^기한/.test(x))[0] || '').match(/\d{4}-\d{2}-\d{2}/) || [])[0];
+            add.push({ id: 'ai' + Date.now().toString(36) + i, kind: m[1] === '리스크' ? '리스크' : '이슈', text: (m[1].indexOf('할') === 0 ? '[할 일] ' : '') + f[0], owner, due, at, who, stage: (0, work_1.stagesOf)(p)[(0, work_1.curIdx)(p)].id });
+        });
+        next.issues = (p.issues || []).concat(add);
+    }
+    if (j.kind === 'replan' || j.kind === 'j_back') {
+        const plan = Object.assign({}, (p.plan || {}));
+        const ss = (0, work_1.stagesOf)(p);
+        text.split('\n').forEach(ln => { ss.forEach(s => { if (ln.indexOf(s.no) >= 0) {
+            const d = (ln.match(/\d{4}-\d{2}-\d{2}/) || [])[0];
+            if (d)
+                plan[s.id] = d;
+        } }); });
+        next.plan = plan;
+    }
+    next.aiJobs = (p.aiJobs || []).map(x => (x.id === j.id ? Object.assign(Object.assign({}, x), { state: 'applied', by: who, doneAt: x.doneAt || at }) : x));
+    next.log = (p.log || []).concat([{ at, who, kind: 'note', ai: true, what: `AI 결과 반영 — ${j.label}: ${text.split('\n')[0].slice(0, 120)}` }]);
+    return next;
+}
+exports.APPLY_NOTE = { weekly: '「이번 주 요약」에 들어가요', minutes: '이슈·할 일로 등록돼요', replan: '단계 계획일이 바뀌어요', j_back: '단계 계획일이 바뀌어요' };
+
+};
+__m["src/webparts/huromAxPlm/model/item.js"]=function(module,exports,require){"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.sampleOk = exports.bomNote = exports.roleFor = exports.VENDOR_ROLES = exports.mainVendor = exports.avgScore = exports.lastSample = exports.lastAprv = exports.changedParts = exports.moldT1ok = exports.lastTrial = exports.docsOfPart = exports.certsOfPart = exports.ecrsOfPart = exports.children = exports.needMark = exports.uid = void 0;
+exports.nextRev = nextRev;
+exports.bomTree = bomTree;
+exports.certState = certState;
+exports.newDocVersion = newDocVersion;
+exports.moveEcr = moveEcr;
+exports.itemSamples = itemSamples;
+exports.releaseState = releaseState;
+exports.gateChecks = gateChecks;
+exports.startItem = startItem;
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+const nowIso = () => new Date().toISOString();
+const uid = (p) => p + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+exports.uid = uid;
+// A → B, 01 → 02, Z → AA
+function nextRev(r) {
+    if (/^\d+$/.test(r)) {
+        const n = String(Number(r) + 1);
+        return r.length > n.length ? ('000' + n).slice(-r.length) : n;
+    }
+    const t = (r || 'A').toUpperCase();
+    if (t[t.length - 1] === 'Z')
+        return t + 'A';
+    return t.slice(0, -1) + String.fromCharCode(t.charCodeAt(t.length - 1) + 1);
+}
+// 플라스틱 25 g 이상은 재질 표기 대상 (자원재활용법 분리배출 표시·재질구조 — 사내 점검 기준)
+const PLASTIC = /\b(PP|PE|HDPE|LDPE|ABS|PC|POM|PA|PET|PBT|PS|SAN|Tritan|트라이탄|TPE|PMMA)\b/i;
+const needMark = (x) => !!x.material && PLASTIC.test(x.material) && (x.weight || 0) >= 25;
+exports.needMark = needMark;
+const children = (parts, parent) => parts.filter(x => (x.parent || '') === (parent || ''));
+exports.children = children;
+function bomTree(parts) {
+    const out = [];
+    const seen = {};
+    const walk = (parent, depth) => (0, exports.children)(parts, parent).forEach(x => { if (seen[x.no])
+        return; seen[x.no] = true; out.push({ part: x, depth }); walk(x.no, depth + 1); });
+    walk(undefined, 0);
+    parts.forEach(x => { if (!seen[x.no])
+        out.push({ part: x, depth: 0 }); }); // 부모가 없는 번호를 가리키는 줄도 빠지지 않게
+    return out;
+}
+const ecrsOfPart = (p, no) => (p.ecrs || []).filter(e => e.parts.indexOf(no) >= 0);
+exports.ecrsOfPart = ecrsOfPart;
+const certsOfPart = (p, no) => (p.certs || []).filter(c => c.part === no);
+exports.certsOfPart = certsOfPart;
+const docsOfPart = (p, no) => (p.docs2 || []).filter(d => d.part === no);
+exports.docsOfPart = docsOfPart;
+function certState(c, today) {
+    if (c.status === '만료')
+        return 'late';
+    if (c.status !== '취득')
+        return 'open';
+    if (!c.until)
+        return 'ok';
+    const d = Math.round((new Date(c.until + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000);
+    return d < 0 ? 'late' : d <= 90 ? 'soon' : 'ok';
+}
+// 도면·문서 새 판 — 지금 판은 prev에 쌓고 Rev 올림
+function newDocVersion(p, id, link, who, note) {
+    const at = nowIso();
+    const d = (p.docs2 || []).filter(x => x.id === id)[0];
+    if (!d)
+        return p;
+    const rev = nextRev(d.rev);
+    return Object.assign(Object.assign({}, p), { docs2: (p.docs2 || []).map(x => (x.id === id ? Object.assign(Object.assign({}, x), { prev: x.prev.concat([{ rev: x.rev, link: x.link, by: x.by, at: x.at, note: x.note }]), rev, link: link || undefined, by: who, at, note: note || undefined }) : x)), log: p.log.concat([{ at, who, kind: 'doc', what: `${d.kind} 「${d.title}」 Rev ${d.rev} → ${rev}${note ? ` — ${note}` : ''}` }]) });
+}
+// 설계 변경 상태 바꾸기 — 승인되면 ECO 번호를 붙이고 영향 부품 Rev를 한 단계 올리고, 사양 변경 이력에도 남김
+function moveEcr(p, id, to, who, note) {
+    const at = nowIso();
+    const e = (p.ecrs || []).filter(x => x.id === id)[0];
+    if (!e)
+        return p;
+    let parts = p.parts || [];
+    let eco = e.eco;
+    let revs = e.revs;
+    let changes = p.changes || [];
+    if (to === '승인') {
+        const n = (p.ecrs || []).filter(x => x.eco).length + 1;
+        eco = `ECO-${('00' + n).slice(-3)}`;
+        revs = {};
+        parts = parts.map(x => { if (e.parts.indexOf(x.no) < 0)
+            return x; const r = nextRev(x.rev); revs[x.no] = `${x.rev}→${r}`; return Object.assign(Object.assign({}, x), { rev: r }); });
+        changes = changes.concat([{ id: (0, exports.uid)('c'), at, who, what: `${eco} ${e.title}`, why: e.why, stage: p.stage }]);
+    }
+    const what = `${e.no} ${to}${to === '승인' ? ` → ${eco} (부품 ${e.parts.length}개 Rev 올림)` : ''}${note ? ` — ${note}` : ''}`;
+    return Object.assign(Object.assign({}, p), { parts, changes, ecrs: (p.ecrs || []).map(x => (x.id === id ? Object.assign(Object.assign({}, x), { status: to, eco, revs, log: x.log.concat([{ at, who, what: `${to}${note ? ` — ${note}` : ''}` }]) }) : x)), log: p.log.concat([{ at, who, kind: 'edit', what }]) });
+}
+// 예시 품목 데이터 — 음식물처리기·초음파 가습기 (저장 안 함)
+function itemSamples(id) {
+    const t = (d, h = 10) => `${d}T${('0' + h).slice(-2)}:00:00.000Z`;
+    if (id === 'ax-sample-food')
+        return {
+            itemCode: 'HFD-100',
+            parts: [
+                { no: 'HFD-100', name: '음식물처리기 완제품', rev: 'C', qty: 1 },
+                { no: 'HFD-110', name: '본체 하우징 ASSY', rev: 'B', parent: 'HFD-100', qty: 1 },
+                { no: 'HFD-111', name: '외관 커버', material: 'ABS (V-0)', weight: 412, supplier: '대성정밀', rev: 'B', parent: 'HFD-110', qty: 1 },
+                { no: 'HFD-112', name: '분쇄날 하우징', material: 'PBT GF30', weight: 138, supplier: '대성정밀', rev: 'C', parent: 'HFD-110', qty: 1 },
+                { no: 'HFD-113', name: '건조 히터 (450W)', material: '니크롬·운모', weight: 64, supplier: '한일히터', rev: 'A', parent: 'HFD-110', qty: 1 },
+                { no: 'HFD-120', name: '분쇄 모듈 ASSY', rev: 'B', parent: 'HFD-100', qty: 1 },
+                { no: 'HFD-121', name: '분쇄날', material: 'STS420J2', weight: 46, supplier: '세진금속', rev: 'B', parent: 'HFD-120', qty: 1 },
+                { no: 'HFD-122', name: 'BLDC 모터 24V', material: '—', weight: 310, supplier: '동양모터(중국)', rev: 'A', parent: 'HFD-120', qty: 1 },
+                { no: 'HFD-130', name: '음식물 통 (2.5 L)', material: 'PP', weight: 186, supplier: '대성정밀', rev: 'B', parent: 'HFD-100', qty: 1 },
+                { no: 'HFD-140', name: '활성탄 필터', material: 'PP 프레임·활성탄', weight: 22, supplier: '에코필', rev: 'A', parent: 'HFD-100', qty: 1 },
+                { no: 'HFD-150', name: '메인 PCB', material: 'FR-4', weight: 38, supplier: '성우전자', rev: 'B', parent: 'HFD-100', qty: 1 }
+            ],
+            docs2: [
+                { id: 'd1', kind: '도면', title: '외관 커버 2D·3D', part: 'HFD-111', rev: 'B', link: 'https://hurom.sharepoint.com/sites/AX/doc/HFD-111_B.pdf', by: '김호철', at: t('2026-09-02'), note: '배기구 위치 이동', prev: [{ rev: 'A', by: '김호철', at: t('2026-07-21'), note: '최초' }] },
+                { id: 'd2', kind: '도면', title: '분쇄날 하우징', part: 'HFD-112', rev: 'C', link: 'https://hurom.sharepoint.com/sites/AX/doc/HFD-112_C.pdf', by: '김호철', at: t('2026-11-05'), note: 'T0 전 리브 두께 1.8→2.4', prev: [{ rev: 'A', by: '김호철', at: t('2026-07-21') }, { rev: 'B', by: '김호철', at: t('2026-09-02'), note: '체결 보스 추가' }] },
+                { id: 'd3', kind: '사양서', title: '제품 사양서', rev: '03', link: 'https://hurom.sharepoint.com/sites/AX/doc/HFD-100_spec_03.docx', by: '심준보', at: t('2026-08-20'), note: '용량 2.5 L', prev: [{ rev: '01', by: '심준보', at: t('2026-06-28') }, { rev: '02', by: '심준보', at: t('2026-07-08') }] },
+                { id: 'd4', kind: '시험성적서', title: '건조 히터 온도 상승 시험', part: 'HFD-113', rev: 'A', link: 'https://hurom.sharepoint.com/sites/AX/doc/HFD-113_temp.pdf', by: '김호철', at: t('2026-10-14'), prev: [] }
+            ],
+            ecrs: [
+                { id: 'e1', no: 'ECR-001', title: '음식물 통 용량 2 L → 2.5 L', why: '4인 가족 하루 양 부족 (VOC 38건)', parts: ['HFD-130', 'HFD-111'], status: '승인', by: '심준보', at: t('2026-08-18'), eco: 'ECO-001', revs: { 'HFD-130': 'A→B', 'HFD-111': 'A→B' },
+                    log: [{ at: t('2026-08-18'), who: '심준보', what: '요청' }, { at: t('2026-08-19'), who: '김호철', what: '검토' }, { at: t('2026-08-20'), who: '김현숙', what: '승인' }] },
+                { id: 'e2', no: 'ECR-002', title: '분쇄날 하우징 리브 보강', why: '시제품 낙하 시험에서 하우징 변형', parts: ['HFD-112'], status: '승인', by: '김호철', at: t('2026-11-03'), eco: 'ECO-002', revs: { 'HFD-112': 'B→C' },
+                    log: [{ at: t('2026-11-03'), who: '김호철', what: '요청' }, { at: t('2026-11-04'), who: '김현숙', what: '승인' }] },
+                { id: 'e3', no: 'ECR-003', title: '필터 프레임 재질 PP → 생분해 PLA 검토', why: '친환경 마케팅 포인트, 원가 +320원', parts: ['HFD-140'], status: '검토', by: '심준보', at: t('2026-11-14'),
+                    log: [{ at: t('2026-11-14'), who: '심준보', what: '요청' }, { at: t('2026-11-15'), who: '김호철', what: '검토 — 내열 시험 필요' }] }
+            ],
+            certs: [
+                { id: 'c1', name: 'KC 전기안전 (안전인증)', part: 'HFD-100', status: '시험 중', region: '한국', link: 'https://hurom.sharepoint.com/sites/AX/doc/KC_apply.pdf' },
+                { id: 'c2', name: 'KC 전자파 적합성 (EMC)', part: 'HFD-150', status: '준비', region: '한국' },
+                { id: 'c3', name: '재질·구조 개선 평가 (포장재)', part: 'HFD-100', status: '준비', region: '한국' },
+                { id: 'c4', name: '식품용 기구 (음식물 통 PP)', part: 'HFD-130', status: '취득', no: 'FS-2026-1182', until: '2027-01-31', region: '한국' }
+            ],
+        };
+    if (id === 'ax-sample-humid')
+        return {
+            itemCode: 'HUH-200',
+            parts: [
+                { no: 'HUH-200', name: '초음파 가습기 완제품', rev: 'A', qty: 1 },
+                { no: 'HUH-210', name: '물통 (4 L)', material: 'Tritan', weight: 240, supplier: '미정', rev: 'A', parent: 'HUH-200', qty: 1 },
+                { no: 'HUH-220', name: '초음파 진동자 모듈', material: '세라믹', weight: 18, supplier: '미정', rev: 'A', parent: 'HUH-200', qty: 1 },
+                { no: 'HUH-230', name: 'UV-C LED 모듈', material: 'FR-4·석영', weight: 9, supplier: '미정', rev: 'A', parent: 'HUH-200', qty: 1 },
+                { no: 'HUH-240', name: '미네랄 필터 카트리지', material: 'PP 프레임·이온교환수지', weight: 55, supplier: '미정', rev: 'A', parent: 'HUH-200', qty: 1 }
+            ],
+            docs2: [{ id: 'd1', kind: '사양서', title: '컨셉 사양서', rev: '01', link: 'https://hurom.sharepoint.com/sites/AX/doc/HUH-200_concept.docx', by: '김호철', at: t('2026-11-12'), prev: [] }],
+            ecrs: [],
+            certs: [
+                { id: 'c1', name: 'KC 전기안전', part: 'HUH-200', status: '준비', region: '한국' },
+                { id: 'c2', name: '항균·살균 표시 근거 시험 (공인 성적서)', part: 'HUH-230', status: '준비', region: '한국' }
+            ],
+        };
+    return {};
+}
+// ---- 1.0.132 개발 유형별 규칙 ----
+const lastTrial = (m) => m.trials.slice(-1)[0];
+exports.lastTrial = lastTrial;
+// T1 이상 합격했나 (T0만 합격은 아님)
+const moldT1ok = (m) => m.trials.some(t => t.result === '합격' && /^T[1-9]/.test(t.round));
+exports.moldT1ok = moldT1ok;
+const changedParts = (p) => (p.parts || []).filter(x => !!x.baseRev && x.baseRev !== x.rev);
+exports.changedParts = changedParts;
+// OEM: 업체에 나간 판이 최신인가
+function releaseState(p, d) {
+    const by = {};
+    (p.releases || []).filter(r => r.doc === d.id).forEach(r => { by[r.vendor] = r; });
+    return Object.keys(by).map(v => ({ vendor: v, rev: by[v].rev, old: by[v].rev !== d.rev }));
+}
+const lastAprv = (v) => v.aprvs.slice(-1)[0];
+exports.lastAprv = lastAprv;
+const lastSample = (v) => v.samples.slice(-1)[0];
+exports.lastSample = lastSample;
+const avgScore = (v) => (v.evals.length ? Math.round(v.evals.reduce((n, e) => n + e.score, 0) / v.evals.length * 10) / 10 : undefined);
+exports.avgScore = avgScore;
+const mainVendor = (p, role) => (p.vendors || []).filter(v => v.role === role)[0];
+exports.mainVendor = mainVendor;
+exports.VENDOR_ROLES = ['금형', '부품', 'OEM 생산', 'ODM', '완제품 공급', '포장·인쇄'];
+const roleFor = (p) => { const t = (0, devtype_1.typeOf)(p); return t === 'odm' ? 'ODM' : t === 'sourcing' ? '완제품 공급' : t === 'oem' ? 'OEM 생산' : '금형'; };
+exports.roleFor = roleFor;
+function gateChecks(p0, s) {
+    const p = p0;
+    const t = (0, devtype_1.typeOf)(p);
+    const g = (s.gate || '').split(' ')[0];
+    const out = [];
+    if (t === 'own' && g === 'G2') {
+        const ms = p.molds || [];
+        out.push({ label: `금형 ${ms.length}벌 모두 T1 이상 합격 (${ms.filter(exports.moldT1ok).length}/${ms.length})`, ok: ms.length > 0 && ms.every(exports.moldT1ok) });
+    }
+    if (t === 'derive' && g === 'G2') {
+        const open = (p.ecrs || []).filter(e => e.status === '요청' || e.status === '검토').length;
+        out.push({ label: `진행 중 설계 변경 없음 (${open}건 남음)`, ok: open === 0 });
+        out.push({ label: `바뀐 부품 ${(0, exports.changedParts)(p).length}개 — ECO로 Rev 올라감`, ok: (0, exports.changedParts)(p).length > 0 });
+    }
+    if (t === 'oem' && g === 'G2') {
+        const old = (p.docs2 || []).filter(d => d.kind === '도면').reduce((n, d) => n + releaseState(p, d).filter(r => r.old).length, 0);
+        const sent = (p.docs2 || []).filter(d => d.kind === '도면' && releaseState(p, d).length).length;
+        out.push({ label: `업체에 나간 도면이 모두 최신 판 (옛 판 ${old}건)`, ok: sent > 0 && old === 0 });
+        const v = (0, exports.mainVendor)(p, 'OEM 생산');
+        const sm = v && (0, exports.lastSample)(v);
+        out.push({ label: `생산 업체 초도품 검사 합격${sm ? ` (${sm.round} ${sm.result})` : ''}`, ok: !!sm && sm.result === '합격' });
+    }
+    if (t === 'odm' && g === 'G2') { // 1.0.133 순서: 최종 샘플 합격 → 승인원 승인 (곽두팔 msg 10430179)
+        const v = (p.vendors || []).filter(x => x.role === 'ODM' && x.aprvs.length)[0] || (0, exports.mainVendor)(p, 'ODM');
+        const sm = v && (0, exports.lastSample)(v);
+        const a = v && (0, exports.lastAprv)(v);
+        out.push({ label: `최종 샘플 합격${sm ? ` (${sm.round} ${sm.result})` : ' — 아직 없음'}`, ok: !!sm && sm.result === '합격' });
+        out.push({ label: `ODM 업체 승인원 승인${a ? ` (${a.title} Rev ${a.rev} ${a.status})` : ' — 아직 없음'}`, ok: !!a && a.status === '승인' && !!sm && sm.result === '합격' });
+    }
+    if (t === 'sourcing' && g === 'G2') {
+        const v = (0, exports.mainVendor)(p, '완제품 공급');
+        const sm = v && (0, exports.lastSample)(v);
+        out.push({ label: `샘플 합격${sm ? ` (${sm.round} ${sm.result})` : ' — 아직 없음'}`, ok: !!sm && sm.result === '합격' });
+        const vc = (v && v.vcerts) || [];
+        out.push({ label: `업체 인증서 확인 (${vc.filter(c => c.ok).length}/${vc.length})`, ok: vc.length > 0 && vc.every(c => c.ok) });
+    }
+    if (g === 'G3' && t !== 'sourcing') {
+        const cs = p.certs || [];
+        out.push({ label: `인증 모두 취득 (${cs.filter(c => c.status === '취득').length}/${cs.length})`, ok: cs.every(c => c.status === '취득') });
+    }
+    return out;
+}
+const bomNote = (p) => (0, devtype_1.typeInfo)((0, devtype_1.typeOf)(p)).bomNote;
+exports.bomNote = bomNote;
+// 새 품목 시작 — 유형을 붙이고, 파생이면 기반 품목의 BOM·도면·인증을 복사 (바뀐 부품만 나중에 설계 변경으로)
+function startItem(p, t, code, base, who) {
+    const c = code.trim() || undefined;
+    const at = new Date().toISOString();
+    const x = Object.assign(Object.assign({}, p), { devType: t, itemCode: c });
+    if (t === 'derive' && base) {
+        const b = base;
+        const bc = b.itemCode || '';
+        const ren = (no) => (c && no === bc ? c : no); // 완제품 품번만 새로, 같이 쓰는 부품은 같은 품번 그대로 (바뀌면 설계 변경)
+        x.baseItem = bc || base.name;
+        x.parts = (b.parts || []).map(y => (Object.assign(Object.assign({}, y), { no: ren(y.no), parent: y.parent ? ren(y.parent) : undefined, baseRev: y.rev })));
+        x.docs2 = (b.docs2 || []).map(d => (Object.assign(Object.assign({}, d), { part: d.part ? ren(d.part) : undefined, note: `기반 모델 ${bc} 판`, prev: [] })));
+        x.certs = (b.certs || []).map(y => (Object.assign(Object.assign({}, y), { id: (0, exports.uid)('c'), part: y.part ? ren(y.part) : undefined, status: y.status === '취득' ? '취득' : y.status, name: y.name })));
+        x.log = p.log.concat([{ at, who, kind: 'edit', what: `파생 개발 — 기반 ${x.baseItem}에서 부품 ${(x.parts || []).length}개·도면 ${(x.docs2 || []).length}개·인증 ${(x.certs || []).length}개 복사` }]);
+    }
+    else if (c) {
+        x.parts = [{ no: c, name: p.name + (t === 'sourcing' ? '' : ' 완제품'), rev: 'A', qty: 1, kind: t === 'sourcing' ? '완제품' : undefined }];
+        x.log = p.log.concat([{ at, who, kind: 'edit', what: `개발 유형 ${(0, devtype_1.typeInfo)(t).label}` }]);
+    }
+    return x;
+}
+// 승인원은 마지막 샘플이 합격이어야 제출·승인 가능
+const sampleOk = (v) => { const x = (0, exports.lastSample)(v); return !!x && x.result === '합격'; };
+exports.sampleOk = sampleOk;
+
+};
+__m["src/webparts/huromAxPlm/model/work.js"]=function(module,exports,require){"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.docLate = exports.projLate = exports.stageClear = exports.lastApproval = exports.stageDocsOk = exports.docOk = exports.gateKey = exports.ITEM_IMG = exports.stagesOf = void 0;
+exports.gateState = gateState;
+exports.unlocked = unlocked;
+exports.curIdx = curIdx;
+exports.settle = settle;
+exports.perf = perf;
+exports.lateItems = lateItems;
+exports.todos = todos;
+exports.workSamples = workSamples;
+// AX-PLM 1.0.128 — PM이 매일 쓰는 기능 (심준보 2026-11-17 #ax-plm msg 10389967 '실제 사용에도 문제없게 AX팀용 PLM' · 10389890/10389907 '게임 스킬 트리처럼 단계별로')
+// 스킬 트리 규칙: 단계 산출물을 다 채우면(또는 '필요 없음' + 사유) 다음 단계가 열림. 관문(G1~G3)은 보스 — 승인받아야 넘어감
+const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
+const item_1 = require("src/webparts/huromAxPlm/model/item.js");
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+Object.defineProperty(exports, "stagesOf", { enumerable: true, get: function () { return devtype_1.stagesOf; } });
+const samples_1 = require("src/webparts/huromAxPlm/model/samples.js");
+exports.ITEM_IMG = 'https://simjb23-oss.github.io/hurom-ehr/axplm/items/'; // 곽두팔이 피그마로 만든 아이템 그림 (<키>.png). 없으면 기본 카드
+const gateKey = (gate) => (gate ? gate.split(' ')[0].toLowerCase() : '');
+exports.gateKey = gateKey;
+const docOk = (d) => !!d && (!!d.done || !!d.skip);
+exports.docOk = docOk;
+const stageDocsOk = (p, s) => s.docs.filter(x => (0, exports.docOk)(p.docs[x.key])).length;
+exports.stageDocsOk = stageDocsOk;
+const lastApproval = (p, gate) => (p.approvals || []).filter(a => a.gate === gate).slice(-1)[0];
+exports.lastApproval = lastApproval;
+function gateState(p, s) {
+    if (!s.gate)
+        return 'none';
+    const a = (0, exports.lastApproval)(p, s.gate);
+    if (a)
+        return a.kind === 'approve' ? 'approved' : a.kind === 'reject' ? 'rejected' : 'requested';
+    if (p.gates && p.gates[s.gate])
+        return 'approved'; // 1.0.127 이전에 넘긴 관문은 통과로 봄
+    return 'wait';
+}
+const stageClear = (p, s) => (0, exports.stageDocsOk)(p, s) === s.docs.length && (!s.gate || gateState(p, s) === 'approved');
+exports.stageClear = stageClear;
+// 그 단계가 열렸나 — 앞 단계가 모두 끝나야 열림
+function unlocked(p, k) {
+    for (let i = 0; i < k; i++)
+        if (!(0, exports.stageClear)(p, (0, devtype_1.stagesOf)(p)[i]))
+            return false;
+    return true;
+}
+// 지금 단계 = 처음으로 안 끝난 단계
+function curIdx(p) {
+    for (let i = 0; i < (0, devtype_1.stagesOf)(p).length; i++)
+        if (!(0, exports.stageClear)(p, (0, devtype_1.stagesOf)(p)[i]))
+            return i;
+    return (0, devtype_1.stagesOf)(p).length - 1;
+}
+// 바꾼 뒤 단계를 다시 맞춤 — 앞으로 가면 끝난 날(actual) 기록, 이력에 남김
+function settle(p, who) {
+    const k = curIdx(p);
+    const before = (0, ax_1.stageIdx)(p.stage);
+    if (k === before)
+        return p;
+    const at = new Date().toISOString();
+    const actual = Object.assign({}, (p.actual || {}));
+    const log = p.log.slice();
+    if (k > before)
+        for (let i = before; i < k; i++) {
+            actual[(0, devtype_1.stagesOf)(p)[i].id] = actual[(0, devtype_1.stagesOf)(p)[i].id] || (0, ax_1.today)();
+            log.push({ at, who, kind: 'move', what: `${(0, devtype_1.stagesOf)(p)[i].no} ${(0, devtype_1.stagesOf)(p)[i].name} 완료 → ${(0, devtype_1.stagesOf)(p)[i + 1].no} ${(0, devtype_1.stagesOf)(p)[i + 1].name} 열림` });
+        }
+    else {
+        for (let i = k; i < before; i++)
+            delete actual[(0, devtype_1.stagesOf)(p)[i].id];
+        log.push({ at, who, kind: 'move', what: `${(0, devtype_1.stagesOf)(p)[k].no} ${(0, devtype_1.stagesOf)(p)[k].name}(으)로 되돌아감` });
+    }
+    return Object.assign(Object.assign({}, p), { stage: (0, devtype_1.stagesOf)(p)[k].id, actual, log });
+}
+function perf(p, k, now = (0, ax_1.today)()) {
+    const s = (0, devtype_1.stagesOf)(p)[k];
+    const plan = (p.plan || {})[s.id];
+    const actual = (p.actual || {})[s.id];
+    const ck = curIdx(p);
+    const allClear = (0, exports.stageClear)(p, s);
+    const state = allClear && k < ck ? 'done' : allClear && k === (0, devtype_1.stagesOf)(p).length - 1 ? 'done' : k === ck ? 'doing' : 'todo';
+    let late = 0;
+    if (plan) {
+        const ref = state === 'done' ? (actual || plan) : now;
+        const d = (0, ax_1.daysTo)(plan, ref);
+        late = d !== undefined && d < 0 ? -d : 0;
+        if (state === 'todo')
+            late = 0;
+    }
+    return { plan, actual, late, state };
+}
+// 1.0.135 지연은 한 규칙 (곽두팔 msg 10484801): 계획일이 지났는데 안 끝난 것 — 단계 끝 계획일 또는 산출물 마감. 대시보드 문구·일정 판 색·지금 해야 할 것·전체 일정이 모두 이 값을 씀
+function lateItems(p, now = (0, ax_1.today)()) {
+    const out = [];
+    (0, devtype_1.stagesOf)(p).forEach((s, k) => {
+        if ((0, exports.stageClear)(p, s))
+            return;
+        const pl = (p.plan || {})[s.id];
+        const d0 = (0, ax_1.daysTo)(pl, now);
+        if (d0 !== undefined && d0 < 0)
+            out.push({ k, days: -d0 });
+        s.docs.forEach(x => { const st = p.docs[x.key] || {}; if ((0, exports.docOk)(st))
+            return; const d = (0, ax_1.daysTo)(st.due, now); if (d !== undefined && d < 0)
+            out.push({ k, key: x.key, days: -d }); });
+    });
+    return out;
+}
+const projLate = (p, now = (0, ax_1.today)()) => lateItems(p, now).reduce((a, x) => Math.max(a, x.days), 0);
+exports.projLate = projLate;
+const docLate = (p, key, now = (0, ax_1.today)()) => { const st = p.docs[key] || {}; const d = (0, ax_1.daysTo)(st.due, now); return !(0, exports.docOk)(st) && d !== undefined && d < 0; };
+exports.docLate = docLate;
+function todos(items, who, now = (0, ax_1.today)()) {
+    const out = [];
+    const me = (n) => who === '*' || (!!n && !!who && n.replace(/\s/g, '') === who.replace(/\s/g, '')); // 1.0.134 '*' = 팀 전체
+    items.forEach(p => {
+        const k = curIdx(p);
+        const s = (0, devtype_1.stagesOf)(p)[k];
+        const pm = me(p.owner);
+        (0, devtype_1.stagesOf)(p).forEach((s2, k2) => {
+            if (k2 < k)
+                return;
+            s2.docs.forEach(d => {
+                const st = p.docs[d.key] || {};
+                if ((0, exports.docOk)(st))
+                    return;
+                const due = st.due || (p.plan || {})[s2.id];
+                const left = (0, ax_1.daysTo)(due, now);
+                if (k2 !== k && !(left !== undefined && left < 0))
+                    return;
+                if (me(st.who) || (pm && !st.who))
+                    out.push({ pid: p.id, project: p.name, kind: '산출물', text: d.label, stage: k2, due, left, key: d.key });
+            });
+        });
+        if (s.gate && gateState(p, s) === 'requested' && me(p.approver))
+            out.push({ pid: p.id, project: p.name, kind: '승인', text: `${s.gate} 승인 요청`, stage: k, due: (p.plan || {})[s.id], left: (0, ax_1.daysTo)((p.plan || {})[s.id], now) });
+        (p.issues || []).filter(i => !i.done && (me(i.owner) || (pm && !i.owner))).forEach(i => out.push({ pid: p.id, project: p.name, kind: i.kind, text: i.text, stage: (0, ax_1.stageIdx)(i.stage), due: i.due, left: (0, ax_1.daysTo)(i.due, now) }));
+    });
+    return out.sort((a, b) => (a.left === undefined ? 9999 : a.left) - (b.left === undefined ? 9999 : b.left));
+}
+// 예시 — 1.0.127 예시에 담당·기한·승인·이슈·변경 이력을 채움 (저장 안 함)
+function workSamples0() {
+    const xs = (0, ax_1.axSamples)();
+    const iso = (d, h = 10) => `${d}T${('0' + h).slice(-2)}:00:00.000Z`;
+    return xs.map(p => {
+        if (p.id === 'ax-sample-food') {
+            const ap = [
+                { gate: 'G1 기획 승인', kind: 'request', at: iso('2026-06-13'), who: '심준보' }, { gate: 'G1 기획 승인', kind: 'approve', at: iso('2026-06-15'), who: '김현숙', note: '건조·분쇄형으로 진행' },
+                { gate: 'G2 개발발의 승인', kind: 'request', at: iso('2026-07-02'), who: '심준보' }, { gate: 'G2 개발발의 승인', kind: 'reject', at: iso('2026-07-03'), who: '김현숙', note: '원가 목표 다시' },
+                { gate: 'G2 개발발의 승인', kind: 'request', at: iso('2026-07-08'), who: '심준보' }, { gate: 'G2 개발발의 승인', kind: 'approve', at: iso('2026-07-09'), who: '김현숙' }
+            ];
+            const docs = Object.assign(Object.assign({}, p.docs), { trial: { who: '김호철', due: '2026-11-21' }, ppap: { who: '심준보', due: '2026-12-05' }, cert: { who: '김호철', due: '2027-01-15' }, print: { who: '심준보', due: '2026-12-20' }, issue: { done: true, by: 'PC-곽두팔', at: iso('2026-11-15') } });
+            return Object.assign(Object.assign({}, p), { docs, approver: '김현숙', approvals: ap, actual: { S1: '2026-06-15', S2: '2026-07-09', S3: '2026-09-04' }, issues: [{ id: 'i1', kind: '이슈', text: '분쇄날 하우징 변형 (T0 전 확인)', owner: '김호철', due: '2026-11-21', at: iso('2026-11-12'), who: '심준보', stage: 'S4' },
+                    { id: 'i2', kind: '리스크', text: 'KC EMC 시험 일정 밀리면 출시 지연', owner: '심준보', due: '2027-01-10', at: iso('2026-11-14'), who: 'PC-곽두팔', stage: 'S4' },
+                    { id: 'i3', kind: '이슈', text: '활성탄 필터 공급처 2곳 견적', owner: '심준보', due: '2026-10-30', done: true, doneAt: iso('2026-10-29'), at: iso('2026-10-20'), who: '심준보', stage: 'S4' }], changes: [{ id: 'c1', at: iso('2026-08-20'), who: '심준보', what: '용량 2L → 2.5L', why: 'VOC 4인 가족 하루 양 부족', stage: 'S3' }] });
+        }
+        return Object.assign(Object.assign({}, p), { approver: '김현숙', docs: Object.assign(Object.assign({}, p.docs), { plan: { who: '김호철', due: '2026-11-20' }, biz: { who: '심준보', due: '2026-11-24' }, g1rep: { who: '심준보' } }), issues: [{ id: 'i4', kind: '리스크', text: '"세균 99.9%" 광고는 공인 시험성적서 먼저', owner: '김호철', due: '2026-12-15', at: iso('2026-11-16'), who: 'PC-김호철(PLM)', stage: 'S1' }], changes: [] });
+    });
+}
+// 1.0.130 — 예시에 품목·BOM·도면 판·설계 변경·인증 데이터까지
+// 1.0.132 — 유형별 기록을 붙이고 파생·OEM·소싱 예시 추가 (5개)
+function workSamples() { return workSamples0().map(p => (0, samples_1.typeTheTwo)(Object.assign(Object.assign({}, p), (0, item_1.itemSamples)(p.id)))).concat((0, samples_1.moreSamples)()); }
+
+};
+__m["src/webparts/huromAxPlm/model/samples.js"]=function(module,exports,require){"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.typeTheTwo = typeTheTwo;
+exports.moreSamples = moreSamples;
+// AX-PLM 1.0.132 — 개발 유형마다 예시 하나씩 (저장 안 함). HFD-100 = 자체 개발, HUH-200 = ODM (곽두팔 msg 10425015)
+const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
+const iso = (d, h = 10) => `${d}T${('0' + h).slice(-2)}:00:00.000Z`;
+const V = (id, name, role, country, x = {}) => (Object.assign({ id, name, role, country, samples: [], aprvs: [], evals: [], vcerts: [] }, x));
+const done = (keys, by = '심준보', at = '2026-10-01') => {
+    const o = {};
+    keys.forEach(k => { o[k] = { done: true, by, at: iso(at) }; });
+    return o;
+};
+const g1 = (gate, d) => [{ gate, kind: 'request', at: iso(d), who: '심준보' }, { gate, kind: 'approve', at: iso(d, 15), who: '김현숙' }];
+// 기존 예시 두 개(음식물처리기·가습기)에 유형별 기록을 붙임
+function typeTheTwo(p0) {
+    const p = p0;
+    if (p.id === 'ax-sample-food') {
+        const docs = Object.assign(Object.assign(Object.assign({}, p.docs), done(['t0'], '김호철', '2026-10-28')), { t1: { who: '김호철', due: '2026-11-21' }, t2: { who: '김호철', due: '2026-12-05' }, ppap: { who: '심준보', due: '2026-12-12' } });
+        delete docs.trial;
+        return Object.assign(Object.assign({}, p), { devType: 'own', docs, approvals: (p.approvals || []).filter(a => a.gate.indexOf('G1') === 0), parts: (p.parts || []).map(x => (x.no === 'HFD-111' ? Object.assign(Object.assign({}, x), { mold: 'M-111' }) : x.no === 'HFD-112' ? Object.assign(Object.assign({}, x), { mold: 'M-112' }) : x.no === 'HFD-130' ? Object.assign(Object.assign({}, x), { mold: 'M-130' }) : x)), molds: [
+                { id: 'm1', no: 'M-111', part: 'HFD-111', vendor: '대성정밀', cavity: 1, trials: [{ round: 'T0', at: iso('2026-10-24'), result: '수정', note: '배기구 주변 웰드라인', who: '김호철' }, { round: 'T1', at: iso('2026-11-13'), result: '합격', note: '치수 46/46 OK', who: '김호철' }] },
+                { id: 'm2', no: 'M-112', part: 'HFD-112', vendor: '대성정밀', cavity: 2, trials: [{ round: 'T0', at: iso('2026-10-24'), result: '수정', note: '리브 변형 → ECO-002로 리브 2.4 mm', who: '김호철' }] },
+                { id: 'm3', no: 'M-130', part: 'HFD-130', vendor: '대성정밀', cavity: 1, trials: [{ round: 'T0', at: iso('2026-10-24'), result: '합격', who: '김호철' }, { round: 'T1', at: iso('2026-11-13'), result: '합격', who: '김호철' }] }
+            ], vendors: [
+                V('v1', '대성정밀', '금형', '한국', { contact: '박영수 부장', evals: [{ at: iso('2026-11-13'), who: '김호철', score: 4, note: 'T1 수정 빠름, 리브 금형 수정 1주' }] }),
+                V('v2', '동양모터(중국)', '부품', '중국', { unit: 'USD 6.80', moq: 3000, vcerts: [{ name: 'ISO 9001', until: '2027-06-30', ok: true }], samples: [{ id: 's1', round: '1차', at: iso('2026-09-20'), result: '합격', note: '소음 42 dB', who: '김호철' }], aprvs: [{ id: 'a1', title: 'BLDC 모터 승인원', rev: '01', at: iso('2026-10-02'), status: '승인', who: '김호철' }] }),
+                V('v3', '한일히터', '부품', '한국', { samples: [{ id: 's2', round: '1차', at: iso('2026-10-14'), result: '합격', note: '온도 상승 시험 통과', who: '김호철' }] })
+            ] });
+    }
+    if (p.id === 'ax-sample-humid') {
+        const docs = { voc: { done: true }, req: { who: '김호철', due: '2026-11-20' }, vendor: { who: '심준보', due: '2026-11-24' }, g1rep: { who: '심준보' } };
+        const odm = '선전 아쿠아미스트(중국)';
+        return Object.assign(Object.assign({}, p), { devType: 'odm', docs, next: 'ODM 후보 2곳 비교 — 물통 세척 구조·UV-C 자체 시험 여부', parts: (p.parts || []).map(x => (Object.assign(Object.assign({}, x), { supplier: x.parent ? `${odm} (후보)` : x.supplier, food: x.no === 'HUH-210' || x.no === 'HUH-220' || x.no === 'HUH-240' || undefined }))), vendors: [
+                V('v1', odm, 'ODM', '중국', { contact: 'Ms. Lin', unit: 'USD 18.40', moq: 2000, vcerts: [{ name: 'ISO 9001', until: '2027-03-31', ok: true }, { name: 'UV-C 살균 시험성적서 (자체)', ok: false }], evals: [{ at: iso('2026-11-14'), who: '김호철', score: 4, note: 'UV-C 물통 구조 있음, 금형 보유' }] }),
+                V('v2', '닝보 쿨브리즈(중국)', 'ODM', '중국', { unit: 'USD 15.90', moq: 5000, evals: [{ at: iso('2026-11-14'), who: '김호철', score: 3, note: '단가 낮지만 MOQ 큼, 살균 근거 없음' }] })
+            ] });
+    }
+    return p0;
+}
+// 새 예시 3개 — 파생·OEM·소싱
+function moreSamples() {
+    // 파생 개발 — 기존 원액기 색상 모델
+    const d = (0, ax_1.newProject)('원액기 H-AI 세이지 그린 (파생)', '심준보', '심준보', '2027-02-27', '2026-10-06');
+    d.id = 'ax-sample-derive';
+    d.code = d.id;
+    d.devType = 'derive';
+    d.itemCode = 'HZA-SG';
+    d.baseItem = 'HZA-100 원액기 H-AI';
+    d.approver = '김현숙';
+    d.docs = Object.assign(Object.assign(Object.assign({}, done(['base', 'plan', 'g1rep', 'rr', 'spec'], '심준보', '2026-10-20')), done(['ecr'], '김호철', '2026-11-10')), { cmf: { who: '심준보', due: '2026-11-25' }, dr: { who: '김호철', due: '2026-11-28' } });
+    d.approvals = g1('G1 파생 기획 승인', '2026-10-15');
+    d.parts = [
+        { no: 'HZA-SG', name: '원액기 H-AI 세이지 그린', rev: 'B', baseRev: 'A', qty: 1 },
+        { no: 'HZA-SG-10', name: '외관 하우징 ASSY', rev: 'B', baseRev: 'A', parent: 'HZA-SG', qty: 1 },
+        { no: 'HZA-SG-11', name: '컬러 커버 (세이지 그린)', material: 'ABS', weight: 268, supplier: '대성정밀', rev: 'B', baseRev: 'A', parent: 'HZA-SG-10', qty: 1 },
+        { no: 'HZA-SG-12', name: '본체 베이스', material: 'PC', weight: 410, supplier: '대성정밀', rev: 'A', baseRev: 'A', parent: 'HZA-SG-10', qty: 1 },
+        { no: 'HZA-SG-20', name: '착즙 모듈 ASSY', rev: 'A', baseRev: 'A', parent: 'HZA-SG', qty: 1 },
+        { no: 'HZA-SG-21', name: '스크류', material: 'Ultem', weight: 96, supplier: '세진정밀', rev: 'A', baseRev: 'A', parent: 'HZA-SG-20', qty: 1 },
+        { no: 'HZA-SG-22', name: '드럼', material: 'Tritan', weight: 152, supplier: '세진정밀', rev: 'A', baseRev: 'A', parent: 'HZA-SG-20', qty: 1 },
+        { no: 'HZA-SG-23', name: '스마트 호퍼 뚜껑 (그린 틴트)', material: 'Tritan', weight: 118, supplier: '세진정밀', rev: 'B', baseRev: 'A', parent: 'HZA-SG-20', qty: 1 },
+        { no: 'HZA-SG-30', name: 'BLDC 모터', material: '—', weight: 1180, supplier: '동양모터(중국)', rev: 'A', baseRev: 'A', parent: 'HZA-SG', qty: 1 },
+        { no: 'HZA-SG-40', name: '컬러 박스·매뉴얼', material: '종이', weight: 640, supplier: '한솔인쇄', rev: 'A', baseRev: 'A', parent: 'HZA-SG', qty: 1 }
+    ];
+    d.docs2 = [
+        { id: 'd1', kind: '도면', title: '컬러 커버', part: 'HZA-SG-11', rev: 'B', by: '김호철', at: iso('2026-11-08'), note: '색상 세이지 그린 (Pantone 5625C)', prev: [{ rev: 'A', by: '김호철', at: iso('2026-10-06'), note: '기반 모델 HZA-100 판' }] },
+        { id: 'd2', kind: '사양서', title: '변경 사양서 (색상·호퍼 틴트)', rev: '01', by: '심준보', at: iso('2026-10-20'), prev: [] }
+    ];
+    d.ecrs = [
+        { id: 'e1', no: 'ECR-001', title: '컬러 커버·호퍼 뚜껑 색상 변경', why: '세이지 그린 파생 모델', parts: ['HZA-SG-11', 'HZA-SG-23'], status: '승인', by: '심준보', at: iso('2026-11-06'), eco: 'ECO-001', revs: { 'HZA-SG-11': 'A→B', 'HZA-SG-23': 'A→B' },
+            log: [{ at: iso('2026-11-06'), who: '심준보', what: '요청' }, { at: iso('2026-11-08'), who: '김현숙', what: '승인' }] },
+        { id: 'e2', no: 'ECR-002', title: '컬러 박스 인쇄 색상 맞춤', why: '본체 색과 박스 색 차이 (샘플 비교)', parts: ['HZA-SG-40'], status: '검토', by: '심준보', at: iso('2026-11-14'), log: [{ at: iso('2026-11-14'), who: '심준보', what: '요청' }] }
+    ];
+    d.certs = [
+        { id: 'c1', name: 'KC 전기안전 (기반 모델 인증 — 색상 변경 신고)', part: 'HZA-SG', status: '준비', region: '한국' },
+        { id: 'c2', name: '식품용 기구 (드럼·스크류)', part: 'HZA-SG-22', status: '취득', no: 'FS-2025-0412', until: '2028-03-31', region: '한국' }
+    ];
+    d.vendors = [V('v1', '대성정밀', '부품', '한국', { samples: [{ id: 's1', round: '1차', at: iso('2026-11-12'), result: '보완', note: '색차 ΔE 2.1 — 1.0 이하로', who: '심준보' }] }), V('v2', '한솔인쇄', '포장·인쇄', '한국')];
+    d.next = '색상 샘플 2차 (ΔE 1.0 이하) 확인';
+    d.issues = [{ id: 'i1', kind: '이슈', text: '컬러 커버 색차 ΔE 2.1 — 대성정밀 2차 샘플', owner: '심준보', due: '2026-11-25', at: iso('2026-11-12'), who: '심준보', stage: 'S3' }];
+    d.changes = [];
+    d.plan = (0, ax_1.suggestPlan)(d.start, d.target);
+    d.stage = 'S3';
+    d.actual = { S1: '2026-10-15', S2: '2026-10-30' };
+    // OEM — 우리 도면, 중국 제조사 생산
+    const o = (0, ax_1.newProject)('진공 블렌더 (OEM)', '심준보', '김호철', '2027-04-30', '2026-07-01');
+    const fab = '포산 리화전기(중국)';
+    o.id = 'ax-sample-oem';
+    o.code = o.id;
+    o.devType = 'oem';
+    o.itemCode = 'HVB-300';
+    o.approver = '김현숙';
+    o.docs = Object.assign(Object.assign(Object.assign({}, done(['voc', 'plan', 'biz', 'g1rep', 'rr', 'spec', 'vendor', 'cad', 'dr', 'release', 'proto'], '김호철', '2026-09-30')), done(['mold'], '김호철', '2026-11-10')), { fai: { who: '김호철', due: '2026-11-27' }, iqc: { who: '심준보', due: '2026-12-04' }, cert: { who: '김호철', due: '2027-01-20' }, print: { who: '심준보', due: '2027-01-10' } });
+    o.approvals = g1('G1 기획 승인', '2026-07-20');
+    o.parts = [
+        { no: 'HVB-300', name: '진공 블렌더 완제품', rev: 'B', qty: 1 },
+        { no: 'HVB-310', name: '용기 ASSY (1.5 L)', rev: 'C', parent: 'HVB-300', qty: 1 },
+        { no: 'HVB-311', name: '용기', material: 'Tritan', weight: 520, supplier: fab, rev: 'C', parent: 'HVB-310', qty: 1, mold: 'M-V01' },
+        { no: 'HVB-312', name: '칼날 ASSY', material: 'STS304', weight: 88, supplier: fab, rev: 'A', parent: 'HVB-310', qty: 1 },
+        { no: 'HVB-320', name: '진공 펌프 모듈', material: '—', weight: 210, supplier: fab, rev: 'A', parent: 'HVB-300', qty: 1 },
+        { no: 'HVB-330', name: '본체 하우징', material: 'ABS', weight: 860, supplier: fab, rev: 'B', parent: 'HVB-300', qty: 1, mold: 'M-V02' },
+        { no: 'HVB-340', name: '메인 PCB', material: 'FR-4', weight: 46, supplier: fab, rev: 'B', parent: 'HVB-300', qty: 1 }
+    ];
+    o.docs2 = [
+        { id: 'd1', kind: '도면', title: '용기', part: 'HVB-311', rev: 'C', by: '김호철', at: iso('2026-11-11'), note: '눈금 인쇄 위치 5 mm 내림', prev: [{ rev: 'A', by: '김호철', at: iso('2026-08-12') }, { rev: 'B', by: '김호철', at: iso('2026-09-25'), note: '진공 씰 홈 깊이' }] },
+        { id: 'd2', kind: '도면', title: '칼날 ASSY', part: 'HVB-312', rev: 'A', by: '김호철', at: iso('2026-08-12'), prev: [] },
+        { id: 'd3', kind: '도면', title: '본체 하우징', part: 'HVB-330', rev: 'B', by: '김호철', at: iso('2026-09-25'), prev: [{ rev: 'A', by: '김호철', at: iso('2026-08-12') }] }
+    ];
+    o.releases = [
+        { id: 'r1', doc: 'd1', rev: 'A', vendor: fab, at: iso('2026-08-13'), who: '김호철' }, { id: 'r2', doc: 'd1', rev: 'B', vendor: fab, at: iso('2026-09-26'), who: '김호철' },
+        { id: 'r3', doc: 'd2', rev: 'A', vendor: fab, at: iso('2026-08-13'), who: '김호철' }, { id: 'r4', doc: 'd3', rev: 'B', vendor: fab, at: iso('2026-09-26'), who: '김호철' }
+    ];
+    o.molds = [
+        { id: 'm1', no: 'M-V01', part: 'HVB-311', vendor: fab, cavity: 1, trials: [{ round: 'T0', at: iso('2026-10-20'), result: '수정', note: '씰 홈 버', who: '김호철' }, { round: 'T1', at: iso('2026-11-09'), result: '합격', who: '김호철' }] },
+        { id: 'm2', no: 'M-V02', part: 'HVB-330', vendor: fab, cavity: 1, trials: [{ round: 'T0', at: iso('2026-10-20'), result: '합격', who: '김호철' }] }
+    ];
+    o.vendors = [V('v1', fab, 'OEM 생산', '중국', { contact: 'Mr. Chen (QA)', unit: 'USD 41.20', moq: 2000, vcerts: [{ name: 'ISO 9001', until: '2027-09-30', ok: true }, { name: 'BSCI 감사', until: '2027-02-28', ok: true }],
+            samples: [{ id: 's1', round: '1차', at: iso('2026-11-12'), result: '보완', note: '초도품 진공 유지 30초 → 기준 60초', who: '김호철' }], evals: [{ at: iso('2026-11-12'), who: '김호철', score: 3, note: '대응 빠름, 진공 품질 보완 필요' }] })];
+    o.certs = [
+        { id: 'c1', name: 'KC 전기안전', part: 'HVB-300', status: '시험 중', region: '한국' },
+        { id: 'c2', name: '식품용 기구 (용기 Tritan)', part: 'HVB-311', status: '취득', no: 'FS-2026-0933', until: '2029-10-31', region: '한국' }
+    ];
+    o.issues = [{ id: 'i1', kind: '이슈', text: '용기 도면 Rev C가 업체에 안 나감 — 초도품은 Rev B로 만들어짐', owner: '김호철', due: '2026-11-20', at: iso('2026-11-12'), who: '김호철', stage: 'S4' }];
+    o.changes = [];
+    o.next = '용기 도면 Rev C 업체 배포 → 초도품 2차 검사';
+    o.plan = (0, ax_1.suggestPlan)(o.start, o.target);
+    o.stage = 'S4';
+    o.actual = { S1: '2026-07-20', S2: '2026-08-05', S3: '2026-09-30' };
+    // 소싱 — 완제품 구매
+    const s = (0, ax_1.newProject)('원액기 전용 세척솔 세트 (소싱)', '심준보', '심준보', '2027-01-15', '2026-10-13');
+    const sup = '이우 클린웨어(중국)';
+    s.id = 'ax-sample-sourcing';
+    s.code = s.id;
+    s.devType = 'sourcing';
+    s.itemCode = 'HCB-01';
+    s.approver = '김현숙';
+    s.docs = Object.assign(Object.assign({}, done(['plan', 'price', 'g1rep', 'rr', 'vendor', 'sample'], '심준보', '2026-11-05')), { specsheet: { who: '심준보', due: '2026-11-21' }, vcert: { who: '김호철', due: '2026-11-24' } });
+    s.approvals = g1('G1 구매 기획 승인', '2026-10-24');
+    s.parts = [
+        { no: 'HCB-01', name: '세척솔 세트 (3종)', material: 'PP 손잡이·PBT 솔모', weight: 64, supplier: sup, rev: 'A', qty: 1, kind: '완제품', food: true },
+        { no: 'HCB-01-P', name: '크라프트 박스', material: '종이', weight: 38, supplier: sup, rev: 'A', parent: 'HCB-01', qty: 1, kind: '포장' },
+        { no: 'HCB-01-M', name: '사용 안내 (한/영)', material: '종이', weight: 6, supplier: '한솔인쇄', rev: 'A', parent: 'HCB-01', qty: 1, kind: '매뉴얼' },
+        { no: 'HCB-01-L', name: '표시 라벨 (재질·원산지·수입원)', material: '아트지', weight: 1, supplier: '한솔인쇄', rev: 'A', parent: 'HCB-01', qty: 1, kind: '라벨' }
+    ];
+    s.docs2 = [{ id: 'd1', kind: '사양서', title: '구매 규격서', rev: '02', by: '심준보', at: iso('2026-11-10'), note: '솔모 지름 0.2 mm, 손잡이 길이 180 mm', prev: [{ rev: '01', by: '심준보', at: iso('2026-10-27') }] }];
+    s.ecrs = [];
+    s.certs = [{ id: 'c1', name: '식품용 기구 수입 신고 (솔모 PBT)', part: 'HCB-01', status: '준비', region: '한국' }];
+    s.vendors = [
+        V('v1', sup, '완제품 공급', '중국', { contact: 'Ms. Zhou', unit: 'USD 1.35', moq: 5000, vcerts: [{ name: 'ISO 9001', until: '2027-05-31', ok: true }, { name: 'LFGB 성적서 (솔모 PBT)', ok: false }],
+            samples: [{ id: 's1', round: '1차', at: iso('2026-11-03'), result: '보완', note: '솔모 빠짐 3/20개', who: '심준보' }, { id: 's2', round: '2차', at: iso('2026-11-12'), result: '합격', note: '빠짐 0/20', who: '심준보' }],
+            evals: [{ at: iso('2026-11-12'), who: '심준보', score: 4, note: '2차에 바로 고침' }] }),
+        V('v2', '광저우 브러시팩토리(중국)', '완제품 공급', '중국', { unit: 'USD 1.12', moq: 10000, evals: [{ at: iso('2026-10-28'), who: '심준보', score: 2, note: 'MOQ 1만, 샘플 2주 지연' }] })
+    ];
+    s.issues = [{ id: 'i1', kind: '리스크', text: 'LFGB 성적서 안 오면 식품용 기구 수입 신고 못 함', owner: '김호철', due: '2026-11-24', at: iso('2026-11-13'), who: '김호철', stage: 'S3' }];
+    s.changes = [];
+    s.next = '업체 LFGB 성적서 받기 → G2 샘플 승인';
+    s.plan = (0, ax_1.suggestPlan)(s.start, s.target);
+    s.stage = 'S3';
+    s.actual = { S1: '2026-10-24', S2: '2026-11-04' };
+    return [d, o, s];
+}
+
+};
+__m["src/webparts/huromAxPlm/model/sched.js"]=function(module,exports,require){"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.typeDays = exports.lateDays = exports.laneOf = exports.LANES = exports.stdTotal = exports.AFTER_DAYS = exports.STD_DAYS = exports.diffDays = exports.addDays = void 0;
+exports.backPlan = backPlan;
+exports.planSpan = planSpan;
+exports.stageState = stageState;
+exports.actualSpan = actualSpan;
+exports.shiftFrom = shiftFrom;
+exports.docSpan = docSpan;
+exports.gems = gems;
+exports.laneCells = laneCells;
+exports.projRange = projRange;
+// AX-PLM 1.0.134 — 일정표(간트)·메인 대시보드 계산 (심준보 2026-11-18 #ax-plm msg 10483430 '스케쥴링표가 없냐' · 10483498 '메인대시보드, 업무구분 세로·일정 단계 가로'; 곽두팔 msg 10483490·10483554)
+// 단계 계획 = plan[S1..S7] (단계 끝 날짜), 단계 시작 = 앞 단계 끝(첫 단계는 start). 실제 = actual[...] 같은 방식
+const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
+const ymd = (t) => `${t.getFullYear()}-${('0' + (t.getMonth() + 1)).slice(-2)}-${('0' + t.getDate()).slice(-2)}`;
+const day = (s) => new Date(s + 'T00:00:00');
+const addDays = (s, n) => { const t = day(s); t.setDate(t.getDate() + n); return ymd(t); };
+exports.addDays = addDays;
+const diffDays = (a, b) => Math.round((day(b).getTime() - day(a).getTime()) / 86400000);
+exports.diffDays = diffDays;
+// 개발 유형별 표준 일수 (단계 ①~⑥, 달력 일수) — ⑥ 생산 끝 = 출시(첫 출하), ⑦은 출시 뒤 90일
+// 자체 금형 개발은 휴롬 R12 체계도 일정(설계 45일·금형 T0~T2 약 120일)을, ODM·소싱은 샘플 차수 기준으로 잡음
+exports.STD_DAYS = {
+    own: [30, 20, 45, 120, 30, 20],
+    derive: [15, 10, 30, 45, 20, 15],
+    oem: [30, 25, 40, 90, 25, 20],
+    odm: [20, 20, 60, 60, 20, 15],
+    sourcing: [10, 15, 25, 30, 15, 10],
+};
+exports.AFTER_DAYS = 90;
+const stdTotal = (t) => exports.STD_DAYS[t].reduce((a, b) => a + b, 0);
+exports.stdTotal = stdTotal;
+// 출시 목표일에서 거꾸로 — 시작일과 단계 끝 날짜를 채움
+function backPlan(target, t) {
+    const ds = exports.STD_DAYS[t] || exports.STD_DAYS.own;
+    const plan = {};
+    let end = target;
+    for (let i = 5; i >= 0; i--) {
+        plan['S' + (i + 1)] = end;
+        end = (0, exports.addDays)(end, -ds[i]);
+    }
+    plan.S7 = (0, exports.addDays)(target, exports.AFTER_DAYS);
+    return { start: end, plan };
+}
+function planSpan(p, k) {
+    const ids = (0, work_1.stagesOf)(p).map(s => s.id);
+    const plan = p.plan || {};
+    const b = plan[ids[k]];
+    const a = k === 0 ? p.start : plan[ids[k - 1]];
+    return a && b ? { a, b: b < a ? a : b } : undefined;
+}
+function stageState(p, k, now = (0, ax_1.today)()) {
+    const s = (0, work_1.stagesOf)(p)[k];
+    const ck = (0, work_1.curIdx)(p);
+    if ((0, work_1.stageClear)(p, s) && (k < ck || k === (0, work_1.stagesOf)(p).length - 1))
+        return 'done';
+    const sp = planSpan(p, k);
+    const late = (sp && sp.b < now) || s.docs.some(d => (0, work_1.docLate)(p, d.key, now));
+    if (late)
+        return 'late';
+    return k === ck ? 'doing' : 'wait';
+}
+function actualSpan(p, k, now = (0, ax_1.today)()) {
+    const ids = (0, work_1.stagesOf)(p).map(s => s.id);
+    const act = p.actual || {};
+    const a = k === 0 ? p.start : act[ids[k - 1]];
+    if (!a)
+        return undefined;
+    const b = act[ids[k]] || (k === (0, work_1.curIdx)(p) ? now : undefined);
+    return b ? { a, b: b < a ? a : b } : undefined;
+}
+// 단계 계획 끌기 — 그 단계 끝과 뒤 단계 전부를 같은 날수만큼 밈
+function shiftFrom(p, k, n) {
+    const ids = (0, work_1.stagesOf)(p).map(s => s.id);
+    const plan = Object.assign({}, (p.plan || {}));
+    for (let i = k; i < ids.length; i++)
+        if (plan[ids[i]])
+            plan[ids[i]] = (0, exports.addDays)(plan[ids[i]], n);
+    return plan;
+}
+// 산출물 줄 — 단계 시작 ~ 마감(없으면 단계 끝), 끝낸 날은 실제
+function docSpan(p, k, key) {
+    const sp = planSpan(p, k);
+    const st = p.docs[key] || {};
+    const due = st.due || (sp && sp.b);
+    const plan = sp && due ? { a: sp.a, b: due < sp.a ? sp.a : due } : undefined;
+    const at = st.at ? st.at.slice(0, 10) : undefined;
+    const actual = (0, work_1.docOk)(st) && sp && at ? { a: sp.a < at ? sp.a : at, b: at } : undefined;
+    const now = (0, ax_1.today)();
+    const ck = (0, work_1.curIdx)(p);
+    const state = (0, work_1.docOk)(st) ? 'done' : due && due < now && k <= ck ? 'late' : k === ck ? 'doing' : 'wait';
+    return { plan, actual, state };
+}
+function gems(p, now = (0, ax_1.today)()) {
+    const out = [];
+    (0, work_1.stagesOf)(p).forEach((s, k) => {
+        if (!s.gate)
+            return;
+        const g = (0, work_1.gateState)(p, s);
+        const plan = (p.plan || {})[s.id];
+        const ap = (p.approvals || []).filter(a => a.gate === s.gate && a.kind === 'approve').slice(-1)[0];
+        const date = g === 'approved' && ap ? ap.at.slice(0, 10) : plan;
+        if (!date)
+            return;
+        out.push({ date, label: s.gate.split(' ')[0], k, state: g === 'approved' ? 'done' : g === 'requested' ? 'req' : plan && plan < now ? 'late' : 'wait' });
+    });
+    return out;
+}
+// 업무 구분 — 메인 대시보드 세로줄 (곽두팔 msg 10483554)
+exports.LANES = ['상품기획', '설계', '금형/시사출', '구매/협력사', '인증', '품질', '생산', '인쇄물/마케팅'];
+const LANE_OF = {
+    voc: 0, plan: 0, biz: 0, g1rep: 0, base: 0, req: 0, rr: 0, spec: 0, kickoff: 0, sched: 0, price: 0, close: 0, vocr: 0,
+    cad: 1, dr: 1, proto: 1, ecr: 1, cmf: 1, keyparts: 1, release: 1,
+    mold: 2, trial: 2, t0: 2, t1: 2, t2: 2,
+    vendor: 3, quote: 3, s1: 3, s2: 3, s3: 3, aprv: 3, sample: 3, specsheet: 3, vcert: 3, po: 3,
+    cert: 4, certchg: 4,
+    ppap: 5, fai: 5, iqc: 5, issue: 5, mpqa: 5,
+    first: 6,
+    print: 7, pack: 7, faq: 7, usp: 7, launch: 7,
+};
+const laneOf = (key) => (LANE_OF[key] === undefined ? 0 : LANE_OF[key]);
+exports.laneOf = laneOf;
+// 한 업무 구분에서 단계마다 칸 하나 — 산출물이 있는 단계만
+function laneCells(p, lane, now = (0, ax_1.today)()) {
+    const out = [];
+    const ck = (0, work_1.curIdx)(p);
+    (0, work_1.stagesOf)(p).forEach((s, k) => {
+        const ks = s.docs.filter(d => (0, exports.laneOf)(d.key) === lane).map(d => d.key);
+        if (!ks.length)
+            return;
+        const sp = planSpan(p, k);
+        if (!sp)
+            return;
+        const done = ks.filter(x => (0, work_1.docOk)(p.docs[x])).length;
+        const late = ks.some(x => { const st = p.docs[x] || {}; const due = st.due || sp.b; return !(0, work_1.docOk)(st) && due < now; });
+        const state = done === ks.length ? 'done' : late ? 'late' : k <= ck ? 'doing' : 'wait';
+        out.push({ k, span: sp, state, done, total: ks.length, keys: ks });
+    });
+    return out;
+}
+// 전체 일정 한 줄 — 현재 단계·지연 일수·출시 목표
+function projRange(p) {
+    const plan = p.plan || {};
+    const ids = (0, work_1.stagesOf)(p).map(s => s.id);
+    const b = plan[ids[5]] || plan[ids[ids.length - 1]];
+    return p.start && b ? { a: p.start, b } : undefined;
+}
+const lateDays = (p, now = (0, ax_1.today)()) => (0, work_1.projLate)(p, now);
+exports.lateDays = lateDays;
+const typeDays = (p) => (0, exports.stdTotal)((0, devtype_1.typeOf)(p));
+exports.typeDays = typeDays;
+
+};
+__m["src/webparts/huromAxPlm/components/ui.js"]=function(module,exports,require){"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Field = exports.FileIcon = exports.ST_COLOR = exports.SHORT = exports.TypeTag = exports.pageUrl = exports.teamsChat = exports.uid = exports.md = exports.nowIso = exports.label = exports.card = exports.inp = exports.primary = exports.btn = exports.CSS = exports.font = exports.C = void 0;
+exports.Dot = Dot;
+exports.Due = Due;
+exports.PanelHead = PanelHead;
+const React = __importStar(require("react"));
+const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+// AX-PLM 공통 화면 조각 (1.0.130에서 AxWork.tsx에서 떼어 냄 — 품목 화면과 같이 씀)
+exports.C = { bg: '#FAFAFA', card: '#FFFFFF', line: '#E5E5E5', line2: '#D4D4D4', hover: '#F5F5F5', text: '#0A0A0A', sub: '#525252', faint: '#8A8A8A',
+    accent: '#4F46E5', accentBg: '#EEF2FF', ok: '#16A34A', soon: '#EA580C', late: '#DC2626', lock: '#A3A3A3' };
+exports.font = '"Pretendard", "Malgun Gothic", "Segoe UI", -apple-system, sans-serif';
+exports.CSS = `
+.axw{font-family:${exports.font};color:${exports.C.text};background:${exports.C.bg};font-size:14px;line-height:1.45;min-height:100vh;-webkit-font-smoothing:antialiased}
+.axw *{box-sizing:border-box}
+.axw button{font-family:inherit}
+.axw-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid ${exports.C.line};cursor:pointer;min-height:44px}
+.axw-row:first-child{border-top:none}
+.axw-row:hover{background:${exports.C.hover}}
+.axw-row.on{background:${exports.C.accentBg}}
+.axw-main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
+.axw-todo{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+.axw-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.axw-panel{position:sticky;top:72px}
+.axw-x{display:none}
+.axw-show-sm{display:none}
+.axw-rail{display:flex;gap:2px}
+@media (max-width:820px){
+  .axw-main,.axw-todo{grid-template-columns:minmax(0,1fr)}
+  .axw-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .axw-panel{position:static}
+  .axw-panel.sheet{position:fixed;left:0;right:0;bottom:0;top:auto;max-height:80vh;overflow:auto;z-index:30;border-radius:14px 14px 0 0 !important;box-shadow:0 -8px 30px rgba(0,0,0,.15)}
+  .axw-x{display:inline-block}
+  .axw-hide-sm{display:none !important}
+  .axw-show-sm{display:block}
+  .axw-rail{overflow-x:auto}
+  .axw-rail > button{min-width:108px !important;flex:0 0 108px !important}
+  .axw-pad{padding-left:14px !important;padding-right:14px !important}
+  .axw-top{gap:8px !important}
+  .axw-top nav button{padding:0 6px !important;font-size:13px !important}
+  .axw-top nav{flex:1 1 0;min-width:0;overflow-x:auto;scrollbar-width:none}
+  .axw-top nav::-webkit-scrollbar{display:none}
+  .axw-top > span[data-flex]{display:none}
+  .axw-cnt{display:none}
+  .axw-dash2{grid-template-columns:minmax(0,1fr) !important}
+}`;
+exports.btn = { border: `1px solid ${exports.C.line2}`, background: exports.C.card, color: exports.C.text, borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: exports.font, whiteSpace: 'nowrap' };
+exports.primary = Object.assign(Object.assign({}, exports.btn), { background: exports.C.accent, borderColor: exports.C.accent, color: '#fff' });
+exports.inp = { border: `1px solid ${exports.C.line2}`, borderRadius: 6, padding: '7px 9px', fontSize: 13, fontFamily: exports.font, color: exports.C.text, background: '#fff', minWidth: 0, width: '100%' };
+exports.card = { background: exports.C.card, border: `1px solid ${exports.C.line}`, borderRadius: 10 };
+exports.label = { fontSize: 12, color: exports.C.faint, fontWeight: 600 };
+const nowIso = () => new Date().toISOString();
+exports.nowIso = nowIso;
+const md = (s) => (s ? `${Number(s.slice(5, 7))}/${Number(s.slice(8, 10))}` : '—');
+exports.md = md;
+const uid = (p) => p + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+exports.uid = uid;
+const teamsChat = (mail, msg) => `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(mail)}&message=${encodeURIComponent(msg)}`;
+exports.teamsChat = teamsChat;
+const pageUrl = () => window.location.href.split('#')[0];
+exports.pageUrl = pageUrl;
+// 1.0.132
+// 유형 표시 — 회색 테두리 작은 글자 (상태색 안 씀)
+const TypeTag = (props) => React.createElement("span", { "data-ax-type": (0, devtype_1.typeOf)(props.p), title: (0, devtype_1.typeInfo)((0, devtype_1.typeOf)(props.p)).label, style: { display: 'inline-block', verticalAlign: 'middle', marginRight: 8, fontSize: 11.5, fontWeight: 700, lineHeight: '18px', padding: '0 6px', borderRadius: 4, border: `1px solid ${exports.C.line2}`, color: exports.C.sub, background: exports.C.card } }, (0, devtype_1.typeInfo)((0, devtype_1.typeOf)(props.p)).tag);
+exports.TypeTag = TypeTag;
+exports.SHORT = ['컨셉·기획', '공동검토', '설계·시제품', '개발·검증', '양산준비', '생산', '출시 후'];
+exports.ST_COLOR = { done: exports.C.ok, skip: exports.C.lock, late: exports.C.late, soon: exports.C.soon, open: exports.C.line2, lock: exports.C.lock, wait: exports.C.soon };
+function Dot(props) {
+    const z = props.size || 8;
+    return React.createElement("span", { style: { display: 'inline-block', width: z, height: z, borderRadius: '50%', flex: `0 0 ${z}px`, background: props.s === 'open' ? 'transparent' : exports.ST_COLOR[props.s], border: props.s === 'open' ? `1.5px solid ${exports.C.line2}` : 'none' } });
+}
+function Due(props) {
+    const left = (0, ax_1.daysTo)(props.due);
+    if (props.done)
+        return React.createElement("span", { style: { fontSize: 12.5, color: exports.C.faint } }, (0, exports.md)(props.due));
+    if (left === undefined)
+        return React.createElement("span", { style: { fontSize: 12.5, color: exports.C.faint } }, "\uAE30\uD55C \uC5C6\uC74C");
+    const col = left < 0 ? exports.C.late : left <= 7 ? exports.C.soon : exports.C.sub;
+    return React.createElement("span", { style: { fontSize: 12.5, color: col, fontWeight: left <= 7 ? 700 : 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } },
+        left < 0 ? `${-left}일 지연` : left === 0 ? '오늘' : `D-${left}`,
+        " ",
+        React.createElement("span", { style: { color: exports.C.faint, fontWeight: 500 } }, (0, exports.md)(props.due)));
+}
+const FileIcon = (props) => (React.createElement("svg", { width: "14", height: "16", viewBox: "0 0 14 16", style: { flex: '0 0 14px', opacity: props.on ? 1 : 0.25 }, "aria-label": props.on ? '파일 있음' : '파일 없음' },
+    React.createElement("path", { d: "M2 1h6l4 4v10H2z", fill: "none", stroke: props.on ? exports.C.text : exports.C.faint, strokeWidth: "1.3" }),
+    React.createElement("path", { d: "M8 1v4h4", fill: "none", stroke: props.on ? exports.C.text : exports.C.faint, strokeWidth: "1.3" })));
+exports.FileIcon = FileIcon;
+function PanelHead(props) {
+    return (React.createElement("div", { style: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: '14px 16px', borderBottom: `1px solid ${exports.C.line}` } },
+        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+            React.createElement("div", { style: { fontWeight: 700, fontSize: 15 } }, props.title),
+            props.sub && React.createElement("div", { style: { fontSize: 12, color: exports.C.faint, marginTop: 2 } }, props.sub)),
+        React.createElement("button", { "data-ax-panel-close": true, onClick: props.onClose, style: Object.assign(Object.assign({}, exports.btn), { padding: '3px 9px' }) }, "\uB2EB\uAE30")));
+}
+const Field = (props) => React.createElement("label", { style: { display: 'flex', flexDirection: 'column', gap: 5 } },
+    React.createElement("span", { style: exports.label }, props.l),
+    props.children);
+exports.Field = Field;
 
 };
 __m["src/webparts/huromDevHub/model/store.js"]=function(module,exports,require){"use strict";
@@ -2540,972 +4331,6 @@ exports.REAL_SAMPLES = [
 ];
 
 };
-__m["src/webparts/huromAxPlm/model/ax.js"]=function(module,exports,require){"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.allDone = exports.daysTo = exports.today = exports.setNow = exports.docsDone = exports.stageIdx = exports.stageOf = exports.AX_STAGES = void 0;
-exports.suggestPlan = suggestPlan;
-exports.careList = careList;
-exports.newProject = newProject;
-exports.moveTo = moveTo;
-exports.dday = dday;
-exports.fmt = fmt;
-exports.axSamples = axSamples;
-exports.simulate = simulate;
-exports.whereNow = whereNow;
-exports.stageElapsed = stageElapsed;
-const d = (key, label, proc) => ({ key, label, proc });
-// 단계별 핵심 산출물만 (엑셀 Task 약 125줄 중 단계마다 꼭 남을 것)
-exports.AX_STAGES = [
-    { id: 'S1', no: '①', name: '컨셉·기획', focus: '고객가치·차별점·기술 가능성 확인', gate: 'G1 기획 승인', docs: [
-            d('voc', 'Pain Point·VOC 근거', 'PROC-02D'), d('plan', '신제품 기획안 (컨셉)', 'PROC-11'), d('biz', '사업성 검토서', 'PROC-12'), d('g1rep', '경영진 보고·결정 기록', 'PROC-16')
-        ] },
-    { id: 'S2', no: '②', name: '공동검토·개발발의', focus: '요구사항·예산·일정·역할 합의', gate: 'G2 개발발의 승인', docs: [
-            d('rr', 'PM 지정·R&R', 'PROC-17'), d('spec', '최종 사양서', 'PROC-22'), d('kickoff', '개발발의서', 'PROC-23')
-        ] },
-    { id: 'S3', no: '③', name: '설계·시제품검증', focus: '금형 착수 전 설계 방향·평가 계획 확정', docs: [
-            d('sched', 'Kick off 회의록·대일정표', 'PROC-24'), d('cad', '3D 도면·Part list', 'PROC-26'), d('dr', '설계 DR 결과서', 'PROC-27A'), d('proto', '시제품 평가 결과서', 'PROC-28')
-        ] },
-    { id: 'S4', no: '④', name: '개발·검증', focus: '금형·T0~DPP~LPP 검증, 인쇄물·인증 준비', docs: [
-            d('mold', '금형 계약서', 'PROC-35'), d('trial', '시사출 검토서', 'PROC-40'), d('ppap', '부품 승인원', 'PROC-61'), d('cert', '국가별 인증서', 'PROC-56A'),
-            d('print', '최종 인쇄물 파일', 'PROC-77A'), d('issue', '문제점 관리대장', 'PROC-74')
-        ] },
-    { id: 'S5', no: '⑤', name: '양산·출시준비', focus: '양산 품질·생산 준비, 영업·마케팅·CS 출시 지원', gate: 'G3 출시 승인', docs: [
-            d('faq', 'FAQ 초안', 'PROC-84A'), d('usp', '제품 USP·웹기술서', 'PROC-84B'), d('launch', '출시 준비 보고서·소개서', 'PROC-85')
-        ] },
-    { id: 'S6', no: '⑥', name: '생산', focus: '초도 생산·출하·초도품 확인', docs: [
-            d('first', '초도 생산·출하 현황', 'PROC-86'), d('mpqa', '양산 검수 보고서', 'PROC-87')
-        ] },
-    { id: 'S7', no: '⑦', name: '출시 후 유통관리', focus: '시장 반응·VOC 대응, 회고를 다음 제품에', docs: [
-            d('vocr', 'VOC 분석 리포트', 'PROC-88'), d('close', '프로젝트 종료·회고', 'PROC-90A')
-        ] },
-];
-// 단계마다 사람이 하는 일 / AI가 하는 일 (심준보 msg 10342690 'AI들이 어디서 개입하고 사람이 무엇을 하고')
-const ROLES = {
-    S1: { human: ['컨셉·타깃 결정', 'G1 기획 승인 보고'], ai: ['시장·경쟁 제품 조사, VOC 정리', '사업성 계산 초안', '나라별 규제 미리 확인'] },
-    S2: { human: ['요구사항·예산·일정 합의', 'G2 개발발의 승인'], ai: ['사양서·개발발의서 초안', '과거 비슷한 모델 불량·교훈 찾아 주기'] },
-    S3: { human: ['설계 방향 결정, DR 주관', '시제품 평가'], ai: ['DR 체크리스트·과거 불량 미리 검토', '재질·부품 규제 확인(식품 접촉·RoHS 등)'] },
-    S4: { human: ['금형·시사출 확인', '인증 접수·문제 해결'], ai: ['인증 일정·서류 빠짐 챙기기', '문제점 대장 정리·같은 불량 이력 찾기', '인쇄물 문구 규제 검토'] },
-    S5: { human: ['양산 준비 점검', 'G3 출시 승인'], ai: ['FAQ·USP·출시 자료 초안', '나라별 표시사항 마지막 점검'] },
-    S6: { human: ['초도 생산·출하 확인'], ai: ['초도품 검수 결과 요약', '출하 일정 지연 알림'] },
-    S7: { human: ['VOC 대응 결정', '회고'], ai: ['VOC 분류·주간 요약', '회고 초안, 다음 제품에 넘길 교훈 정리'] },
-};
-exports.AX_STAGES.forEach(s => { const r = ROLES[s.id]; if (r) {
-    s.human = r.human;
-    s.ai = r.ai;
-} });
-const stageOf = (id) => exports.AX_STAGES.filter(s => s.id === id)[0] || exports.AX_STAGES[0];
-exports.stageOf = stageOf;
-const stageIdx = (id) => Math.max(0, exports.AX_STAGES.map(s => s.id).indexOf(id));
-exports.stageIdx = stageIdx;
-const docsDone = (p, s) => s.docs.filter(x => (p.docs[x.key] || {}).done).length;
-exports.docsDone = docsDone;
-// 시작일·출시 목표일로 단계별 목표일 나눠 주기 — 출시 = ⑥ 생산 끝(첫 출하), ⑦은 출시 뒤 90일
-const W = { S1: 15, S2: 8, S3: 15, S4: 42, S5: 12, S6: 8 };
-const ymd = (t) => `${t.getFullYear()}-${('0' + (t.getMonth() + 1)).slice(-2)}-${('0' + t.getDate()).slice(-2)}`;
-const day = (s) => new Date(s + 'T00:00:00');
-function suggestPlan(start, target) {
-    const a = day(start).getTime();
-    const z = day(target).getTime();
-    const out = {};
-    if (!(z > a))
-        return out;
-    let acc = 0;
-    ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].forEach(k => { acc += W[k]; out[k] = ymd(new Date(a + (z - a) * acc / 100)); });
-    out.S6 = target;
-    out.S7 = ymd(new Date(z + 90 * 86400000));
-    return out;
-}
-// 시간 손잡이(시뮬레이션) 중에는 '오늘'을 그 날짜로 바꿔 모든 계산이 같이 움직임 (심준보 msg 10366339)
-let NOW;
-const setNow = (d) => { NOW = d; };
-exports.setNow = setNow;
-const today = () => NOW || ymd(new Date());
-exports.today = today;
-const daysTo = (s, now = (0, exports.today)()) => (s ? Math.round((day(s).getTime() - day(now).getTime()) / 86400000) : undefined);
-exports.daysTo = daysTo;
-// 마지막 단계 산출물까지 다 채우면 끝난 것으로 봄
-const allDone = (p) => p.stage === exports.AX_STAGES[exports.AX_STAGES.length - 1].id && (0, exports.docsDone)(p, exports.AX_STAGES[exports.AX_STAGES.length - 1]) === exports.AX_STAGES[exports.AX_STAGES.length - 1].docs.length;
-exports.allDone = allDone;
-function careList(p, now = (0, exports.today)()) {
-    const out = [];
-    const s = (0, exports.stageOf)(p.stage);
-    if ((0, exports.allDone)(p))
-        return out;
-    const end = (p.plan || {})[s.id];
-    const left = s.docs.length - (0, exports.docsDone)(p, s);
-    const dl = (0, exports.daysTo)(end, now);
-    if (!p.owner)
-        out.push({ level: 'amber', text: 'PM이 안 정해졌어요' });
-    if (!end)
-        out.push({ level: 'amber', text: '단계 목표일이 없어요 — 시작일·출시 목표일을 넣으면 자동으로 나눠요' });
-    else if (dl !== undefined && dl < 0)
-        out.push({ level: 'red', text: `${s.no} ${s.name} 목표일 ${-dl}일 지남` });
-    else if (dl !== undefined && dl <= 7 && left > 0)
-        out.push({ level: 'amber', text: `${s.no} 목표일까지 ${dl}일 — 산출물 ${left}개 남음` });
-    if (s.gate && left > 0 && dl !== undefined && dl <= 14)
-        out.push({ level: 'amber', text: `${s.gate.split(' ')[0]} 앞 — ${s.docs.filter(x => !(p.docs[x.key] || {}).done).map(x => x.label).join(', ')}` });
-    const t = (0, exports.daysTo)(p.target, now);
-    if (t !== undefined && t < 0 && (0, exports.stageIdx)(p.stage) < 5)
-        out.push({ level: 'red', text: `출시 목표일 ${-t}일 지남` });
-    const last = p.log.length ? p.log[p.log.length - 1].at.slice(0, 10) : p.created.slice(0, 10);
-    const idle = -((0, exports.daysTo)(last, now) || 0);
-    if (idle >= 7)
-        out.push({ level: 'amber', text: `${idle}일째 기록 없음 — 진행 상황 한 줄 남겨 주세요` });
-    if (!p.next)
-        out.push({ level: 'amber', text: '다음 할 일이 비어 있어요' });
-    const open = (p.asks || []).filter(x => !x.answer).length;
-    if (open)
-        out.push({ level: 'amber', text: `AI 사전 검토 ${open}건 답 기다리는 중` });
-    return out;
-}
-function newProject(name, who, owner, target, start) {
-    const now = new Date().toISOString();
-    const st = start || now.slice(0, 10);
-    const id = 'ax' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
-    return { id, code: id, name, updated: now, created: now, stage: 'S1', owner: owner || who, target, start: st, plan: target ? suggestPlan(st, target) : undefined, docs: {}, gates: {}, log: [{ at: now, who, what: `프로젝트 시작 — ${name}`, kind: 'edit' }] };
-}
-// 단계 옮기기 — 막지 않음. 관문 단계에서 앞으로 가면 관문 통과 기록(빠진 산출물 수와 함께)
-function moveTo(p, to, who) {
-    const from = (0, exports.stageOf)(p.stage);
-    const dest = (0, exports.stageOf)(to);
-    if (from.id === dest.id)
-        return p;
-    const at = new Date().toISOString();
-    const fwd = (0, exports.stageIdx)(dest.id) > (0, exports.stageIdx)(from.id);
-    const log = [];
-    const gates = Object.assign({}, p.gates);
-    if (fwd) {
-        exports.AX_STAGES.slice((0, exports.stageIdx)(from.id), (0, exports.stageIdx)(dest.id)).forEach(s => {
-            if (!s.gate)
-                return;
-            const missing = s.docs.length - (0, exports.docsDone)(p, s);
-            gates[s.gate] = { at, by: who, missing };
-            log.push({ at, who, kind: 'gate', what: `${s.gate} 통과${missing ? ` (산출물 ${missing}개 빈 채로)` : ''}` });
-        });
-    }
-    log.push({ at, who, kind: 'move', what: `${from.no} ${from.name} → ${dest.no} ${dest.name}` });
-    return Object.assign(Object.assign({}, p), { stage: dest.id, gates, log: p.log.concat(log) });
-}
-function dday(target, today = day(NOW || ymd(new Date()))) {
-    if (!target)
-        return '';
-    const t = new Date(target + 'T00:00:00');
-    const n = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const diff = Math.round((t.getTime() - n.getTime()) / 86400000);
-    return diff === 0 ? 'D-day' : diff > 0 ? `D-${diff}` : `D+${-diff}`;
-}
-function fmt(iso) {
-    if (!iso)
-        return '';
-    const x = new Date(iso);
-    return `${x.getMonth() + 1}.${x.getDate()} ${('0' + x.getHours()).slice(-2)}:${('0' + x.getMinutes()).slice(-2)}`;
-}
-// 미리보기·처음 화면용 예시 — 음식물처리기·초음파 가습기 (심준보 msg 10366320 '이렇게 2개 샘플로'). 실제 목록이 비면 저장 없이 보여 줌
-function axSamples() {
-    const who = '심준보';
-    const iso = (d, h = 10) => `${d}T${('0' + h).slice(-2)}:00:00.000Z`;
-    const a = newProject('음식물처리기 (건조·분쇄형)', who, '심준보', '2027-03-31', '2026-06-01');
-    a.id = 'ax-sample-food';
-    a.code = a.id;
-    a.aiHelper = 'PC-곽두팔';
-    a.docs = { voc: { done: true }, plan: { done: true }, biz: { done: true }, g1rep: { done: true }, rr: { done: true }, spec: { done: true }, kickoff: { done: true }, sched: { done: true }, cad: { done: true }, dr: { done: true }, proto: { done: true }, mold: { done: true } };
-    const a2 = moveTo(moveTo(moveTo(a, 'S2', who), 'S3', who), 'S4', who);
-    a2.next = '시사출 검토 (T0) — 분쇄날 하우징 변형 확인';
-    a2.log = a2.log.concat([
-        { at: iso('2026-11-12', 1), who: 'PC-곽두팔', kind: 'doc', ai: true, what: '냄새 필터(활성탄) 교체 주기 VOC 212건 분류 — "3개월 전에 냄새남" 1순위, 인쇄물 문구에 반영 권고' },
-        { at: iso('2026-11-15', 2), who: 'PC-곽두팔', kind: 'note', ai: true, what: '같은 품목 해외 리콜 4건(과열·분쇄날 노출) 찾아 문제점 관리대장에 넣음' }
-    ]);
-    a2.brief = [{ at: iso('2026-11-17', 0), who: 'PC-곽두팔', text: '④ 개발·검증 일정대로예요. 이번 주 T0 시사출에서 분쇄날 하우징 변형과 건조 히터 주변 온도를 같이 보세요. KC 전기안전·EMC 시험은 1월 둘째 주 접수해야 출시 3/31에 맞아요.' }];
-    a2.asks = [{ id: 'q-food', at: iso('2026-11-14', 3), who: '심준보', stage: 'S4', text: '싱크대 분쇄기처럼 하수도로 흘려보내는 방식도 검토할까?', answer: '하수도로 흘려보내면 「주방용 오물분쇄기」라 환경부 인증(고형물 20% 미만 배출)이 따로 필요하고, 인증 없는 제품은 판매가 금지돼요. 지금 건조·분쇄형 그대로 가면 KC 전기안전·EMC로 충분해요.', answeredBy: 'PC-곽두팔', answeredAt: iso('2026-11-14', 5) }];
-    a2.start = '2026-06-01';
-    a2.plan = suggestPlan(a2.start, a2.target);
-    const b = newProject('초음파 가습기 (UV 살균 물통)', who, '김호철', '2027-08-31', '2026-11-03');
-    b.id = 'ax-sample-humid';
-    b.code = b.id;
-    b.aiHelper = 'PC-김호철(PLM)';
-    b.next = '경쟁 3사 물통 세척 구조 비교';
-    b.docs = { voc: { done: true } };
-    b.log = b.log.concat([{ at: iso('2026-11-16', 6), who: 'PC-김호철(PLM)', kind: 'doc', ai: true, what: '가습기 VOC 1,340건 정리 — "물통 세척 어려움"·"하얀 가루" 상위 2개를 Pain Point로 붙임' }]);
-    b.brief = [{ at: iso('2026-11-17', 0), who: 'PC-김호철(PLM)', text: 'G1까지 기획안·사업성 검토가 남았어요. 초음파 방식은 수돗물 미네랄이 "하얀 가루"로 퍼지는 불만이 많아 필터 카트리지를 기획에 넣길 권해요. 살균·항균을 광고하려면 시험 근거가 먼저 있어야 해요.' }];
-    b.asks = [{ id: 'q-humid', at: iso('2026-11-16', 7), who: '심준보', stage: 'S1', text: 'UV 살균 넣으면 광고에 "세균 99.9% 제거" 써도 돼?', answer: '공인 시험성적서(시험 균주·조건 명시)가 있어야 쓸 수 있고, 문구에 시험 조건을 같이 적어야 해요. 물에 살균제를 넣는 방식은 쓰지 마세요 — 가습기 살균제는 별도 승인 대상이에요.', answeredBy: 'PC-김호철(PLM)', answeredAt: iso('2026-11-16', 8) }];
-    b.plan = suggestPlan(b.start, b.target);
-    return [b, a2];
-}
-// 시간 손잡이 — 그 날짜까지 계획대로 흘렀다면 화면이 어떻게 채워지는지 만들어 보여 줌 (저장 안 함, 심준보 msg 10366339 '끝까지 닿으면 모든 내용 채워지고')
-function simulate(p, at) {
-    const plan = p.plan || {};
-    if (!p.start || !Object.keys(plan).length)
-        return p;
-    const who = p.aiHelper || 'AI 도우미';
-    const pm = p.owner || 'PM';
-    const t = day(at).getTime();
-    const end7 = plan.S7 ? day(plan.S7).getTime() : 0;
-    const all = end7 && t >= end7;
-    let exp = exports.AX_STAGES.length - 1;
-    if (!all)
-        for (let k = 0; k < exports.AX_STAGES.length; k++) {
-            const v = plan[exports.AX_STAGES[k].id];
-            if (v && day(v).getTime() >= t) {
-                exp = k;
-                break;
-            }
-        }
-    const docs = {};
-    const gates = {};
-    const log = [p.log[0]];
-    let curFrac = 1;
-    exports.AX_STAGES.forEach((s, k) => {
-        if (k > exp)
-            return;
-        const end = plan[s.id];
-        const beg = k === 0 ? p.start : plan[exports.AX_STAGES[k - 1].id];
-        const a = beg ? day(beg).getTime() : t;
-        const z = end ? day(end).getTime() : t;
-        const frac = k < exp || all ? 1 : Math.max(0, Math.min(1, (t - a) / Math.max(1, z - a)));
-        if (k === exp)
-            curFrac = frac;
-        const nd = Math.floor(s.docs.length * frac + 1e-9);
-        s.docs.forEach((d, i) => { if (i < nd)
-            docs[d.key] = { done: true, by: i % 2 ? who : pm, at: new Date(a + (z - a) * (i + 1) / (s.docs.length + 1)).toISOString() }; });
-        (s.ai || []).forEach((task, i) => {
-            const f = (i + 1) / ((s.ai || []).length + 1);
-            if (frac >= f)
-                log.push({ at: new Date(a + (z - a) * f).toISOString(), who, kind: 'doc', ai: true, what: `${s.no} ${task} — 끝냄` });
-        });
-        if (k < exp || all) {
-            const at2 = new Date(z).toISOString();
-            if (s.gate) {
-                gates[s.gate] = { at: at2, by: pm, missing: 0 };
-                log.push({ at: at2, who: pm, kind: 'gate', what: `${s.gate} 통과` });
-            }
-            if (k < exports.AX_STAGES.length - 1)
-                log.push({ at: at2, who: pm, kind: 'move', what: `${s.no} ${s.name} → ${exports.AX_STAGES[k + 1].no} ${exports.AX_STAGES[k + 1].name}` });
-        }
-    });
-    const st = exports.AX_STAGES[exp];
-    const left = st.docs.filter(d => !(docs[d.key] || {}).done);
-    const brief = { at: new Date(t).toISOString(), who, text: all
-            ? `출시 후 90일까지 모두 끝났어요. 7단계 산출물 ${exports.AX_STAGES.reduce((n, s) => n + s.docs.length, 0)}개, 관문 3개 통과, AI 작업 ${exports.AX_STAGES.reduce((n, s) => n + (s.ai || []).length, 0)}건이 기록됐어요. 회고는 다음 제품에 넘겨요.`
-            : `${st.no} ${st.name} ${Math.round(curFrac * 100)}% 지점이에요. 산출물 ${st.docs.length - left.length}/${st.docs.length}${left.length ? ` — 다음은 ${left[0].label}` : ' 다 채움'}. AI는 지금 「${(st.ai || [])[Math.min((st.ai || []).length - 1, Math.floor(curFrac * (st.ai || []).length))] || ''}」 하는 중.` };
-    return Object.assign(Object.assign({}, p), { stage: st.id, docs, gates, log: log.sort((x, y) => (x.at < y.at ? -1 : 1)), brief: (p.brief || []).concat([brief]), next: all ? '회고를 다음 제품에' : left.length ? left[0].label : '다음 관문 준비', closed: false });
-}
-function whereNow(p, now = (0, exports.today)()) {
-    const cur = (0, exports.stageIdx)(p.stage);
-    const plan = p.plan || {};
-    if ((0, exports.allDone)(p))
-        return { cur, exp: cur, pct: 1, state: 'ok', lateDays: 0, label: '모든 단계 완료 ✓' };
-    if (!p.start || !p.target || !Object.keys(plan).length)
-        return { cur, exp: cur, pct: 0, state: 'none', lateDays: 0, label: '일정 없음' };
-    const a = day(p.start).getTime();
-    const z = day(p.target).getTime();
-    const n = day(now).getTime();
-    const pct = Math.max(0, Math.min(1, (n - a) / Math.max(1, z - a)));
-    let exp = exports.AX_STAGES.length - 1;
-    for (let k = 0; k < exports.AX_STAGES.length; k++) {
-        const v = plan[exports.AX_STAGES[k].id];
-        if (v && day(v).getTime() >= n) {
-            exp = k;
-            break;
-        }
-    }
-    const end = plan[exports.AX_STAGES[cur].id];
-    const dl = (0, exports.daysTo)(end, now);
-    const lateDays = dl !== undefined && dl < 0 ? -dl : 0;
-    if (cur < exp)
-        return { cur, exp, pct, state: 'behind', lateDays, label: `${exp - cur}단계 뒤처짐${lateDays ? ` · ${lateDays}일 늦음` : ''}` };
-    if (lateDays)
-        return { cur, exp, pct, state: 'late', lateDays, label: `${lateDays}일 늦음` };
-    if (cur > exp)
-        return { cur, exp, pct, state: 'ahead', lateDays, label: `${cur - exp}단계 앞섬` };
-    return { cur, exp, pct, state: 'ok', lateDays, label: dl !== undefined ? `일정대로 · 단계 마감 D-${dl}` : '일정대로' };
-}
-// 단계 안에서 시간이 얼마나 흘렀나 (0~1) — 카드의 작은 진행 막대
-function stageElapsed(p, now = (0, exports.today)()) {
-    const plan = p.plan || {};
-    const i = (0, exports.stageIdx)(p.stage);
-    const end = plan[exports.AX_STAGES[i].id];
-    const beg = i === 0 ? p.start : plan[exports.AX_STAGES[i - 1].id];
-    if (!end || !beg)
-        return undefined;
-    const a = day(beg).getTime();
-    const z = day(end).getTime();
-    const n = day(now).getTime();
-    return Math.max(0, Math.min(1, (n - a) / Math.max(1, z - a)));
-}
-
-};
-__m["src/webparts/huromAxPlm/model/work.js"]=function(module,exports,require){"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.docLate = exports.projLate = exports.stageClear = exports.lastApproval = exports.stageDocsOk = exports.docOk = exports.gateKey = exports.ITEM_IMG = exports.stagesOf = void 0;
-exports.gateState = gateState;
-exports.unlocked = unlocked;
-exports.curIdx = curIdx;
-exports.settle = settle;
-exports.perf = perf;
-exports.lateItems = lateItems;
-exports.todos = todos;
-exports.workSamples = workSamples;
-// AX-PLM 1.0.128 — PM이 매일 쓰는 기능 (심준보 2026-11-17 #ax-plm msg 10389967 '실제 사용에도 문제없게 AX팀용 PLM' · 10389890/10389907 '게임 스킬 트리처럼 단계별로')
-// 스킬 트리 규칙: 단계 산출물을 다 채우면(또는 '필요 없음' + 사유) 다음 단계가 열림. 관문(G1~G3)은 보스 — 승인받아야 넘어감
-const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
-const item_1 = require("src/webparts/huromAxPlm/model/item.js");
-const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
-Object.defineProperty(exports, "stagesOf", { enumerable: true, get: function () { return devtype_1.stagesOf; } });
-const samples_1 = require("src/webparts/huromAxPlm/model/samples.js");
-exports.ITEM_IMG = 'https://simjb23-oss.github.io/hurom-ehr/axplm/items/'; // 곽두팔이 피그마로 만든 아이템 그림 (<키>.png). 없으면 기본 카드
-const gateKey = (gate) => (gate ? gate.split(' ')[0].toLowerCase() : '');
-exports.gateKey = gateKey;
-const docOk = (d) => !!d && (!!d.done || !!d.skip);
-exports.docOk = docOk;
-const stageDocsOk = (p, s) => s.docs.filter(x => (0, exports.docOk)(p.docs[x.key])).length;
-exports.stageDocsOk = stageDocsOk;
-const lastApproval = (p, gate) => (p.approvals || []).filter(a => a.gate === gate).slice(-1)[0];
-exports.lastApproval = lastApproval;
-function gateState(p, s) {
-    if (!s.gate)
-        return 'none';
-    const a = (0, exports.lastApproval)(p, s.gate);
-    if (a)
-        return a.kind === 'approve' ? 'approved' : a.kind === 'reject' ? 'rejected' : 'requested';
-    if (p.gates && p.gates[s.gate])
-        return 'approved'; // 1.0.127 이전에 넘긴 관문은 통과로 봄
-    return 'wait';
-}
-const stageClear = (p, s) => (0, exports.stageDocsOk)(p, s) === s.docs.length && (!s.gate || gateState(p, s) === 'approved');
-exports.stageClear = stageClear;
-// 그 단계가 열렸나 — 앞 단계가 모두 끝나야 열림
-function unlocked(p, k) {
-    for (let i = 0; i < k; i++)
-        if (!(0, exports.stageClear)(p, (0, devtype_1.stagesOf)(p)[i]))
-            return false;
-    return true;
-}
-// 지금 단계 = 처음으로 안 끝난 단계
-function curIdx(p) {
-    for (let i = 0; i < (0, devtype_1.stagesOf)(p).length; i++)
-        if (!(0, exports.stageClear)(p, (0, devtype_1.stagesOf)(p)[i]))
-            return i;
-    return (0, devtype_1.stagesOf)(p).length - 1;
-}
-// 바꾼 뒤 단계를 다시 맞춤 — 앞으로 가면 끝난 날(actual) 기록, 이력에 남김
-function settle(p, who) {
-    const k = curIdx(p);
-    const before = (0, ax_1.stageIdx)(p.stage);
-    if (k === before)
-        return p;
-    const at = new Date().toISOString();
-    const actual = Object.assign({}, (p.actual || {}));
-    const log = p.log.slice();
-    if (k > before)
-        for (let i = before; i < k; i++) {
-            actual[(0, devtype_1.stagesOf)(p)[i].id] = actual[(0, devtype_1.stagesOf)(p)[i].id] || (0, ax_1.today)();
-            log.push({ at, who, kind: 'move', what: `${(0, devtype_1.stagesOf)(p)[i].no} ${(0, devtype_1.stagesOf)(p)[i].name} 완료 → ${(0, devtype_1.stagesOf)(p)[i + 1].no} ${(0, devtype_1.stagesOf)(p)[i + 1].name} 열림` });
-        }
-    else {
-        for (let i = k; i < before; i++)
-            delete actual[(0, devtype_1.stagesOf)(p)[i].id];
-        log.push({ at, who, kind: 'move', what: `${(0, devtype_1.stagesOf)(p)[k].no} ${(0, devtype_1.stagesOf)(p)[k].name}(으)로 되돌아감` });
-    }
-    return Object.assign(Object.assign({}, p), { stage: (0, devtype_1.stagesOf)(p)[k].id, actual, log });
-}
-function perf(p, k, now = (0, ax_1.today)()) {
-    const s = (0, devtype_1.stagesOf)(p)[k];
-    const plan = (p.plan || {})[s.id];
-    const actual = (p.actual || {})[s.id];
-    const ck = curIdx(p);
-    const allClear = (0, exports.stageClear)(p, s);
-    const state = allClear && k < ck ? 'done' : allClear && k === (0, devtype_1.stagesOf)(p).length - 1 ? 'done' : k === ck ? 'doing' : 'todo';
-    let late = 0;
-    if (plan) {
-        const ref = state === 'done' ? (actual || plan) : now;
-        const d = (0, ax_1.daysTo)(plan, ref);
-        late = d !== undefined && d < 0 ? -d : 0;
-        if (state === 'todo')
-            late = 0;
-    }
-    return { plan, actual, late, state };
-}
-// 1.0.135 지연은 한 규칙 (곽두팔 msg 10484801): 계획일이 지났는데 안 끝난 것 — 단계 끝 계획일 또는 산출물 마감. 대시보드 문구·일정 판 색·지금 해야 할 것·전체 일정이 모두 이 값을 씀
-function lateItems(p, now = (0, ax_1.today)()) {
-    const out = [];
-    (0, devtype_1.stagesOf)(p).forEach((s, k) => {
-        if ((0, exports.stageClear)(p, s))
-            return;
-        const pl = (p.plan || {})[s.id];
-        const d0 = (0, ax_1.daysTo)(pl, now);
-        if (d0 !== undefined && d0 < 0)
-            out.push({ k, days: -d0 });
-        s.docs.forEach(x => { const st = p.docs[x.key] || {}; if ((0, exports.docOk)(st))
-            return; const d = (0, ax_1.daysTo)(st.due, now); if (d !== undefined && d < 0)
-            out.push({ k, key: x.key, days: -d }); });
-    });
-    return out;
-}
-const projLate = (p, now = (0, ax_1.today)()) => lateItems(p, now).reduce((a, x) => Math.max(a, x.days), 0);
-exports.projLate = projLate;
-const docLate = (p, key, now = (0, ax_1.today)()) => { const st = p.docs[key] || {}; const d = (0, ax_1.daysTo)(st.due, now); return !(0, exports.docOk)(st) && d !== undefined && d < 0; };
-exports.docLate = docLate;
-function todos(items, who, now = (0, ax_1.today)()) {
-    const out = [];
-    const me = (n) => who === '*' || (!!n && !!who && n.replace(/\s/g, '') === who.replace(/\s/g, '')); // 1.0.134 '*' = 팀 전체
-    items.forEach(p => {
-        const k = curIdx(p);
-        const s = (0, devtype_1.stagesOf)(p)[k];
-        const pm = me(p.owner);
-        (0, devtype_1.stagesOf)(p).forEach((s2, k2) => {
-            if (k2 < k)
-                return;
-            s2.docs.forEach(d => {
-                const st = p.docs[d.key] || {};
-                if ((0, exports.docOk)(st))
-                    return;
-                const due = st.due || (p.plan || {})[s2.id];
-                const left = (0, ax_1.daysTo)(due, now);
-                if (k2 !== k && !(left !== undefined && left < 0))
-                    return;
-                if (me(st.who) || (pm && !st.who))
-                    out.push({ pid: p.id, project: p.name, kind: '산출물', text: d.label, stage: k2, due, left, key: d.key });
-            });
-        });
-        if (s.gate && gateState(p, s) === 'requested' && me(p.approver))
-            out.push({ pid: p.id, project: p.name, kind: '승인', text: `${s.gate} 승인 요청`, stage: k, due: (p.plan || {})[s.id], left: (0, ax_1.daysTo)((p.plan || {})[s.id], now) });
-        (p.issues || []).filter(i => !i.done && (me(i.owner) || (pm && !i.owner))).forEach(i => out.push({ pid: p.id, project: p.name, kind: i.kind, text: i.text, stage: (0, ax_1.stageIdx)(i.stage), due: i.due, left: (0, ax_1.daysTo)(i.due, now) }));
-    });
-    return out.sort((a, b) => (a.left === undefined ? 9999 : a.left) - (b.left === undefined ? 9999 : b.left));
-}
-// 예시 — 1.0.127 예시에 담당·기한·승인·이슈·변경 이력을 채움 (저장 안 함)
-function workSamples0() {
-    const xs = (0, ax_1.axSamples)();
-    const iso = (d, h = 10) => `${d}T${('0' + h).slice(-2)}:00:00.000Z`;
-    return xs.map(p => {
-        if (p.id === 'ax-sample-food') {
-            const ap = [
-                { gate: 'G1 기획 승인', kind: 'request', at: iso('2026-06-13'), who: '심준보' }, { gate: 'G1 기획 승인', kind: 'approve', at: iso('2026-06-15'), who: '김현숙', note: '건조·분쇄형으로 진행' },
-                { gate: 'G2 개발발의 승인', kind: 'request', at: iso('2026-07-02'), who: '심준보' }, { gate: 'G2 개발발의 승인', kind: 'reject', at: iso('2026-07-03'), who: '김현숙', note: '원가 목표 다시' },
-                { gate: 'G2 개발발의 승인', kind: 'request', at: iso('2026-07-08'), who: '심준보' }, { gate: 'G2 개발발의 승인', kind: 'approve', at: iso('2026-07-09'), who: '김현숙' }
-            ];
-            const docs = Object.assign(Object.assign({}, p.docs), { trial: { who: '김호철', due: '2026-11-21' }, ppap: { who: '심준보', due: '2026-12-05' }, cert: { who: '김호철', due: '2027-01-15' }, print: { who: '심준보', due: '2026-12-20' }, issue: { done: true, by: 'PC-곽두팔', at: iso('2026-11-15') } });
-            return Object.assign(Object.assign({}, p), { docs, approver: '김현숙', approvals: ap, actual: { S1: '2026-06-15', S2: '2026-07-09', S3: '2026-09-04' }, issues: [{ id: 'i1', kind: '이슈', text: '분쇄날 하우징 변형 (T0 전 확인)', owner: '김호철', due: '2026-11-21', at: iso('2026-11-12'), who: '심준보', stage: 'S4' },
-                    { id: 'i2', kind: '리스크', text: 'KC EMC 시험 일정 밀리면 출시 지연', owner: '심준보', due: '2027-01-10', at: iso('2026-11-14'), who: 'PC-곽두팔', stage: 'S4' },
-                    { id: 'i3', kind: '이슈', text: '활성탄 필터 공급처 2곳 견적', owner: '심준보', due: '2026-10-30', done: true, doneAt: iso('2026-10-29'), at: iso('2026-10-20'), who: '심준보', stage: 'S4' }], changes: [{ id: 'c1', at: iso('2026-08-20'), who: '심준보', what: '용량 2L → 2.5L', why: 'VOC 4인 가족 하루 양 부족', stage: 'S3' }] });
-        }
-        return Object.assign(Object.assign({}, p), { approver: '김현숙', docs: Object.assign(Object.assign({}, p.docs), { plan: { who: '김호철', due: '2026-11-20' }, biz: { who: '심준보', due: '2026-11-24' }, g1rep: { who: '심준보' } }), issues: [{ id: 'i4', kind: '리스크', text: '"세균 99.9%" 광고는 공인 시험성적서 먼저', owner: '김호철', due: '2026-12-15', at: iso('2026-11-16'), who: 'PC-김호철(PLM)', stage: 'S1' }], changes: [] });
-    });
-}
-// 1.0.130 — 예시에 품목·BOM·도면 판·설계 변경·인증 데이터까지
-// 1.0.132 — 유형별 기록을 붙이고 파생·OEM·소싱 예시 추가 (5개)
-function workSamples() { return workSamples0().map(p => (0, samples_1.typeTheTwo)(Object.assign(Object.assign({}, p), (0, item_1.itemSamples)(p.id)))).concat((0, samples_1.moreSamples)()); }
-
-};
-__m["src/webparts/huromAxPlm/model/item.js"]=function(module,exports,require){"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.sampleOk = exports.bomNote = exports.roleFor = exports.VENDOR_ROLES = exports.mainVendor = exports.avgScore = exports.lastSample = exports.lastAprv = exports.changedParts = exports.moldT1ok = exports.lastTrial = exports.docsOfPart = exports.certsOfPart = exports.ecrsOfPart = exports.children = exports.needMark = exports.uid = void 0;
-exports.nextRev = nextRev;
-exports.bomTree = bomTree;
-exports.certState = certState;
-exports.newDocVersion = newDocVersion;
-exports.moveEcr = moveEcr;
-exports.itemSamples = itemSamples;
-exports.releaseState = releaseState;
-exports.gateChecks = gateChecks;
-exports.startItem = startItem;
-const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
-const nowIso = () => new Date().toISOString();
-const uid = (p) => p + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
-exports.uid = uid;
-// A → B, 01 → 02, Z → AA
-function nextRev(r) {
-    if (/^\d+$/.test(r)) {
-        const n = String(Number(r) + 1);
-        return r.length > n.length ? ('000' + n).slice(-r.length) : n;
-    }
-    const t = (r || 'A').toUpperCase();
-    if (t[t.length - 1] === 'Z')
-        return t + 'A';
-    return t.slice(0, -1) + String.fromCharCode(t.charCodeAt(t.length - 1) + 1);
-}
-// 플라스틱 25 g 이상은 재질 표기 대상 (자원재활용법 분리배출 표시·재질구조 — 사내 점검 기준)
-const PLASTIC = /\b(PP|PE|HDPE|LDPE|ABS|PC|POM|PA|PET|PBT|PS|SAN|Tritan|트라이탄|TPE|PMMA)\b/i;
-const needMark = (x) => !!x.material && PLASTIC.test(x.material) && (x.weight || 0) >= 25;
-exports.needMark = needMark;
-const children = (parts, parent) => parts.filter(x => (x.parent || '') === (parent || ''));
-exports.children = children;
-function bomTree(parts) {
-    const out = [];
-    const seen = {};
-    const walk = (parent, depth) => (0, exports.children)(parts, parent).forEach(x => { if (seen[x.no])
-        return; seen[x.no] = true; out.push({ part: x, depth }); walk(x.no, depth + 1); });
-    walk(undefined, 0);
-    parts.forEach(x => { if (!seen[x.no])
-        out.push({ part: x, depth: 0 }); }); // 부모가 없는 번호를 가리키는 줄도 빠지지 않게
-    return out;
-}
-const ecrsOfPart = (p, no) => (p.ecrs || []).filter(e => e.parts.indexOf(no) >= 0);
-exports.ecrsOfPart = ecrsOfPart;
-const certsOfPart = (p, no) => (p.certs || []).filter(c => c.part === no);
-exports.certsOfPart = certsOfPart;
-const docsOfPart = (p, no) => (p.docs2 || []).filter(d => d.part === no);
-exports.docsOfPart = docsOfPart;
-function certState(c, today) {
-    if (c.status === '만료')
-        return 'late';
-    if (c.status !== '취득')
-        return 'open';
-    if (!c.until)
-        return 'ok';
-    const d = Math.round((new Date(c.until + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000);
-    return d < 0 ? 'late' : d <= 90 ? 'soon' : 'ok';
-}
-// 도면·문서 새 판 — 지금 판은 prev에 쌓고 Rev 올림
-function newDocVersion(p, id, link, who, note) {
-    const at = nowIso();
-    const d = (p.docs2 || []).filter(x => x.id === id)[0];
-    if (!d)
-        return p;
-    const rev = nextRev(d.rev);
-    return Object.assign(Object.assign({}, p), { docs2: (p.docs2 || []).map(x => (x.id === id ? Object.assign(Object.assign({}, x), { prev: x.prev.concat([{ rev: x.rev, link: x.link, by: x.by, at: x.at, note: x.note }]), rev, link: link || undefined, by: who, at, note: note || undefined }) : x)), log: p.log.concat([{ at, who, kind: 'doc', what: `${d.kind} 「${d.title}」 Rev ${d.rev} → ${rev}${note ? ` — ${note}` : ''}` }]) });
-}
-// 설계 변경 상태 바꾸기 — 승인되면 ECO 번호를 붙이고 영향 부품 Rev를 한 단계 올리고, 사양 변경 이력에도 남김
-function moveEcr(p, id, to, who, note) {
-    const at = nowIso();
-    const e = (p.ecrs || []).filter(x => x.id === id)[0];
-    if (!e)
-        return p;
-    let parts = p.parts || [];
-    let eco = e.eco;
-    let revs = e.revs;
-    let changes = p.changes || [];
-    if (to === '승인') {
-        const n = (p.ecrs || []).filter(x => x.eco).length + 1;
-        eco = `ECO-${('00' + n).slice(-3)}`;
-        revs = {};
-        parts = parts.map(x => { if (e.parts.indexOf(x.no) < 0)
-            return x; const r = nextRev(x.rev); revs[x.no] = `${x.rev}→${r}`; return Object.assign(Object.assign({}, x), { rev: r }); });
-        changes = changes.concat([{ id: (0, exports.uid)('c'), at, who, what: `${eco} ${e.title}`, why: e.why, stage: p.stage }]);
-    }
-    const what = `${e.no} ${to}${to === '승인' ? ` → ${eco} (부품 ${e.parts.length}개 Rev 올림)` : ''}${note ? ` — ${note}` : ''}`;
-    return Object.assign(Object.assign({}, p), { parts, changes, ecrs: (p.ecrs || []).map(x => (x.id === id ? Object.assign(Object.assign({}, x), { status: to, eco, revs, log: x.log.concat([{ at, who, what: `${to}${note ? ` — ${note}` : ''}` }]) }) : x)), log: p.log.concat([{ at, who, kind: 'edit', what }]) });
-}
-// 예시 품목 데이터 — 음식물처리기·초음파 가습기 (저장 안 함)
-function itemSamples(id) {
-    const t = (d, h = 10) => `${d}T${('0' + h).slice(-2)}:00:00.000Z`;
-    if (id === 'ax-sample-food')
-        return {
-            itemCode: 'HFD-100',
-            parts: [
-                { no: 'HFD-100', name: '음식물처리기 완제품', rev: 'C', qty: 1 },
-                { no: 'HFD-110', name: '본체 하우징 ASSY', rev: 'B', parent: 'HFD-100', qty: 1 },
-                { no: 'HFD-111', name: '외관 커버', material: 'ABS (V-0)', weight: 412, supplier: '대성정밀', rev: 'B', parent: 'HFD-110', qty: 1 },
-                { no: 'HFD-112', name: '분쇄날 하우징', material: 'PBT GF30', weight: 138, supplier: '대성정밀', rev: 'C', parent: 'HFD-110', qty: 1 },
-                { no: 'HFD-113', name: '건조 히터 (450W)', material: '니크롬·운모', weight: 64, supplier: '한일히터', rev: 'A', parent: 'HFD-110', qty: 1 },
-                { no: 'HFD-120', name: '분쇄 모듈 ASSY', rev: 'B', parent: 'HFD-100', qty: 1 },
-                { no: 'HFD-121', name: '분쇄날', material: 'STS420J2', weight: 46, supplier: '세진금속', rev: 'B', parent: 'HFD-120', qty: 1 },
-                { no: 'HFD-122', name: 'BLDC 모터 24V', material: '—', weight: 310, supplier: '동양모터(중국)', rev: 'A', parent: 'HFD-120', qty: 1 },
-                { no: 'HFD-130', name: '음식물 통 (2.5 L)', material: 'PP', weight: 186, supplier: '대성정밀', rev: 'B', parent: 'HFD-100', qty: 1 },
-                { no: 'HFD-140', name: '활성탄 필터', material: 'PP 프레임·활성탄', weight: 22, supplier: '에코필', rev: 'A', parent: 'HFD-100', qty: 1 },
-                { no: 'HFD-150', name: '메인 PCB', material: 'FR-4', weight: 38, supplier: '성우전자', rev: 'B', parent: 'HFD-100', qty: 1 }
-            ],
-            docs2: [
-                { id: 'd1', kind: '도면', title: '외관 커버 2D·3D', part: 'HFD-111', rev: 'B', link: 'https://hurom.sharepoint.com/sites/AX/doc/HFD-111_B.pdf', by: '김호철', at: t('2026-09-02'), note: '배기구 위치 이동', prev: [{ rev: 'A', by: '김호철', at: t('2026-07-21'), note: '최초' }] },
-                { id: 'd2', kind: '도면', title: '분쇄날 하우징', part: 'HFD-112', rev: 'C', link: 'https://hurom.sharepoint.com/sites/AX/doc/HFD-112_C.pdf', by: '김호철', at: t('2026-11-05'), note: 'T0 전 리브 두께 1.8→2.4', prev: [{ rev: 'A', by: '김호철', at: t('2026-07-21') }, { rev: 'B', by: '김호철', at: t('2026-09-02'), note: '체결 보스 추가' }] },
-                { id: 'd3', kind: '사양서', title: '제품 사양서', rev: '03', link: 'https://hurom.sharepoint.com/sites/AX/doc/HFD-100_spec_03.docx', by: '심준보', at: t('2026-08-20'), note: '용량 2.5 L', prev: [{ rev: '01', by: '심준보', at: t('2026-06-28') }, { rev: '02', by: '심준보', at: t('2026-07-08') }] },
-                { id: 'd4', kind: '시험성적서', title: '건조 히터 온도 상승 시험', part: 'HFD-113', rev: 'A', link: 'https://hurom.sharepoint.com/sites/AX/doc/HFD-113_temp.pdf', by: '김호철', at: t('2026-10-14'), prev: [] }
-            ],
-            ecrs: [
-                { id: 'e1', no: 'ECR-001', title: '음식물 통 용량 2 L → 2.5 L', why: '4인 가족 하루 양 부족 (VOC 38건)', parts: ['HFD-130', 'HFD-111'], status: '승인', by: '심준보', at: t('2026-08-18'), eco: 'ECO-001', revs: { 'HFD-130': 'A→B', 'HFD-111': 'A→B' },
-                    log: [{ at: t('2026-08-18'), who: '심준보', what: '요청' }, { at: t('2026-08-19'), who: '김호철', what: '검토' }, { at: t('2026-08-20'), who: '김현숙', what: '승인' }] },
-                { id: 'e2', no: 'ECR-002', title: '분쇄날 하우징 리브 보강', why: '시제품 낙하 시험에서 하우징 변형', parts: ['HFD-112'], status: '승인', by: '김호철', at: t('2026-11-03'), eco: 'ECO-002', revs: { 'HFD-112': 'B→C' },
-                    log: [{ at: t('2026-11-03'), who: '김호철', what: '요청' }, { at: t('2026-11-04'), who: '김현숙', what: '승인' }] },
-                { id: 'e3', no: 'ECR-003', title: '필터 프레임 재질 PP → 생분해 PLA 검토', why: '친환경 마케팅 포인트, 원가 +320원', parts: ['HFD-140'], status: '검토', by: '심준보', at: t('2026-11-14'),
-                    log: [{ at: t('2026-11-14'), who: '심준보', what: '요청' }, { at: t('2026-11-15'), who: '김호철', what: '검토 — 내열 시험 필요' }] }
-            ],
-            certs: [
-                { id: 'c1', name: 'KC 전기안전 (안전인증)', part: 'HFD-100', status: '시험 중', region: '한국', link: 'https://hurom.sharepoint.com/sites/AX/doc/KC_apply.pdf' },
-                { id: 'c2', name: 'KC 전자파 적합성 (EMC)', part: 'HFD-150', status: '준비', region: '한국' },
-                { id: 'c3', name: '재질·구조 개선 평가 (포장재)', part: 'HFD-100', status: '준비', region: '한국' },
-                { id: 'c4', name: '식품용 기구 (음식물 통 PP)', part: 'HFD-130', status: '취득', no: 'FS-2026-1182', until: '2027-01-31', region: '한국' }
-            ],
-        };
-    if (id === 'ax-sample-humid')
-        return {
-            itemCode: 'HUH-200',
-            parts: [
-                { no: 'HUH-200', name: '초음파 가습기 완제품', rev: 'A', qty: 1 },
-                { no: 'HUH-210', name: '물통 (4 L)', material: 'Tritan', weight: 240, supplier: '미정', rev: 'A', parent: 'HUH-200', qty: 1 },
-                { no: 'HUH-220', name: '초음파 진동자 모듈', material: '세라믹', weight: 18, supplier: '미정', rev: 'A', parent: 'HUH-200', qty: 1 },
-                { no: 'HUH-230', name: 'UV-C LED 모듈', material: 'FR-4·석영', weight: 9, supplier: '미정', rev: 'A', parent: 'HUH-200', qty: 1 },
-                { no: 'HUH-240', name: '미네랄 필터 카트리지', material: 'PP 프레임·이온교환수지', weight: 55, supplier: '미정', rev: 'A', parent: 'HUH-200', qty: 1 }
-            ],
-            docs2: [{ id: 'd1', kind: '사양서', title: '컨셉 사양서', rev: '01', link: 'https://hurom.sharepoint.com/sites/AX/doc/HUH-200_concept.docx', by: '김호철', at: t('2026-11-12'), prev: [] }],
-            ecrs: [],
-            certs: [
-                { id: 'c1', name: 'KC 전기안전', part: 'HUH-200', status: '준비', region: '한국' },
-                { id: 'c2', name: '항균·살균 표시 근거 시험 (공인 성적서)', part: 'HUH-230', status: '준비', region: '한국' }
-            ],
-        };
-    return {};
-}
-// ---- 1.0.132 개발 유형별 규칙 ----
-const lastTrial = (m) => m.trials.slice(-1)[0];
-exports.lastTrial = lastTrial;
-// T1 이상 합격했나 (T0만 합격은 아님)
-const moldT1ok = (m) => m.trials.some(t => t.result === '합격' && /^T[1-9]/.test(t.round));
-exports.moldT1ok = moldT1ok;
-const changedParts = (p) => (p.parts || []).filter(x => !!x.baseRev && x.baseRev !== x.rev);
-exports.changedParts = changedParts;
-// OEM: 업체에 나간 판이 최신인가
-function releaseState(p, d) {
-    const by = {};
-    (p.releases || []).filter(r => r.doc === d.id).forEach(r => { by[r.vendor] = r; });
-    return Object.keys(by).map(v => ({ vendor: v, rev: by[v].rev, old: by[v].rev !== d.rev }));
-}
-const lastAprv = (v) => v.aprvs.slice(-1)[0];
-exports.lastAprv = lastAprv;
-const lastSample = (v) => v.samples.slice(-1)[0];
-exports.lastSample = lastSample;
-const avgScore = (v) => (v.evals.length ? Math.round(v.evals.reduce((n, e) => n + e.score, 0) / v.evals.length * 10) / 10 : undefined);
-exports.avgScore = avgScore;
-const mainVendor = (p, role) => (p.vendors || []).filter(v => v.role === role)[0];
-exports.mainVendor = mainVendor;
-exports.VENDOR_ROLES = ['금형', '부품', 'OEM 생산', 'ODM', '완제품 공급', '포장·인쇄'];
-const roleFor = (p) => { const t = (0, devtype_1.typeOf)(p); return t === 'odm' ? 'ODM' : t === 'sourcing' ? '완제품 공급' : t === 'oem' ? 'OEM 생산' : '금형'; };
-exports.roleFor = roleFor;
-function gateChecks(p0, s) {
-    const p = p0;
-    const t = (0, devtype_1.typeOf)(p);
-    const g = (s.gate || '').split(' ')[0];
-    const out = [];
-    if (t === 'own' && g === 'G2') {
-        const ms = p.molds || [];
-        out.push({ label: `금형 ${ms.length}벌 모두 T1 이상 합격 (${ms.filter(exports.moldT1ok).length}/${ms.length})`, ok: ms.length > 0 && ms.every(exports.moldT1ok) });
-    }
-    if (t === 'derive' && g === 'G2') {
-        const open = (p.ecrs || []).filter(e => e.status === '요청' || e.status === '검토').length;
-        out.push({ label: `진행 중 설계 변경 없음 (${open}건 남음)`, ok: open === 0 });
-        out.push({ label: `바뀐 부품 ${(0, exports.changedParts)(p).length}개 — ECO로 Rev 올라감`, ok: (0, exports.changedParts)(p).length > 0 });
-    }
-    if (t === 'oem' && g === 'G2') {
-        const old = (p.docs2 || []).filter(d => d.kind === '도면').reduce((n, d) => n + releaseState(p, d).filter(r => r.old).length, 0);
-        const sent = (p.docs2 || []).filter(d => d.kind === '도면' && releaseState(p, d).length).length;
-        out.push({ label: `업체에 나간 도면이 모두 최신 판 (옛 판 ${old}건)`, ok: sent > 0 && old === 0 });
-        const v = (0, exports.mainVendor)(p, 'OEM 생산');
-        const sm = v && (0, exports.lastSample)(v);
-        out.push({ label: `생산 업체 초도품 검사 합격${sm ? ` (${sm.round} ${sm.result})` : ''}`, ok: !!sm && sm.result === '합격' });
-    }
-    if (t === 'odm' && g === 'G2') { // 1.0.133 순서: 최종 샘플 합격 → 승인원 승인 (곽두팔 msg 10430179)
-        const v = (p.vendors || []).filter(x => x.role === 'ODM' && x.aprvs.length)[0] || (0, exports.mainVendor)(p, 'ODM');
-        const sm = v && (0, exports.lastSample)(v);
-        const a = v && (0, exports.lastAprv)(v);
-        out.push({ label: `최종 샘플 합격${sm ? ` (${sm.round} ${sm.result})` : ' — 아직 없음'}`, ok: !!sm && sm.result === '합격' });
-        out.push({ label: `ODM 업체 승인원 승인${a ? ` (${a.title} Rev ${a.rev} ${a.status})` : ' — 아직 없음'}`, ok: !!a && a.status === '승인' && !!sm && sm.result === '합격' });
-    }
-    if (t === 'sourcing' && g === 'G2') {
-        const v = (0, exports.mainVendor)(p, '완제품 공급');
-        const sm = v && (0, exports.lastSample)(v);
-        out.push({ label: `샘플 합격${sm ? ` (${sm.round} ${sm.result})` : ' — 아직 없음'}`, ok: !!sm && sm.result === '합격' });
-        const vc = (v && v.vcerts) || [];
-        out.push({ label: `업체 인증서 확인 (${vc.filter(c => c.ok).length}/${vc.length})`, ok: vc.length > 0 && vc.every(c => c.ok) });
-    }
-    if (g === 'G3' && t !== 'sourcing') {
-        const cs = p.certs || [];
-        out.push({ label: `인증 모두 취득 (${cs.filter(c => c.status === '취득').length}/${cs.length})`, ok: cs.every(c => c.status === '취득') });
-    }
-    return out;
-}
-const bomNote = (p) => (0, devtype_1.typeInfo)((0, devtype_1.typeOf)(p)).bomNote;
-exports.bomNote = bomNote;
-// 새 품목 시작 — 유형을 붙이고, 파생이면 기반 품목의 BOM·도면·인증을 복사 (바뀐 부품만 나중에 설계 변경으로)
-function startItem(p, t, code, base, who) {
-    const c = code.trim() || undefined;
-    const at = new Date().toISOString();
-    const x = Object.assign(Object.assign({}, p), { devType: t, itemCode: c });
-    if (t === 'derive' && base) {
-        const b = base;
-        const bc = b.itemCode || '';
-        const ren = (no) => (c && no === bc ? c : no); // 완제품 품번만 새로, 같이 쓰는 부품은 같은 품번 그대로 (바뀌면 설계 변경)
-        x.baseItem = bc || base.name;
-        x.parts = (b.parts || []).map(y => (Object.assign(Object.assign({}, y), { no: ren(y.no), parent: y.parent ? ren(y.parent) : undefined, baseRev: y.rev })));
-        x.docs2 = (b.docs2 || []).map(d => (Object.assign(Object.assign({}, d), { part: d.part ? ren(d.part) : undefined, note: `기반 모델 ${bc} 판`, prev: [] })));
-        x.certs = (b.certs || []).map(y => (Object.assign(Object.assign({}, y), { id: (0, exports.uid)('c'), part: y.part ? ren(y.part) : undefined, status: y.status === '취득' ? '취득' : y.status, name: y.name })));
-        x.log = p.log.concat([{ at, who, kind: 'edit', what: `파생 개발 — 기반 ${x.baseItem}에서 부품 ${(x.parts || []).length}개·도면 ${(x.docs2 || []).length}개·인증 ${(x.certs || []).length}개 복사` }]);
-    }
-    else if (c) {
-        x.parts = [{ no: c, name: p.name + (t === 'sourcing' ? '' : ' 완제품'), rev: 'A', qty: 1, kind: t === 'sourcing' ? '완제품' : undefined }];
-        x.log = p.log.concat([{ at, who, kind: 'edit', what: `개발 유형 ${(0, devtype_1.typeInfo)(t).label}` }]);
-    }
-    return x;
-}
-// 승인원은 마지막 샘플이 합격이어야 제출·승인 가능
-const sampleOk = (v) => { const x = (0, exports.lastSample)(v); return !!x && x.result === '합격'; };
-exports.sampleOk = sampleOk;
-
-};
-__m["src/webparts/huromAxPlm/model/devtype.js"]=function(module,exports,require){"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.stagesOf = exports.SOURCING_KINDS = exports.typeInfo = exports.typeOf = exports.DEV_TYPES = void 0;
-exports.stagesFor = stagesFor;
-// AX-PLM 1.0.132 — 개발 유형 5가지 (심준보 2026-11-17 #ax-plm msg 10424760 '소싱·금형개발·ODM·OEM 종합적으로 반영', 곽두팔 msg 10425015)
-// 품목·프로젝트를 만들 때 유형부터 고르고, 그에 따라 단계 산출물·관문 승인 기준·BOM 범위·관리할 기록(금형·도면 배포·샘플·승인원)이 바뀜
-// 단계 7개(S1~S7)와 계획일 칸은 모든 유형이 같음 — 이름·하는 일·산출물·관문 위치만 유형별
-const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
-exports.DEV_TYPES = [
-    { id: 'own', label: '자체 개발 (신규 금형)', tag: '자체', desc: '우리가 설계하고 금형을 새로 팜', drawing: '우리 도면 · 전체 BOM',
-        bomNote: '전체 BOM — 상하위 제한 없음, 금형 부품은 금형 번호와 연결', bomDepth: 9, mold: true, release: false, sample: false, price: false, food: false },
-    { id: 'derive', label: '파생 개발', tag: '파생', desc: '기존 품목을 복사해 색상·일부 부품만 바꿈', drawing: '기반 모델 도면 · 바뀐 부품만 설계 변경',
-        bomNote: '기반 모델 BOM을 그대로 복사 — 바뀐 부품만 설계 변경으로 Rev 올림', bomDepth: 9, mold: false, release: false, sample: false, price: false, food: false },
-    { id: 'oem', label: 'OEM (우리 설계 · 업체 생산)', tag: 'OEM', desc: '도면은 우리 것, 중국 제조사가 생산', drawing: '우리 도면 · 업체에 나간 판 관리',
-        bomNote: '전체 BOM — 업체에 나간 도면 판과 초도품·수입검사 기준이 핵심', bomDepth: 9, mold: true, release: true, sample: false, price: true, food: false },
-    { id: 'odm', label: 'ODM (업체 설계 · 생산)', tag: 'ODM', desc: '업체가 설계·생산, 우리는 사양·샘플 평가·승인원·우리 명의 인증', drawing: '업체 도면 · 우리는 승인원',
-        bomNote: '주요 부품·재질·식품(물) 접촉부만 — 완제품 아래 한 층', bomDepth: 1, mold: false, release: false, sample: true, price: true, food: true },
-    { id: 'sourcing', label: '소싱 (완제품·부자재 구매)', tag: '소싱', desc: '만들어진 제품을 사 옴 — 업체 선정·샘플·규격서·인증서·단가·MOQ', drawing: '업체 규격서',
-        bomNote: '완제품 한 줄 + 포장·매뉴얼·라벨만', bomDepth: 1, mold: false, release: false, sample: true, price: true, food: true },
-];
-const typeOf = (p) => ((p && p.devType) || 'own');
-exports.typeOf = typeOf;
-const typeInfo = (t) => exports.DEV_TYPES.filter(x => x.id === t)[0] || exports.DEV_TYPES[0];
-exports.typeInfo = typeInfo;
-exports.SOURCING_KINDS = ['완제품', '포장', '매뉴얼', '라벨'];
-const d = (key, label, proc = '') => ({ key, label, proc });
-// 공통으로 쓰는 산출물
-const VOC = d('voc', 'Pain Point·VOC 근거', 'PROC-02D');
-const G1REP = d('g1rep', '경영진 보고·결정 기록', 'PROC-16');
-const RR = d('rr', 'PM 지정·R&R', 'PROC-17');
-const CERT = d('cert', '국가별 인증서 (우리 명의)', 'PROC-56A');
-const PRINT = d('print', '최종 인쇄물 파일', 'PROC-77A');
-const ISSUE = d('issue', '문제점 관리대장', 'PROC-74');
-const FAQ = d('faq', 'FAQ 초안', 'PROC-84A');
-const LAUNCH = d('launch', '출시 준비 보고서·소개서', 'PROC-85');
-const VOCR = d('vocr', 'VOC 분석 리포트', 'PROC-88');
-const CLOSE = d('close', '프로젝트 종료·회고', 'PROC-90A');
-const S7 = { name: '출시 후 유통관리', short: '출시 후', focus: '시장 반응·VOC 대응, 회고를 다음 제품에', docs: [VOCR, CLOSE] };
-const TPL = {
-    own: {
-        S1: { name: '컨셉·기획', short: '컨셉·기획', focus: '고객가치·차별점·기술 가능성 확인', gate: 'G1 기획 승인', rule: '기획안·사업성 검토 끝, 경영진 결정 기록', docs: [VOC, d('plan', '신제품 기획안 (컨셉)', 'PROC-11'), d('biz', '사업성 검토서', 'PROC-12'), G1REP] },
-        S2: { name: '공동검토·개발발의', short: '공동검토', focus: '요구사항·예산·일정·역할 합의', docs: [RR, d('spec', '최종 사양서', 'PROC-22'), d('kickoff', '개발발의서', 'PROC-23')] },
-        S3: { name: '설계·시제품검증', short: '설계·시제품', focus: '금형 착수 전 설계 방향·평가 계획 확정', docs: [d('sched', 'Kick off 회의록·대일정표', 'PROC-24'), d('cad', '3D 도면·Part list', 'PROC-26'), d('dr', '설계 DR 결과서', 'PROC-27A'), d('proto', '시제품 평가 결과서', 'PROC-28')] },
-        S4: { name: '금형·시사출 (T0~T2)', short: '금형·시사출', focus: '금형 발주 → T0·T1·T2 시사출 → 부품 승인, 인증·인쇄물 준비', gate: 'G2 금형 T1 합격', rule: '모든 금형이 T1 이상 시사출 합격 (금형 탭)',
-            docs: [d('mold', '금형 발주·계약서 (금형 번호·업체)', 'PROC-35'), d('t0', 'T0 시사출 검토서', 'PROC-40'), d('t1', 'T1 시사출 검토서', 'PROC-40'), d('t2', 'T2 수정·최종 승인', 'PROC-40'), d('ppap', '부품 승인원', 'PROC-61'), CERT, PRINT, ISSUE] },
-        S5: { name: '양산·출시준비', short: '양산준비', focus: '양산 품질·생산 준비, 영업·마케팅·CS 출시 지원', gate: 'G3 출시 승인', rule: '인증 모두 취득, 출시 자료 끝', docs: [FAQ, d('usp', '제품 USP·웹기술서', 'PROC-84B'), LAUNCH] },
-        S6: { name: '생산', short: '생산', focus: '초도 생산·출하·초도품 확인', docs: [d('first', '초도 생산·출하 현황', 'PROC-86'), d('mpqa', '양산 검수 보고서', 'PROC-87')] },
-        S7,
-    },
-    derive: {
-        S1: { name: '파생 기획', short: '파생 기획', focus: '기반 모델과 무엇이 다른지(색상·부품·사양) 정함', gate: 'G1 파생 기획 승인', rule: '기반 모델·바뀌는 부품 목록 확정', docs: [d('base', '기반 모델·바뀌는 부품 목록'), d('plan', '파생 기획안 (색상·사양 차이)', 'PROC-11'), G1REP] },
-        S2: { name: '변경 사양 합의', short: '변경 합의', focus: '바뀌는 것만 사양·원가·일정 합의', docs: [RR, d('spec', '변경 사양서', 'PROC-22')] },
-        S3: { name: '변경 설계', short: '변경 설계', focus: '바뀐 부품만 설계 변경(ECR→ECO), 색상 샘플 승인', gate: 'G2 변경 부품 승인', rule: '진행 중 설계 변경 없음, 바뀐 부품 모두 ECO 승인',
-            docs: [d('ecr', '설계 변경 요청·ECO'), d('cmf', '색상·CMF 승인 샘플'), d('dr', '변경 부품 DR', 'PROC-27A')] },
-        S4: { name: '변경 검증', short: '변경 검증', focus: '바뀐 부품 승인원, 인증 변경 신고, 인쇄물 변경분', docs: [d('ppap', '변경 부품 승인원', 'PROC-61'), d('certchg', '인증 변경·추가 신고'), d('print', '인쇄물·라벨 변경분', 'PROC-77A'), ISSUE] },
-        S5: { name: '양산·출시준비', short: '양산준비', focus: '파생 모델 출시 자료', gate: 'G3 출시 승인', rule: '인증 변경 끝, 출시 자료 끝', docs: [d('usp', '파생 모델 소개·상세페이지', 'PROC-84B'), LAUNCH] },
-        S6: { name: '생산', short: '생산', focus: '초도 생산·색상 확인', docs: [d('first', '초도 생산·출하 현황', 'PROC-86'), d('mpqa', '양산 검수 보고서', 'PROC-87')] },
-        S7,
-    },
-    oem: {
-        S1: { name: '컨셉·기획', short: '컨셉·기획', focus: '고객가치·차별점, 생산 업체 후보', gate: 'G1 기획 승인', rule: '기획안·사업성 검토 끝, 경영진 결정 기록', docs: [VOC, d('plan', '신제품 기획안 (컨셉)', 'PROC-11'), d('biz', '사업성 검토서 (업체 단가 포함)', 'PROC-12'), G1REP] },
-        S2: { name: '공동검토·생산 업체 선정', short: '업체 선정', focus: '사양 확정, 생산 업체 선정·계약', docs: [RR, d('spec', '최종 사양서', 'PROC-22'), d('vendor', '생산 업체 선정·계약서')] },
-        S3: { name: '설계·도면 배포', short: '설계·배포', focus: '우리 도면 확정, 업체에 나간 판 기록', docs: [d('cad', '3D 도면·Part list', 'PROC-26'), d('dr', '설계 DR 결과서', 'PROC-27A'), d('release', '업체 배포 도면 판 기록'), d('proto', '시제품 평가 결과서', 'PROC-28')] },
-        S4: { name: '업체 생산·초도품 검사', short: '초도품 검사', focus: '업체 금형·시사출 확인, 초도품 검사·수입검사 기준', gate: 'G2 초도품 검사 합격', rule: '업체에 나간 도면이 최신 판, 초도품 검사 성적서 합격',
-            docs: [d('mold', '업체 금형·시사출 확인', 'PROC-40'), d('fai', '초도품 검사 성적서'), d('iqc', '수입검사 기준서'), CERT, PRINT, ISSUE] },
-        S5: { name: '양산·출시준비', short: '양산준비', focus: '양산 품질·출시 자료', gate: 'G3 출시 승인', rule: '인증 모두 취득, 출시 자료 끝', docs: [FAQ, LAUNCH] },
-        S6: { name: '생산·수입검사', short: '수입검사', focus: '초도 입고·수입검사', docs: [d('first', '초도 입고·출하 현황', 'PROC-86'), d('mpqa', '수입검사 결과', 'PROC-87')] },
-        S7,
-    },
-    odm: {
-        S1: { name: '요구 사양·업체 선정', short: '요구 사양', focus: '무엇을 원하는지 사양서로, ODM 업체 후보 평가', gate: 'G1 요구 사양 승인', rule: '요구 사양서 확정, ODM 업체 선정', docs: [VOC, d('req', '요구 사양서'), d('vendor', 'ODM 업체 후보 평가·선정'), G1REP] },
-        S2: { name: '견적·개발 계약', short: '개발 계약', focus: '단가·MOQ·일정·금형비 합의', docs: [RR, d('quote', '견적·개발 계약서')] },
-        S3: { name: '샘플 차수 평가', short: '샘플 평가', focus: '1차·2차 샘플 평가, 주요 부품·재질·식품(물) 접촉부 확인', docs: [d('s1', '1차 샘플 평가서'), d('s2', '2차 샘플 평가서'), d('keyparts', '주요 부품·재질·접촉부 목록')] },
-        S4: { name: '승인원·인증', short: '승인원·인증', focus: '최종 샘플 합격 → 업체 승인원 승인 → 우리 명의 인증', gate: 'G2 승인원 승인', rule: 'ODM 업체 승인원 승인 (협력사 탭)',
-            docs: [d('s3', '최종 샘플 평가서'), d('aprv', '업체 승인원'), CERT, PRINT, ISSUE] },
-        S5: { name: '출시준비', short: '출시준비', focus: '출시 자료·CS', gate: 'G3 출시 승인', rule: '우리 명의 인증 모두 취득', docs: [FAQ, LAUNCH] },
-        S6: { name: '초도 입고', short: '초도 입고', focus: '초도 입고·수입검사', docs: [d('iqc', '초도 수입검사 결과'), d('first', '입고·출하 현황', 'PROC-86')] },
-        S7,
-    },
-    sourcing: {
-        S1: { name: '구매 기획', short: '구매 기획', focus: '팔 제품·판매가·목표 마진', gate: 'G1 구매 기획 승인', rule: '단가·MOQ 견적 비교 끝', docs: [d('plan', '구매 기획 (판매가·목표 마진)'), d('price', '단가·MOQ 견적 비교'), G1REP] },
-        S2: { name: '업체 선정', short: '업체 선정', focus: '공급 업체 선정, 업체 인증서 확인', docs: [RR, d('vendor', '공급 업체 선정')] },
-        S3: { name: '샘플·규격 확인', short: '샘플·규격', focus: '샘플 평가, 구매 규격서, 업체 인증서·성적서', gate: 'G2 샘플 승인', rule: '샘플 합격 + 업체 인증서 확인 (협력사 탭)',
-            docs: [d('sample', '샘플 평가서'), d('specsheet', '구매 규격서'), d('vcert', '업체 인증서·시험성적서 확인')] },
-        S4: { name: '포장·인증·발주', short: '포장·발주', focus: '포장·매뉴얼·라벨, 수입 신고·필요 인증, 발주', docs: [d('pack', '포장·매뉴얼·라벨 파일'), d('cert', '수입 신고·필요 인증'), d('po', '발주서')] },
-        S5: { name: '판매 준비', short: '판매 준비', focus: '상세페이지·판매 채널', gate: 'G3 판매 승인', rule: '인증·라벨 끝, 첫 입고 일정 확정', docs: [LAUNCH] },
-        S6: { name: '입고', short: '입고', focus: '입고 검사·출하', docs: [d('iqc', '입고 검사 결과'), d('first', '입고·출하 현황', 'PROC-86')] },
-        S7,
-    },
-};
-// 유형별 단계 — 같은 id(S1~S7)·번호, 사람/AI 역할은 기본 단계 것을 씀
-const CACHE = {};
-function stagesFor(t) {
-    if (CACHE[t])
-        return CACHE[t];
-    const tpl = TPL[t] || TPL.own;
-    CACHE[t] = ax_1.AX_STAGES.map(s => { const x = tpl[s.id]; return Object.assign(Object.assign({}, s), { name: x.name, short: x.short, focus: x.focus, gate: x.gate, gateRule: x.rule, docs: x.docs }); });
-    return CACHE[t];
-}
-const stagesOf = (p) => stagesFor((0, exports.typeOf)(p));
-exports.stagesOf = stagesOf;
-
-};
-__m["src/webparts/huromAxPlm/model/samples.js"]=function(module,exports,require){"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.typeTheTwo = typeTheTwo;
-exports.moreSamples = moreSamples;
-// AX-PLM 1.0.132 — 개발 유형마다 예시 하나씩 (저장 안 함). HFD-100 = 자체 개발, HUH-200 = ODM (곽두팔 msg 10425015)
-const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
-const iso = (d, h = 10) => `${d}T${('0' + h).slice(-2)}:00:00.000Z`;
-const V = (id, name, role, country, x = {}) => (Object.assign({ id, name, role, country, samples: [], aprvs: [], evals: [], vcerts: [] }, x));
-const done = (keys, by = '심준보', at = '2026-10-01') => {
-    const o = {};
-    keys.forEach(k => { o[k] = { done: true, by, at: iso(at) }; });
-    return o;
-};
-const g1 = (gate, d) => [{ gate, kind: 'request', at: iso(d), who: '심준보' }, { gate, kind: 'approve', at: iso(d, 15), who: '김현숙' }];
-// 기존 예시 두 개(음식물처리기·가습기)에 유형별 기록을 붙임
-function typeTheTwo(p0) {
-    const p = p0;
-    if (p.id === 'ax-sample-food') {
-        const docs = Object.assign(Object.assign(Object.assign({}, p.docs), done(['t0'], '김호철', '2026-10-28')), { t1: { who: '김호철', due: '2026-11-21' }, t2: { who: '김호철', due: '2026-12-05' }, ppap: { who: '심준보', due: '2026-12-12' } });
-        delete docs.trial;
-        return Object.assign(Object.assign({}, p), { devType: 'own', docs, approvals: (p.approvals || []).filter(a => a.gate.indexOf('G1') === 0), parts: (p.parts || []).map(x => (x.no === 'HFD-111' ? Object.assign(Object.assign({}, x), { mold: 'M-111' }) : x.no === 'HFD-112' ? Object.assign(Object.assign({}, x), { mold: 'M-112' }) : x.no === 'HFD-130' ? Object.assign(Object.assign({}, x), { mold: 'M-130' }) : x)), molds: [
-                { id: 'm1', no: 'M-111', part: 'HFD-111', vendor: '대성정밀', cavity: 1, trials: [{ round: 'T0', at: iso('2026-10-24'), result: '수정', note: '배기구 주변 웰드라인', who: '김호철' }, { round: 'T1', at: iso('2026-11-13'), result: '합격', note: '치수 46/46 OK', who: '김호철' }] },
-                { id: 'm2', no: 'M-112', part: 'HFD-112', vendor: '대성정밀', cavity: 2, trials: [{ round: 'T0', at: iso('2026-10-24'), result: '수정', note: '리브 변형 → ECO-002로 리브 2.4 mm', who: '김호철' }] },
-                { id: 'm3', no: 'M-130', part: 'HFD-130', vendor: '대성정밀', cavity: 1, trials: [{ round: 'T0', at: iso('2026-10-24'), result: '합격', who: '김호철' }, { round: 'T1', at: iso('2026-11-13'), result: '합격', who: '김호철' }] }
-            ], vendors: [
-                V('v1', '대성정밀', '금형', '한국', { contact: '박영수 부장', evals: [{ at: iso('2026-11-13'), who: '김호철', score: 4, note: 'T1 수정 빠름, 리브 금형 수정 1주' }] }),
-                V('v2', '동양모터(중국)', '부품', '중국', { unit: 'USD 6.80', moq: 3000, vcerts: [{ name: 'ISO 9001', until: '2027-06-30', ok: true }], samples: [{ id: 's1', round: '1차', at: iso('2026-09-20'), result: '합격', note: '소음 42 dB', who: '김호철' }], aprvs: [{ id: 'a1', title: 'BLDC 모터 승인원', rev: '01', at: iso('2026-10-02'), status: '승인', who: '김호철' }] }),
-                V('v3', '한일히터', '부품', '한국', { samples: [{ id: 's2', round: '1차', at: iso('2026-10-14'), result: '합격', note: '온도 상승 시험 통과', who: '김호철' }] })
-            ] });
-    }
-    if (p.id === 'ax-sample-humid') {
-        const docs = { voc: { done: true }, req: { who: '김호철', due: '2026-11-20' }, vendor: { who: '심준보', due: '2026-11-24' }, g1rep: { who: '심준보' } };
-        const odm = '선전 아쿠아미스트(중국)';
-        return Object.assign(Object.assign({}, p), { devType: 'odm', docs, next: 'ODM 후보 2곳 비교 — 물통 세척 구조·UV-C 자체 시험 여부', parts: (p.parts || []).map(x => (Object.assign(Object.assign({}, x), { supplier: x.parent ? `${odm} (후보)` : x.supplier, food: x.no === 'HUH-210' || x.no === 'HUH-220' || x.no === 'HUH-240' || undefined }))), vendors: [
-                V('v1', odm, 'ODM', '중국', { contact: 'Ms. Lin', unit: 'USD 18.40', moq: 2000, vcerts: [{ name: 'ISO 9001', until: '2027-03-31', ok: true }, { name: 'UV-C 살균 시험성적서 (자체)', ok: false }], evals: [{ at: iso('2026-11-14'), who: '김호철', score: 4, note: 'UV-C 물통 구조 있음, 금형 보유' }] }),
-                V('v2', '닝보 쿨브리즈(중국)', 'ODM', '중국', { unit: 'USD 15.90', moq: 5000, evals: [{ at: iso('2026-11-14'), who: '김호철', score: 3, note: '단가 낮지만 MOQ 큼, 살균 근거 없음' }] })
-            ] });
-    }
-    return p0;
-}
-// 새 예시 3개 — 파생·OEM·소싱
-function moreSamples() {
-    // 파생 개발 — 기존 원액기 색상 모델
-    const d = (0, ax_1.newProject)('원액기 H-AI 세이지 그린 (파생)', '심준보', '심준보', '2027-02-27', '2026-10-06');
-    d.id = 'ax-sample-derive';
-    d.code = d.id;
-    d.devType = 'derive';
-    d.itemCode = 'HZA-SG';
-    d.baseItem = 'HZA-100 원액기 H-AI';
-    d.approver = '김현숙';
-    d.docs = Object.assign(Object.assign(Object.assign({}, done(['base', 'plan', 'g1rep', 'rr', 'spec'], '심준보', '2026-10-20')), done(['ecr'], '김호철', '2026-11-10')), { cmf: { who: '심준보', due: '2026-11-25' }, dr: { who: '김호철', due: '2026-11-28' } });
-    d.approvals = g1('G1 파생 기획 승인', '2026-10-15');
-    d.parts = [
-        { no: 'HZA-SG', name: '원액기 H-AI 세이지 그린', rev: 'B', baseRev: 'A', qty: 1 },
-        { no: 'HZA-SG-10', name: '외관 하우징 ASSY', rev: 'B', baseRev: 'A', parent: 'HZA-SG', qty: 1 },
-        { no: 'HZA-SG-11', name: '컬러 커버 (세이지 그린)', material: 'ABS', weight: 268, supplier: '대성정밀', rev: 'B', baseRev: 'A', parent: 'HZA-SG-10', qty: 1 },
-        { no: 'HZA-SG-12', name: '본체 베이스', material: 'PC', weight: 410, supplier: '대성정밀', rev: 'A', baseRev: 'A', parent: 'HZA-SG-10', qty: 1 },
-        { no: 'HZA-SG-20', name: '착즙 모듈 ASSY', rev: 'A', baseRev: 'A', parent: 'HZA-SG', qty: 1 },
-        { no: 'HZA-SG-21', name: '스크류', material: 'Ultem', weight: 96, supplier: '세진정밀', rev: 'A', baseRev: 'A', parent: 'HZA-SG-20', qty: 1 },
-        { no: 'HZA-SG-22', name: '드럼', material: 'Tritan', weight: 152, supplier: '세진정밀', rev: 'A', baseRev: 'A', parent: 'HZA-SG-20', qty: 1 },
-        { no: 'HZA-SG-23', name: '스마트 호퍼 뚜껑 (그린 틴트)', material: 'Tritan', weight: 118, supplier: '세진정밀', rev: 'B', baseRev: 'A', parent: 'HZA-SG-20', qty: 1 },
-        { no: 'HZA-SG-30', name: 'BLDC 모터', material: '—', weight: 1180, supplier: '동양모터(중국)', rev: 'A', baseRev: 'A', parent: 'HZA-SG', qty: 1 },
-        { no: 'HZA-SG-40', name: '컬러 박스·매뉴얼', material: '종이', weight: 640, supplier: '한솔인쇄', rev: 'A', baseRev: 'A', parent: 'HZA-SG', qty: 1 }
-    ];
-    d.docs2 = [
-        { id: 'd1', kind: '도면', title: '컬러 커버', part: 'HZA-SG-11', rev: 'B', by: '김호철', at: iso('2026-11-08'), note: '색상 세이지 그린 (Pantone 5625C)', prev: [{ rev: 'A', by: '김호철', at: iso('2026-10-06'), note: '기반 모델 HZA-100 판' }] },
-        { id: 'd2', kind: '사양서', title: '변경 사양서 (색상·호퍼 틴트)', rev: '01', by: '심준보', at: iso('2026-10-20'), prev: [] }
-    ];
-    d.ecrs = [
-        { id: 'e1', no: 'ECR-001', title: '컬러 커버·호퍼 뚜껑 색상 변경', why: '세이지 그린 파생 모델', parts: ['HZA-SG-11', 'HZA-SG-23'], status: '승인', by: '심준보', at: iso('2026-11-06'), eco: 'ECO-001', revs: { 'HZA-SG-11': 'A→B', 'HZA-SG-23': 'A→B' },
-            log: [{ at: iso('2026-11-06'), who: '심준보', what: '요청' }, { at: iso('2026-11-08'), who: '김현숙', what: '승인' }] },
-        { id: 'e2', no: 'ECR-002', title: '컬러 박스 인쇄 색상 맞춤', why: '본체 색과 박스 색 차이 (샘플 비교)', parts: ['HZA-SG-40'], status: '검토', by: '심준보', at: iso('2026-11-14'), log: [{ at: iso('2026-11-14'), who: '심준보', what: '요청' }] }
-    ];
-    d.certs = [
-        { id: 'c1', name: 'KC 전기안전 (기반 모델 인증 — 색상 변경 신고)', part: 'HZA-SG', status: '준비', region: '한국' },
-        { id: 'c2', name: '식품용 기구 (드럼·스크류)', part: 'HZA-SG-22', status: '취득', no: 'FS-2025-0412', until: '2028-03-31', region: '한국' }
-    ];
-    d.vendors = [V('v1', '대성정밀', '부품', '한국', { samples: [{ id: 's1', round: '1차', at: iso('2026-11-12'), result: '보완', note: '색차 ΔE 2.1 — 1.0 이하로', who: '심준보' }] }), V('v2', '한솔인쇄', '포장·인쇄', '한국')];
-    d.next = '색상 샘플 2차 (ΔE 1.0 이하) 확인';
-    d.issues = [{ id: 'i1', kind: '이슈', text: '컬러 커버 색차 ΔE 2.1 — 대성정밀 2차 샘플', owner: '심준보', due: '2026-11-25', at: iso('2026-11-12'), who: '심준보', stage: 'S3' }];
-    d.changes = [];
-    d.plan = (0, ax_1.suggestPlan)(d.start, d.target);
-    d.stage = 'S3';
-    d.actual = { S1: '2026-10-15', S2: '2026-10-30' };
-    // OEM — 우리 도면, 중국 제조사 생산
-    const o = (0, ax_1.newProject)('진공 블렌더 (OEM)', '심준보', '김호철', '2027-04-30', '2026-07-01');
-    const fab = '포산 리화전기(중국)';
-    o.id = 'ax-sample-oem';
-    o.code = o.id;
-    o.devType = 'oem';
-    o.itemCode = 'HVB-300';
-    o.approver = '김현숙';
-    o.docs = Object.assign(Object.assign(Object.assign({}, done(['voc', 'plan', 'biz', 'g1rep', 'rr', 'spec', 'vendor', 'cad', 'dr', 'release', 'proto'], '김호철', '2026-09-30')), done(['mold'], '김호철', '2026-11-10')), { fai: { who: '김호철', due: '2026-11-27' }, iqc: { who: '심준보', due: '2026-12-04' }, cert: { who: '김호철', due: '2027-01-20' }, print: { who: '심준보', due: '2027-01-10' } });
-    o.approvals = g1('G1 기획 승인', '2026-07-20');
-    o.parts = [
-        { no: 'HVB-300', name: '진공 블렌더 완제품', rev: 'B', qty: 1 },
-        { no: 'HVB-310', name: '용기 ASSY (1.5 L)', rev: 'C', parent: 'HVB-300', qty: 1 },
-        { no: 'HVB-311', name: '용기', material: 'Tritan', weight: 520, supplier: fab, rev: 'C', parent: 'HVB-310', qty: 1, mold: 'M-V01' },
-        { no: 'HVB-312', name: '칼날 ASSY', material: 'STS304', weight: 88, supplier: fab, rev: 'A', parent: 'HVB-310', qty: 1 },
-        { no: 'HVB-320', name: '진공 펌프 모듈', material: '—', weight: 210, supplier: fab, rev: 'A', parent: 'HVB-300', qty: 1 },
-        { no: 'HVB-330', name: '본체 하우징', material: 'ABS', weight: 860, supplier: fab, rev: 'B', parent: 'HVB-300', qty: 1, mold: 'M-V02' },
-        { no: 'HVB-340', name: '메인 PCB', material: 'FR-4', weight: 46, supplier: fab, rev: 'B', parent: 'HVB-300', qty: 1 }
-    ];
-    o.docs2 = [
-        { id: 'd1', kind: '도면', title: '용기', part: 'HVB-311', rev: 'C', by: '김호철', at: iso('2026-11-11'), note: '눈금 인쇄 위치 5 mm 내림', prev: [{ rev: 'A', by: '김호철', at: iso('2026-08-12') }, { rev: 'B', by: '김호철', at: iso('2026-09-25'), note: '진공 씰 홈 깊이' }] },
-        { id: 'd2', kind: '도면', title: '칼날 ASSY', part: 'HVB-312', rev: 'A', by: '김호철', at: iso('2026-08-12'), prev: [] },
-        { id: 'd3', kind: '도면', title: '본체 하우징', part: 'HVB-330', rev: 'B', by: '김호철', at: iso('2026-09-25'), prev: [{ rev: 'A', by: '김호철', at: iso('2026-08-12') }] }
-    ];
-    o.releases = [
-        { id: 'r1', doc: 'd1', rev: 'A', vendor: fab, at: iso('2026-08-13'), who: '김호철' }, { id: 'r2', doc: 'd1', rev: 'B', vendor: fab, at: iso('2026-09-26'), who: '김호철' },
-        { id: 'r3', doc: 'd2', rev: 'A', vendor: fab, at: iso('2026-08-13'), who: '김호철' }, { id: 'r4', doc: 'd3', rev: 'B', vendor: fab, at: iso('2026-09-26'), who: '김호철' }
-    ];
-    o.molds = [
-        { id: 'm1', no: 'M-V01', part: 'HVB-311', vendor: fab, cavity: 1, trials: [{ round: 'T0', at: iso('2026-10-20'), result: '수정', note: '씰 홈 버', who: '김호철' }, { round: 'T1', at: iso('2026-11-09'), result: '합격', who: '김호철' }] },
-        { id: 'm2', no: 'M-V02', part: 'HVB-330', vendor: fab, cavity: 1, trials: [{ round: 'T0', at: iso('2026-10-20'), result: '합격', who: '김호철' }] }
-    ];
-    o.vendors = [V('v1', fab, 'OEM 생산', '중국', { contact: 'Mr. Chen (QA)', unit: 'USD 41.20', moq: 2000, vcerts: [{ name: 'ISO 9001', until: '2027-09-30', ok: true }, { name: 'BSCI 감사', until: '2027-02-28', ok: true }],
-            samples: [{ id: 's1', round: '1차', at: iso('2026-11-12'), result: '보완', note: '초도품 진공 유지 30초 → 기준 60초', who: '김호철' }], evals: [{ at: iso('2026-11-12'), who: '김호철', score: 3, note: '대응 빠름, 진공 품질 보완 필요' }] })];
-    o.certs = [
-        { id: 'c1', name: 'KC 전기안전', part: 'HVB-300', status: '시험 중', region: '한국' },
-        { id: 'c2', name: '식품용 기구 (용기 Tritan)', part: 'HVB-311', status: '취득', no: 'FS-2026-0933', until: '2029-10-31', region: '한국' }
-    ];
-    o.issues = [{ id: 'i1', kind: '이슈', text: '용기 도면 Rev C가 업체에 안 나감 — 초도품은 Rev B로 만들어짐', owner: '김호철', due: '2026-11-20', at: iso('2026-11-12'), who: '김호철', stage: 'S4' }];
-    o.changes = [];
-    o.next = '용기 도면 Rev C 업체 배포 → 초도품 2차 검사';
-    o.plan = (0, ax_1.suggestPlan)(o.start, o.target);
-    o.stage = 'S4';
-    o.actual = { S1: '2026-07-20', S2: '2026-08-05', S3: '2026-09-30' };
-    // 소싱 — 완제품 구매
-    const s = (0, ax_1.newProject)('원액기 전용 세척솔 세트 (소싱)', '심준보', '심준보', '2027-01-15', '2026-10-13');
-    const sup = '이우 클린웨어(중국)';
-    s.id = 'ax-sample-sourcing';
-    s.code = s.id;
-    s.devType = 'sourcing';
-    s.itemCode = 'HCB-01';
-    s.approver = '김현숙';
-    s.docs = Object.assign(Object.assign({}, done(['plan', 'price', 'g1rep', 'rr', 'vendor', 'sample'], '심준보', '2026-11-05')), { specsheet: { who: '심준보', due: '2026-11-21' }, vcert: { who: '김호철', due: '2026-11-24' } });
-    s.approvals = g1('G1 구매 기획 승인', '2026-10-24');
-    s.parts = [
-        { no: 'HCB-01', name: '세척솔 세트 (3종)', material: 'PP 손잡이·PBT 솔모', weight: 64, supplier: sup, rev: 'A', qty: 1, kind: '완제품', food: true },
-        { no: 'HCB-01-P', name: '크라프트 박스', material: '종이', weight: 38, supplier: sup, rev: 'A', parent: 'HCB-01', qty: 1, kind: '포장' },
-        { no: 'HCB-01-M', name: '사용 안내 (한/영)', material: '종이', weight: 6, supplier: '한솔인쇄', rev: 'A', parent: 'HCB-01', qty: 1, kind: '매뉴얼' },
-        { no: 'HCB-01-L', name: '표시 라벨 (재질·원산지·수입원)', material: '아트지', weight: 1, supplier: '한솔인쇄', rev: 'A', parent: 'HCB-01', qty: 1, kind: '라벨' }
-    ];
-    s.docs2 = [{ id: 'd1', kind: '사양서', title: '구매 규격서', rev: '02', by: '심준보', at: iso('2026-11-10'), note: '솔모 지름 0.2 mm, 손잡이 길이 180 mm', prev: [{ rev: '01', by: '심준보', at: iso('2026-10-27') }] }];
-    s.ecrs = [];
-    s.certs = [{ id: 'c1', name: '식품용 기구 수입 신고 (솔모 PBT)', part: 'HCB-01', status: '준비', region: '한국' }];
-    s.vendors = [
-        V('v1', sup, '완제품 공급', '중국', { contact: 'Ms. Zhou', unit: 'USD 1.35', moq: 5000, vcerts: [{ name: 'ISO 9001', until: '2027-05-31', ok: true }, { name: 'LFGB 성적서 (솔모 PBT)', ok: false }],
-            samples: [{ id: 's1', round: '1차', at: iso('2026-11-03'), result: '보완', note: '솔모 빠짐 3/20개', who: '심준보' }, { id: 's2', round: '2차', at: iso('2026-11-12'), result: '합격', note: '빠짐 0/20', who: '심준보' }],
-            evals: [{ at: iso('2026-11-12'), who: '심준보', score: 4, note: '2차에 바로 고침' }] }),
-        V('v2', '광저우 브러시팩토리(중국)', '완제품 공급', '중국', { unit: 'USD 1.12', moq: 10000, evals: [{ at: iso('2026-10-28'), who: '심준보', score: 2, note: 'MOQ 1만, 샘플 2주 지연' }] })
-    ];
-    s.issues = [{ id: 'i1', kind: '리스크', text: 'LFGB 성적서 안 오면 식품용 기구 수입 신고 못 함', owner: '김호철', due: '2026-11-24', at: iso('2026-11-13'), who: '김호철', stage: 'S3' }];
-    s.changes = [];
-    s.next = '업체 LFGB 성적서 받기 → G2 샘플 승인';
-    s.plan = (0, ax_1.suggestPlan)(s.start, s.target);
-    s.stage = 'S3';
-    s.actual = { S1: '2026-10-24', S2: '2026-11-04' };
-    return [d, o, s];
-}
-
-};
 __m["src/webparts/huromAxPlm/components/Vendors.js"]=function(module,exports,require){"use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -3803,6 +4628,7 @@ const work_1 = require("src/webparts/huromAxPlm/model/work.js");
 const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
 const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
 const auto_1 = require("src/webparts/huromAxPlm/model/auto.js");
+const hatch_1 = require("src/webparts/huromAxPlm/model/hatch.js");
 const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
 const Gantt_1 = require("src/webparts/huromAxPlm/components/Gantt.js");
 const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
@@ -3933,11 +4759,12 @@ function stageSegs(p, onOpen, short) {
 function laneRows(p, depth, onOpen) {
     return sched_1.LANES.map((l, i) => {
         const cs = (0, sched_1.laneCells)(p, i);
+        const off = (0, hatch_1.laneOff)(p, i);
         const late = cs.filter(c => c.state === 'late').length;
         const done = cs.reduce((a, c) => a + c.done, 0);
         const tot = cs.reduce((a, c) => a + c.total, 0);
-        return { id: `${p.id}-lane${i}`, label: l, depth, sub: tot ? `${done}/${tot}` : '—', state: late ? 'late' : undefined, data: { 'data-ax-lane': String(i) },
-            segs: cs.map(c => ({ span: c.span, state: c.state, label: `${(0, work_1.stagesOf)(p)[c.k].no} ${c.done}/${c.total}`, title: `${l} · ${(0, work_1.stagesOf)(p)[c.k].no} ${(0, work_1.stagesOf)(p)[c.k].name} · 산출물 ${c.done}/${c.total} · ${Gantt_1.BAR[c.state].label}`, onClick: () => onOpen(c.k, c.keys.filter(x => !(p.docs[x] || {}).done && !(p.docs[x] || {}).skip)[0]) })) };
+        return { id: `${p.id}-lane${i}`, label: l, depth, sub: off ? '해당 없음' : tot ? `${done}/${tot}` : '—', state: late && !off ? 'late' : undefined, data: { 'data-ax-lane': String(i) },
+            segs: cs.map(c => ({ hatch: !!off, span: c.span, state: off ? 'wait' : c.state, label: `${(0, work_1.stagesOf)(p)[c.k].no} ${c.done}/${c.total}`, title: off ? `${l} · 해당 없음 — ${off}` : `${l} · ${(0, work_1.stagesOf)(p)[c.k].no} ${(0, work_1.stagesOf)(p)[c.k].name} · 산출물 ${c.done}/${c.total} · ${Gantt_1.BAR[c.state].label}`, onClick: () => onOpen(c.k, c.keys.filter(x => !(p.docs[x] || {}).done && !(p.docs[x] || {}).skip)[0]) })) };
     });
 }
 function vendorWaits(items, who, now = (0, ax_1.today)()) {
@@ -4215,407 +5042,6 @@ function StageAi(props) {
 }
 
 };
-__m["src/webparts/huromAxPlm/model/ai.js"]=function(module,exports,require){"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.APPLY_NOTE = exports.SYSTEM = exports.jobState = exports.AI_STATE_LABEL = exports.kindInfo = exports.kindsFor = exports.BRANCH_LABEL = exports.branchOf = exports.AI_KINDS = void 0;
-exports.aiOnline = aiOnline;
-exports.askAi = askAi;
-exports.buildAsk = buildAsk;
-exports.applyJob = applyJob;
-// AX-PLM 1.0.134 — 「AI에게 맡기기」 (심준보 2026-11-18 #ax-plm msg 10483498 'ai가 할꺼 할 수 있는 거 다 반영', 곽두팔 msg 10483554 4·5번)
-// 연결: E-HR 휴글과 같은 중계 (곽두팔 PC의 relay.py → Claude). 주소는 hurom-ehr 저장소 relay.json 에서 읽음
-// 규칙: AI 결과는 「확인 대기」로만 들어오고 사람이 「반영」을 눌러야 데이터가 바뀜. 연결이 안 되면 결과를 만들지 않고 「AI 연결 전」
-const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
-const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
-const item_1 = require("src/webparts/huromAxPlm/model/item.js");
-const work_1 = require("src/webparts/huromAxPlm/model/work.js");
-const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
-const K = (id, label, branch, stage, x = {}) => (Object.assign({ id, label, branch, stage, group: stage ? `${'①②③④⑤⑥⑦'[stage - 1]} 단계` : '공통' }, x));
-exports.AI_KINDS = [
-    // ── 원액기 (23)
-    K('j_voc', 'VOC·리뷰 분석 — 불만 TOP·원하는 기능', 'juicer', 1, { ask: 'VOC·리뷰 내용을 붙여 넣어 주세요', do: '붙여 넣은 VOC·리뷰를 분류해 불만 TOP5와 원하는 기능 TOP5를 건수와 함께 정리하고, 기획에 넣을 것 3가지를 제안해라.' }),
-    K('j_comp', '경쟁 스펙 비교표', 'juicer', 1, { ask: '비교할 경쟁 제품 (모델명·알고 있는 스펙)', autoInput: '데이터에 있는 경쟁 정보만', do: '경쟁 원액기 스펙(착즙 방식·RPM·모터 W·용량·소음·가격)을 비교표처럼 목록으로 정리하고 우리 차별점을 3줄로. 모르는 수치는 「확인 필요」.' }),
-    K('j_plan', '기획서 초안', 'juicer', 1, { do: '신제품 기획서 초안: 배경·타깃·핵심 가치(USP)·주요 사양 목표·목표 원가/판가·일정·리스크. 데이터에 없는 수치는 「확인 필요」.' }),
-    K('j_dup', '중복 확인 — 휴롬 개발승인원에 이미 한 것', 'juicer', 1, { nodata: '휴롬 개발승인원 데이터 연결 전' }),
-    K('j_req', '요구 사양서 초안 — 착즙률·소음·RPM 목표', 'juicer', 2, { do: '요구 사양서 초안: 착즙률·소음(dB)·RPM·모터·용량·재질·안전·인증 목표를 항목별로. 목표 수치가 데이터에 없으면 「확인 필요」와 함께 일반적 범위를 참고로.' }),
-    K('j_back', '일정 거꾸로 채우기 — 출시일 → 단계', 'juicer', 2, { local: true }),
-    K('j_risk', '리스크 목록 — 과거 이슈 기반', 'juicer', 2, { others: true, do: '이 프로젝트와 다른 프로젝트의 이슈·설계 변경 이력을 근거로 이 제품에서 생길 리스크 목록(리스크·근거·미리 할 일)을 써라.' }),
-    K('j_juice', '착즙 성능 DB 비교 — 스크류·드럼 사양별 착즙률', 'juicer', 3, { nodata: '착즙 성능 데이터(정경임 님) 연결 전' }),
-    K('j_food', '식품 접촉 재질 점검 — 재질·용출 기준', 'juicer', 3, { item: true, do: 'BOM에서 식품(즙·물) 접촉 가능 부품을 골라 재질별 식품용 기구 기준(국내 식품위생법 기구·용기 규격, 유럽 10/2011·LFGB, 미국 FDA 21 CFR) 확인 항목과 빠진 재질 정보를 정리해라.' }),
-    K('j_bom', 'BOM 초안·원가 합산', 'juicer', 3, { item: true, do: 'BOM을 보고 빠진 구성(체결·포장·라벨 등)을 짚고, 단가 정보가 있으면 원가를 합산해라. 단가가 없으면 「확인 필요」 목록.' }),
-    K('j_dr', 'DR 체크리스트', 'juicer', 3, { item: true, others: true, do: '설계 DR 체크리스트를 이 제품(원액기 구조: 스크류·드럼·브러시·모터·하우징)에 맞춰 만들고, 과거 이슈에서 반드시 볼 항목을 표시해라.' }),
-    K('ecr', '설계 변경 영향 — 바뀌는 부품·도면', 'juicer', 3, { item: true }),
-    K('j_trial', '시사출 결과 요약 — 결함·수정 LIST 분류', 'juicer', 4, { item: true, do: '금형별 시사출 기록을 요약하고 결함을 수정 LIST(치수·외관·변형·기타)로 분류, 다음 차수에서 볼 것을 적어라.' }),
-    K('j_t1', 'T1 합격 점검 — 금형별', 'juicer', 4, { item: true, do: '금형마다 T1 이상 합격 여부를 점검해 합격/미합격/기록 없음으로 나누고, G2(모든 금형 T1 합격)까지 남은 것을 적어라.' }),
-    K('j_aprv', '승인원 대조 — 도면 판 vs 승인원', 'juicer', 4, { item: true, do: '도면·문서의 현재 판과 협력사 승인원 Rev를 대조해 어긋난 것과 승인원이 없는 부품을 찾아라.' }),
-    K('bomdiff', '파생: BOM 차이 — 기반 모델 대비', 'juicer', 4, { item: true }),
-    K('certlist', '나라별 필요 인증 — KC·CE·UL·FDA·LFGB', 'both', 5, { item: true, ask: '어느 나라에 팔아요? (예: 한국, 유럽, 미국, 독일)', autoInput: '한국, 유럽, 미국' }),
-    K('j_manual', '매뉴얼·인쇄물 다국어 초안', 'juicer', 5, { ask: '어느 언어로? (예: 영어, 독일어, 일본어)', autoInput: '한국어, 영어', do: '사용설명서·인쇄물에 들어갈 핵심 문구(안전 경고·사용법·세척·보증)를 요청 언어로 초안 작성. 규제 문구는 「확인 필요」 표시.' }),
-    K('j_launch', '출시 준비 보고서 초안', 'juicer', 5, { item: true, do: '출시 준비 보고서 초안: 제품 개요·USP·인증 현황·생산 준비·출시 일정·남은 리스크.' }),
-    K('j_iqc', '초도·수입검사 불량 분석 — 부품·업체별', 'juicer', 6, { item: true, do: '초도품·수입검사 관련 기록(이슈·승인원·샘플)을 부품·업체별로 묶어 불량 경향과 조치 우선순위를 정리해라. 검사 데이터가 없으면 무엇을 받아야 하는지 적어라.' }),
-    K('j_late', '납기 지연 감지 → 독촉 메일 초안', 'juicer', 6, { item: true, mail: true, do: '마감이 지났거나 임박한 협력사 일을 찾아 업체별 독촉 메일 초안(제목 1줄 + 본문 4~6문장)을 써라. 첫 줄은 "제목: ..."' }),
-    K('j_as', 'AS·VOC 원인 분류 — 스크류 파손·누수 등', 'juicer', 7, { ask: 'AS 이력·상담 내용을 붙여 넣어 주세요', do: '붙여 넣은 AS·VOC를 원인(스크류 파손·누수·모터·소음·사용 미숙 등)별로 분류해 건수·대표 사례·설계 개선 후보를 정리해라.' }),
-    K('j_next', '다음 파생 제안 — 개선 부품 목록', 'juicer', 7, { item: true, others: true, do: '이 제품의 이슈·설계 변경·VOC 기록을 근거로 다음 파생 모델 제안(바꿀 부품·이유·예상 효과)을 써라.' }),
-    // ── 상품 (18)
-    K('g_market', '시장·리뷰 분석', 'goods', 1, { ask: '시장·리뷰 내용을 붙여 넣어 주세요', do: '붙여 넣은 시장·리뷰 자료를 정리해 고객 불만 TOP5·원하는 기능·가격대를 요약하고 상품 정의에 넣을 것 3가지를 제안해라.' }),
-    K('g_def', '상품 정의서 초안', 'goods', 1, { do: '상품 정의서 초안: 대상 고객·핵심 기능·필수 사양·가격대·판매 채널·인증 범위·출시 시점.' }),
-    K('g_cost', '목표 원가 추정', 'goods', 1, { item: true, do: '판가·협력사 단가·MOQ 정보로 목표 원가(제품·포장·물류·관세·인증비) 구조를 추정해라. 없는 값은 「확인 필요」와 계산식만.' }),
-    K('g_vendor', '업체 후보 추천 — 협력사 DB·평가', 'goods', 2, { item: true, others: true, do: '이 프로젝트와 다른 프로젝트의 협력사 기록(역할·나라·평가 점수·샘플 결과)을 근거로 업체 후보 순위와 이유를 써라.' }),
-    K('g_quote', '견적 비교표 — 단가·MOQ·납기', 'goods', 2, { item: true, do: '협력사별 단가·MOQ·납기·금형비를 비교표처럼 목록으로 정리하고 추천 1곳과 협상 포인트를 적어라. 없는 값은 「확인 필요」.' }),
-    K('g_req', '요구 사양서 초안 (ODM)', 'goods', 2, { do: 'ODM 업체에 보낼 요구 사양서 초안(기능·성능·재질·식품 접촉부·안전·인증·포장·검사 기준)을 써라. 영어 업체면 영어 병기.' }),
-    K('g_sample', '샘플 평가표 초안', 'goods', 3, { item: true, do: '샘플 평가표 초안: 평가 항목(외관·치수·기능·성능·안전·식품 접촉·포장)·판정 기준·지난 차수 지적 사항 재확인 칸.' }),
-    K('vendor', '업체 인증서 점검 — 만료·누락', 'goods', 3, { item: true }),
-    K('chase', '보완 요청·독촉 메일 초안', 'goods', 3, { item: true, mail: true }),
-    K('g_aprv', '승인원 대조 — 사양서 vs 승인원', 'goods', 4, { item: true, do: '요구 사양서·샘플 평가 결과와 업체 승인원(제목·Rev·상태)을 대조해 어긋나거나 빠진 항목을 찾아라.' }),
-    K('oldrev', '옛 도면 판 감지 (OEM)', 'goods', 4, { item: true }),
-    K('g_fai', '초도품 검사 기준 초안', 'goods', 4, { item: true, do: '초도품 검사 기준서 초안: 검사 항목·방법·기준·샘플링·불합격 처리. 주요 부품·식품 접촉부는 꼭 포함.' }),
-    K('g_pack', '포장·매뉴얼·라벨 문구 초안', 'goods', 5, { ask: '판매 나라·언어 (예: 한국, 미국)', autoInput: '한국', do: '포장·매뉴얼·라벨 필수 표시 문구(제품명·모델·정격·제조원/수입원·KC 등 인증 표시·주의 문구·분리배출)를 초안으로. 규제 문구는 「확인 필요」.' }),
-    K('g_iqc', '수입검사 불량 경향 — 업체별', 'goods', 6, { item: true, do: '업체별 샘플·승인원·이슈 기록에서 불량 경향을 정리하고 수입검사에서 강화할 항목을 적어라.' }),
-    K('g_late', '입고 지연 감지', 'goods', 6, { item: true, mail: true, do: '입고·발주 일정 대비 늦어지는 것을 찾고 업체별 확인 메일 초안을 써라. 첫 줄은 "제목: ..."' }),
-    K('g_review', '리뷰·AS 분석', 'goods', 7, { ask: '리뷰·AS 내용을 붙여 넣어 주세요', do: '붙여 넣은 리뷰·AS를 원인별로 분류해 건수·대표 사례·업체에 요구할 개선을 정리해라.' }),
-    K('g_rescore', '업체 재평가 점수 — 품질·납기', 'goods', 7, { item: true, do: '협력사별 품질(샘플 결과·이슈)·납기·대응 기록으로 재평가 점수(5점)와 근거를 써라.' }),
-    // ── 공통 (6) — 항상 도는 AI
-    K('delay', '일정: 지연 예측·뒤 단계 영향', 'common', 0),
-    K('replan', '일정: 다시 짠 계획 제안', 'common', 0),
-    K('gate', '관문: 승인 기준 점검·요청 글 초안', 'common', 0, { item: true }),
-    K('minutes', '회의록 → 이슈·할 일 등록', 'common', 0, { ask: '회의록을 붙여 넣어 주세요' }),
-    K('weekly', '주간 보고 작성', 'common', 0),
-    K('similar', '비슷한 과거 이슈 찾기', 'common', 0, { ask: '어떤 문제와 비슷한 걸 찾을까요?', others: true }),
-    K('ask', '질문 — 근거와 함께 답', 'common', 0, { ask: '무엇이 궁금해요? (예: G2 왜 막혔어?)', item: true, others: true, do: '아래 질문에 이 데이터만 근거로 답하고, 근거가 된 줄을 「근거:」로 적어라.' }),
-    K('draft', '산출물 초안·점검', 'common', 0, { ask: '어떤 산출물? (예: 요구 사양서, 시사출 결과 보고서)', item: true }),
-    K('docchk', '산출물 점검·요약 (올라오면 자동)', 'common', 0, { ask: '어떤 산출물?', item: true, do: '방금 완료된 아래 산출물을 이 단계 목표·관문 기준·남은 산출물과 대조해 ① 요약 3줄 ② 빠졌거나 확인할 것 ③ 다음 할 일을 써라. 파일 내용은 볼 수 없으니 이름·링크·기록만 근거로.' }),
-];
-const branchOf = (t) => (t === 'own' || t === 'derive' ? 'juicer' : 'goods');
-exports.branchOf = branchOf;
-exports.BRANCH_LABEL = { juicer: '원액기', goods: '상품' };
-const kindsFor = (b, stage) => exports.AI_KINDS.filter(k => (k.branch === b || k.branch === 'both' || k.branch === 'common') && (stage === undefined || k.stage === stage));
-exports.kindsFor = kindsFor;
-const kindInfo = (k) => exports.AI_KINDS.filter(x => x.id === k)[0] || { id: k, label: k, group: '', branch: 'common' };
-exports.kindInfo = kindInfo;
-exports.AI_STATE_LABEL = { running: '진행 중', review: '확인 대기', applied: '반영됨', dismissed: '버림', offline: 'AI 연결 전', error: '실패', nodata: '데이터 연결 전', queued: '대기 중' };
-// 페이지를 닫아 '진행 중'으로 남은 것은 3분 지나면 중단으로 봄
-const jobState = (j) => (j.state === 'running' && Date.now() - new Date(j.at).getTime() > 180000 ? 'error' : j.state);
-exports.jobState = jobState;
-// ───────── 중계 연결
-const RELAY_JSON = 'https://simjb23-oss.github.io/hurom-ehr/relay.json';
-const RELAY_KEY = 'hurom-b7f25d'; // E-HR ai.js 와 같은 중계 열쇠 (중계는 분당 20회 제한)
-let relayUrl;
-async function relay() {
-    if (relayUrl)
-        return relayUrl;
-    const r = await fetch(RELAY_JSON + '?' + Date.now(), { cache: 'no-store' });
-    if (!r.ok)
-        throw new Error('offline');
-    const j = await r.json();
-    if (!j || !j.url)
-        throw new Error('offline');
-    const u = String(j.url).replace(/\/$/, '');
-    relayUrl = relayUrl || u; // eslint require-atomic-updates
-    return u;
-}
-async function aiOnline() {
-    try {
-        const u = await relay();
-        const r = await fetch(u, { method: 'GET' });
-        return r.ok;
-    }
-    catch (e) {
-        relayUrl = undefined;
-        return false;
-    }
-}
-async function askAi(system, user) {
-    let u;
-    try {
-        u = await relay();
-    }
-    catch (e) {
-        throw new Error('offline');
-    }
-    const ac = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
-    const tm = setTimeout(() => ac && ac.abort(), 110000);
-    try {
-        const r = await fetch(u + '/v1/messages', { method: 'POST', signal: ac && ac.signal,
-            headers: { 'content-type': 'application/json', 'x-api-key': RELAY_KEY, 'anthropic-version': '2023-06-01' },
-            body: JSON.stringify({ model: 'claude-haiku-5-5', max_tokens: 1500, system, messages: [{ role: 'user', content: user }] }) });
-        if (!r.ok) {
-            relayUrl = undefined;
-            throw new Error(r.status === 429 ? '잠시 뒤에 다시 (분당 20회)' : 'offline');
-        }
-        const j = await r.json();
-        const t = ((j && j.content) || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
-        if (!t)
-            throw new Error('빈 답');
-        return t;
-    }
-    catch (e) {
-        const m = String((e && e.message) || e);
-        if (m.indexOf('잠시') === 0 || m === '빈 답')
-            throw e;
-        relayUrl = undefined;
-        throw new Error('offline');
-    }
-    finally {
-        clearTimeout(tm);
-    }
-}
-// ───────── 프롬프트 — 화면에 있는 사실만 넘기고, 없는 건 지어내지 말라고 함
-const ST_KO = { done: '완료', doing: '진행 중', late: '지연', wait: '대기' };
-const SYS = '너는 휴롬 AX팀 PLM(AX-PLM)의 업무 도우미다. 아래 「프로젝트 데이터」에 있는 사실만 근거로 한국어로 짧고 바로 쓸 수 있게 답한다. 데이터에 없는 숫자·날짜·업체명은 지어내지 말고 「확인 필요」라고 적는다. 머리말·인사 없이 본문만. 목록은 "- "로 시작한다. 마지막 줄에 「근거: 」로 어느 데이터 줄(단계·산출물·BOM·협력사·이슈 등)을 봤는지 적는다.';
-function facts(p, now) {
-    const ss = (0, work_1.stagesOf)(p);
-    const ck = (0, work_1.curIdx)(p);
-    const st = ss.map((s, k) => {
-        const sp = (0, sched_1.planSpan)(p, k);
-        const left = s.docs.filter(d => !(0, work_1.docOk)(p.docs[d.key])).map(d => `${d.label}${(p.docs[d.key] || {}).due ? `(마감 ${(p.docs[d.key] || {}).due})` : ''}`);
-        return `${s.no} ${s.name}${s.gate ? ` [관문 ${s.gate}]` : ''}: 계획 ${sp ? sp.a + '~' + sp.b : '없음'}, 실제 끝 ${(p.actual || {})[s.id] || '-'}, 상태 ${ST_KO[(0, sched_1.stageState)(p, k, now)]}${left.length ? `, 남은 산출물 ${left.join(', ')}` : ''}`;
-    });
-    const lines = [`프로젝트 ${p.name} (품번 ${p.itemCode || '-'}, 개발 유형 ${(0, devtype_1.typeInfo)((0, devtype_1.typeOf)(p)).label}, PM ${p.owner || '-'}, 승인자 ${p.approver || '-'})`,
-        `오늘 ${now}, 출시 목표 ${p.target || '-'}, 지금 단계 ${ss[ck].no} ${ss[ck].name}, 지연 ${(0, sched_1.lateDays)(p, now)}일`, '단계:', ...st];
-    const iss = (p.issues || []).filter(i => !i.done);
-    if (iss.length)
-        lines.push('열린 이슈·리스크: ' + iss.map(i => `${i.kind} ${i.text}(담당 ${i.owner || '-'}, 기한 ${i.due || '-'})`).join(' / '));
-    return lines.join('\n');
-}
-function itemFacts(p, now) {
-    const out = [];
-    if ((p.parts || []).length)
-        out.push('BOM: ' + (0, item_1.bomTree)(p.parts || []).map(x => `${'  '.repeat(x.depth)}${x.part.no} ${x.part.name} Rev${x.part.rev}${x.part.baseRev ? ` (기반 Rev${x.part.baseRev})` : ''}${x.part.material ? ' ' + x.part.material : ''}${x.part.supplier ? ' / ' + x.part.supplier : ''}`).join('\n'));
-    if ((p.docs2 || []).length)
-        out.push('도면·문서: ' + (p.docs2 || []).map(d => `${d.title}${d.part ? `(${d.part})` : ''} 현재 Rev${d.rev}`).join(', '));
-    if ((p.releases || []).length)
-        out.push('업체 배포 기록: ' + (p.releases || []).map(r => `${r.doc} Rev${r.rev} → ${r.vendor} (${r.at.slice(0, 10)})`).join(', '));
-    if ((p.ecrs || []).length)
-        out.push('설계 변경: ' + (p.ecrs || []).map(e => `${e.no} ${e.title} [${e.status}] 부품 ${e.parts.join(',')}${e.eco ? ' ' + e.eco : ''}`).join(' / '));
-    if ((p.certs || []).length)
-        out.push('인증: ' + (p.certs || []).map(c => `${c.name} ${c.status}${c.until ? ' ~' + c.until : ''}(${(0, item_1.certState)(c, now)})`).join(', '));
-    if ((p.vendors || []).length)
-        out.push('협력사: ' + (p.vendors || []).map(v => `${v.name}(${v.role}${v.contact ? ', ' + v.contact : ''}) 샘플 ${v.samples.map(s => `${s.round} ${s.result} ${s.at.slice(0, 10)}`).join('·') || '없음'}, 승인원 ${v.aprvs.map(a => `${a.title} Rev${a.rev} ${a.status}`).join('·') || '없음'}, 업체 인증서 ${(v.vcerts || []).map(c => `${c.name}${c.until ? ' ~' + c.until : ''}`).join('·') || '없음'}`).join(' / '));
-    return out.join('\n');
-}
-const ASK = {
-    delay: '지금 진행 속도와 남은 산출물을 보고 ① 어느 단계가 며칠 늦어질지 예측 ② 그게 뒤 단계·관문·출시 목표에 주는 영향을 정리해라. 근거가 된 줄을 같이 적어라.',
-    replan: '지연을 반영해 단계별 새 계획 끝 날짜(YYYY-MM-DD)를 제안해라. 형식: "- ① 컨셉·기획: 2026-12-01 (이유)". 출시 목표를 지킬 수 있는지와 줄일 수 있는 단계를 마지막에 한 줄.',
-    draft: '아래 요청한 산출물의 초안을 써라. 제목·목적·항목별 내용(표 대신 목록)·확인 필요한 것 순서. 데이터에 없는 수치는 「확인 필요」.',
-    gate: '지금 단계 관문의 승인 기준을 남은 산출물과 비교해 충족/미충족을 "- [충족] …" "- [미충족] …"으로 점검하고, 마지막에 승인자에게 보낼 승인 요청 글 초안(3~5문장)을 써라.',
-    ecr: '진행 중이거나 최근 설계 변경마다 영향 받는 부품(BOM 상하위 포함)·도면·인증·업체 배포 판을 찾아 정리해라.',
-    bomdiff: '기반 모델 대비 이 파생 모델의 BOM 차이(Rev가 기반과 다른 부품, 새 부품)를 목록으로 정리해라.',
-    oldrev: '업체 배포 기록의 Rev와 도면·문서의 현재 Rev를 비교해 업체가 옛 판을 갖고 있는 경우를 모두 찾고, 다시 보낼 판을 적어라.',
-    vendor: '협력사별 샘플·승인원·업체 인증서를 보고 만료됐거나 90일 안에 만료되는 것, 회신이 늦은 것을 정리해라.',
-    chase: '회신이 필요한 협력사마다 독촉 메일 초안을 써라(제목 한 줄 + 본문 4~6문장, 정중하게). 영어 업체면 영어로.',
-    certlist: '이 제품을 아래 나라에 팔 때 필요한 인증·신고(예: KC 전기안전·EMC·전파, CE LVD·EMC·RED, FCC, UL/ETL, FDA 식품접촉, LFGB, PSE 등)를 나라별 목록으로, 지금 인증 현황과 비교해 빠진 것 표시.',
-    minutes: '아래 회의록에서 이슈와 할 일만 뽑아라. 한 줄에 하나, 형식 "- [이슈] 내용 / 담당 이름 / 기한 YYYY-MM-DD" 또는 "- [할 일] …". 회의록에 없는 담당·기한은 비워라.',
-    weekly: '이번 주 주간 보고를 써라: 진행 한 줄, 이번 주 한 것, 다음 주 할 것, 지연·리스크, 도움 필요. 5~8줄.',
-    similar: '아래 문제와 비슷한 과거 이슈·사양 변경·설계 변경을 이 데이터(다른 프로젝트 포함)에서 찾고, 그때 어떻게 했는지 적어라. 없으면 없다고.',
-};
-function buildAsk(kind, p, items, input, now = (0, ax_1.today)()) {
-    const parts = ['프로젝트 데이터:', facts(p, now)];
-    const info = (0, exports.kindInfo)(kind);
-    if (info.item || ['ecr', 'bomdiff', 'oldrev', 'vendor', 'chase', 'certlist', 'draft', 'gate'].indexOf(kind) >= 0)
-        parts.push(itemFacts(p, now));
-    if (info.others || kind === 'similar')
-        parts.push('다른 프로젝트 이슈·변경: ' + items.filter(x => x.id !== p.id).map(x => `${x.name}: ` + (x.issues || []).map(i => `${i.kind} ${i.text}${i.done ? '(해결)' : ''}`).concat((x.changes || []).map(c => `변경 ${c.what}(${c.why})`)).concat((x.ecrs || []).map(e => `${e.no} ${e.title}`)).join(' / ')).join('\n'));
-    if (kind === 'bomdiff' && p.baseItem)
-        parts.push('기반 모델: ' + p.baseItem);
-    parts.push('', '할 일: ' + (info.do || ASK[kind] || info.label));
-    if (input)
-        parts.push('', '요청 내용:', input);
-    return parts.join('\n');
-}
-exports.SYSTEM = SYS;
-// ───────── 반영 — 사람이 「반영」을 눌렀을 때만
-function applyJob(p, j, who) {
-    const at = new Date().toISOString();
-    const text = j.result || '';
-    let next = Object.assign({}, p);
-    if (j.kind === 'weekly')
-        next.brief = (p.brief || []).concat([{ at, who: `${who} (AI 초안 반영)`, text: text.replace(/\n+/g, ' ').slice(0, 600) }]);
-    if (j.kind === 'minutes') {
-        const add = [];
-        text.split('\n').forEach((ln, i) => {
-            const m = ln.match(/^\s*-\s*\[(이슈|할 일|할일|리스크)\]\s*(.+)$/);
-            if (!m)
-                return;
-            const f = m[2].split('/').map(x => x.trim());
-            const owner = (f.filter(x => /^담당/.test(x))[0] || '').replace(/^담당\s*/, '') || undefined;
-            const due = ((f.filter(x => /^기한/.test(x))[0] || '').match(/\d{4}-\d{2}-\d{2}/) || [])[0];
-            add.push({ id: 'ai' + Date.now().toString(36) + i, kind: m[1] === '리스크' ? '리스크' : '이슈', text: (m[1].indexOf('할') === 0 ? '[할 일] ' : '') + f[0], owner, due, at, who, stage: (0, work_1.stagesOf)(p)[(0, work_1.curIdx)(p)].id });
-        });
-        next.issues = (p.issues || []).concat(add);
-    }
-    if (j.kind === 'replan' || j.kind === 'j_back') {
-        const plan = Object.assign({}, (p.plan || {}));
-        const ss = (0, work_1.stagesOf)(p);
-        text.split('\n').forEach(ln => { ss.forEach(s => { if (ln.indexOf(s.no) >= 0) {
-            const d = (ln.match(/\d{4}-\d{2}-\d{2}/) || [])[0];
-            if (d)
-                plan[s.id] = d;
-        } }); });
-        next.plan = plan;
-    }
-    next.aiJobs = (p.aiJobs || []).map(x => (x.id === j.id ? Object.assign(Object.assign({}, x), { state: 'applied', by: who, doneAt: x.doneAt || at }) : x));
-    next.log = (p.log || []).concat([{ at, who, kind: 'note', ai: true, what: `AI 결과 반영 — ${j.label}: ${text.split('\n')[0].slice(0, 120)}` }]);
-    return next;
-}
-exports.APPLY_NOTE = { weekly: '「이번 주 요약」에 들어가요', minutes: '이슈·할 일로 등록돼요', replan: '단계 계획일이 바뀌어요', j_back: '단계 계획일이 바뀌어요' };
-
-};
-__m["src/webparts/huromAxPlm/model/sched.js"]=function(module,exports,require){"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.typeDays = exports.lateDays = exports.laneOf = exports.LANES = exports.stdTotal = exports.AFTER_DAYS = exports.STD_DAYS = exports.diffDays = exports.addDays = void 0;
-exports.backPlan = backPlan;
-exports.planSpan = planSpan;
-exports.stageState = stageState;
-exports.actualSpan = actualSpan;
-exports.shiftFrom = shiftFrom;
-exports.docSpan = docSpan;
-exports.gems = gems;
-exports.laneCells = laneCells;
-exports.projRange = projRange;
-// AX-PLM 1.0.134 — 일정표(간트)·메인 대시보드 계산 (심준보 2026-11-18 #ax-plm msg 10483430 '스케쥴링표가 없냐' · 10483498 '메인대시보드, 업무구분 세로·일정 단계 가로'; 곽두팔 msg 10483490·10483554)
-// 단계 계획 = plan[S1..S7] (단계 끝 날짜), 단계 시작 = 앞 단계 끝(첫 단계는 start). 실제 = actual[...] 같은 방식
-const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
-const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
-const work_1 = require("src/webparts/huromAxPlm/model/work.js");
-const ymd = (t) => `${t.getFullYear()}-${('0' + (t.getMonth() + 1)).slice(-2)}-${('0' + t.getDate()).slice(-2)}`;
-const day = (s) => new Date(s + 'T00:00:00');
-const addDays = (s, n) => { const t = day(s); t.setDate(t.getDate() + n); return ymd(t); };
-exports.addDays = addDays;
-const diffDays = (a, b) => Math.round((day(b).getTime() - day(a).getTime()) / 86400000);
-exports.diffDays = diffDays;
-// 개발 유형별 표준 일수 (단계 ①~⑥, 달력 일수) — ⑥ 생산 끝 = 출시(첫 출하), ⑦은 출시 뒤 90일
-// 자체 금형 개발은 휴롬 R12 체계도 일정(설계 45일·금형 T0~T2 약 120일)을, ODM·소싱은 샘플 차수 기준으로 잡음
-exports.STD_DAYS = {
-    own: [30, 20, 45, 120, 30, 20],
-    derive: [15, 10, 30, 45, 20, 15],
-    oem: [30, 25, 40, 90, 25, 20],
-    odm: [20, 20, 60, 60, 20, 15],
-    sourcing: [10, 15, 25, 30, 15, 10],
-};
-exports.AFTER_DAYS = 90;
-const stdTotal = (t) => exports.STD_DAYS[t].reduce((a, b) => a + b, 0);
-exports.stdTotal = stdTotal;
-// 출시 목표일에서 거꾸로 — 시작일과 단계 끝 날짜를 채움
-function backPlan(target, t) {
-    const ds = exports.STD_DAYS[t] || exports.STD_DAYS.own;
-    const plan = {};
-    let end = target;
-    for (let i = 5; i >= 0; i--) {
-        plan['S' + (i + 1)] = end;
-        end = (0, exports.addDays)(end, -ds[i]);
-    }
-    plan.S7 = (0, exports.addDays)(target, exports.AFTER_DAYS);
-    return { start: end, plan };
-}
-function planSpan(p, k) {
-    const ids = (0, work_1.stagesOf)(p).map(s => s.id);
-    const plan = p.plan || {};
-    const b = plan[ids[k]];
-    const a = k === 0 ? p.start : plan[ids[k - 1]];
-    return a && b ? { a, b: b < a ? a : b } : undefined;
-}
-function stageState(p, k, now = (0, ax_1.today)()) {
-    const s = (0, work_1.stagesOf)(p)[k];
-    const ck = (0, work_1.curIdx)(p);
-    if ((0, work_1.stageClear)(p, s) && (k < ck || k === (0, work_1.stagesOf)(p).length - 1))
-        return 'done';
-    const sp = planSpan(p, k);
-    const late = (sp && sp.b < now) || s.docs.some(d => (0, work_1.docLate)(p, d.key, now));
-    if (late)
-        return 'late';
-    return k === ck ? 'doing' : 'wait';
-}
-function actualSpan(p, k, now = (0, ax_1.today)()) {
-    const ids = (0, work_1.stagesOf)(p).map(s => s.id);
-    const act = p.actual || {};
-    const a = k === 0 ? p.start : act[ids[k - 1]];
-    if (!a)
-        return undefined;
-    const b = act[ids[k]] || (k === (0, work_1.curIdx)(p) ? now : undefined);
-    return b ? { a, b: b < a ? a : b } : undefined;
-}
-// 단계 계획 끌기 — 그 단계 끝과 뒤 단계 전부를 같은 날수만큼 밈
-function shiftFrom(p, k, n) {
-    const ids = (0, work_1.stagesOf)(p).map(s => s.id);
-    const plan = Object.assign({}, (p.plan || {}));
-    for (let i = k; i < ids.length; i++)
-        if (plan[ids[i]])
-            plan[ids[i]] = (0, exports.addDays)(plan[ids[i]], n);
-    return plan;
-}
-// 산출물 줄 — 단계 시작 ~ 마감(없으면 단계 끝), 끝낸 날은 실제
-function docSpan(p, k, key) {
-    const sp = planSpan(p, k);
-    const st = p.docs[key] || {};
-    const due = st.due || (sp && sp.b);
-    const plan = sp && due ? { a: sp.a, b: due < sp.a ? sp.a : due } : undefined;
-    const at = st.at ? st.at.slice(0, 10) : undefined;
-    const actual = (0, work_1.docOk)(st) && sp && at ? { a: sp.a < at ? sp.a : at, b: at } : undefined;
-    const now = (0, ax_1.today)();
-    const ck = (0, work_1.curIdx)(p);
-    const state = (0, work_1.docOk)(st) ? 'done' : due && due < now && k <= ck ? 'late' : k === ck ? 'doing' : 'wait';
-    return { plan, actual, state };
-}
-function gems(p, now = (0, ax_1.today)()) {
-    const out = [];
-    (0, work_1.stagesOf)(p).forEach((s, k) => {
-        if (!s.gate)
-            return;
-        const g = (0, work_1.gateState)(p, s);
-        const plan = (p.plan || {})[s.id];
-        const ap = (p.approvals || []).filter(a => a.gate === s.gate && a.kind === 'approve').slice(-1)[0];
-        const date = g === 'approved' && ap ? ap.at.slice(0, 10) : plan;
-        if (!date)
-            return;
-        out.push({ date, label: s.gate.split(' ')[0], k, state: g === 'approved' ? 'done' : g === 'requested' ? 'req' : plan && plan < now ? 'late' : 'wait' });
-    });
-    return out;
-}
-// 업무 구분 — 메인 대시보드 세로줄 (곽두팔 msg 10483554)
-exports.LANES = ['상품기획', '설계', '금형/시사출', '구매/협력사', '인증', '품질', '생산', '인쇄물/마케팅'];
-const LANE_OF = {
-    voc: 0, plan: 0, biz: 0, g1rep: 0, base: 0, req: 0, rr: 0, spec: 0, kickoff: 0, sched: 0, price: 0, close: 0, vocr: 0,
-    cad: 1, dr: 1, proto: 1, ecr: 1, cmf: 1, keyparts: 1, release: 1,
-    mold: 2, trial: 2, t0: 2, t1: 2, t2: 2,
-    vendor: 3, quote: 3, s1: 3, s2: 3, s3: 3, aprv: 3, sample: 3, specsheet: 3, vcert: 3, po: 3,
-    cert: 4, certchg: 4,
-    ppap: 5, fai: 5, iqc: 5, issue: 5, mpqa: 5,
-    first: 6,
-    print: 7, pack: 7, faq: 7, usp: 7, launch: 7,
-};
-const laneOf = (key) => (LANE_OF[key] === undefined ? 0 : LANE_OF[key]);
-exports.laneOf = laneOf;
-// 한 업무 구분에서 단계마다 칸 하나 — 산출물이 있는 단계만
-function laneCells(p, lane, now = (0, ax_1.today)()) {
-    const out = [];
-    const ck = (0, work_1.curIdx)(p);
-    (0, work_1.stagesOf)(p).forEach((s, k) => {
-        const ks = s.docs.filter(d => (0, exports.laneOf)(d.key) === lane).map(d => d.key);
-        if (!ks.length)
-            return;
-        const sp = planSpan(p, k);
-        if (!sp)
-            return;
-        const done = ks.filter(x => (0, work_1.docOk)(p.docs[x])).length;
-        const late = ks.some(x => { const st = p.docs[x] || {}; const due = st.due || sp.b; return !(0, work_1.docOk)(st) && due < now; });
-        const state = done === ks.length ? 'done' : late ? 'late' : k <= ck ? 'doing' : 'wait';
-        out.push({ k, span: sp, state, done, total: ks.length, keys: ks });
-    });
-    return out;
-}
-// 전체 일정 한 줄 — 현재 단계·지연 일수·출시 목표
-function projRange(p) {
-    const plan = p.plan || {};
-    const ids = (0, work_1.stagesOf)(p).map(s => s.id);
-    const b = plan[ids[5]] || plan[ids[ids.length - 1]];
-    return p.start && b ? { a: p.start, b } : undefined;
-}
-const lateDays = (p, now = (0, ax_1.today)()) => (0, work_1.projLate)(p, now);
-exports.lateDays = lateDays;
-const typeDays = (p) => (0, exports.stdTotal)((0, devtype_1.typeOf)(p));
-exports.typeDays = typeDays;
-
-};
 __m["src/webparts/huromAxPlm/model/auto.js"]=function(module,exports,require){"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.staleReviews = void 0;
@@ -4889,7 +5315,7 @@ function Gantt(props) {
                                 dd > 0 ? '+' : '',
                                 dd,
                                 "\uC77C \u00B7 \uB4A4 \uB2E8\uACC4 \uAC19\uC774"),
-                            (r.segs || []).map((s, i) => React.createElement("div", { key: i, "data-ax-seg": s.state, title: s.title, onClick: s.onClick, style: Object.assign({}, bar(s.span, s.state, 'plan', { background: s.state === 'wait' ? exports.BAR.wait.plan : exports.BAR[s.state].act, border: 'none', height: 18, marginTop: -9, cursor: s.onClick ? 'pointer' : 'default', overflow: 'hidden', color: s.state === 'wait' ? exports.BAR.wait.text : '#fff', fontSize: 10.5, fontWeight: 700, lineHeight: '18px', padding: '0 4px', whiteSpace: 'nowrap', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.6)' })) }, s.label)),
+                            (r.segs || []).map((s, i) => React.createElement("div", { key: i, "data-ax-seg": s.state, "data-ax-hatch": s.hatch ? '1' : undefined, title: s.title, onClick: s.onClick, style: Object.assign({}, bar(s.span, s.state, 'plan', { background: s.hatch ? 'repeating-linear-gradient(135deg, #EDEDED 0 5px, #CFCFCF 5px 6px)' : s.state === 'wait' ? exports.BAR.wait.plan : exports.BAR[s.state].act, border: 'none', height: 18, marginTop: -9, cursor: s.onClick ? 'pointer' : 'default', overflow: 'hidden', color: s.hatch ? '#737373' : s.state === 'wait' ? exports.BAR.wait.text : '#fff', fontSize: 10.5, fontWeight: 700, lineHeight: '18px', padding: '0 4px', whiteSpace: 'nowrap', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.6)' })) }, s.label)),
                             (r.gems || []).map((g, i) => React.createElement("span", { key: i, "data-ax-gem": g.label, "data-ax-gem-state": g.state, title: `${g.label} ${g.date} · ${g.state === 'done' ? '승인됨' : g.state === 'req' ? '승인 대기' : g.state === 'late' ? '계획일 지남' : '예정'}`, style: { position: 'absolute', left: x(g.date) - 6, top: '50%', marginTop: -8, fontSize: 14, lineHeight: '16px', color: g.state === 'done' ? ui_1.C.ok : g.state === 'late' ? ui_1.C.late : g.state === 'req' ? ui_1.C.soon : ui_1.C.text, zIndex: 1, textShadow: '0 0 2px #fff', pointerEvents: 'none' } }, "\u25C6")),
                             r.flag && React.createElement("span", { "data-ax-flag": r.flag.date, title: r.flag.label, style: { position: 'absolute', left: x(r.flag.date), top: 4, bottom: 4, borderLeft: `2px solid ${ui_1.C.text}`, paddingLeft: 4, fontSize: 10.5, fontWeight: 700, color: ui_1.C.text, whiteSpace: 'nowrap', lineHeight: '12px' } },
                                 "\u2691 ",
@@ -4897,140 +5323,6 @@ function Gantt(props) {
                             r.right)));
                 })))));
 }
-
-};
-__m["src/webparts/huromAxPlm/components/ui.js"]=function(module,exports,require){"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Field = exports.FileIcon = exports.ST_COLOR = exports.SHORT = exports.TypeTag = exports.pageUrl = exports.teamsChat = exports.uid = exports.md = exports.nowIso = exports.label = exports.card = exports.inp = exports.primary = exports.btn = exports.CSS = exports.font = exports.C = void 0;
-exports.Dot = Dot;
-exports.Due = Due;
-exports.PanelHead = PanelHead;
-const React = __importStar(require("react"));
-const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
-const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
-// AX-PLM 공통 화면 조각 (1.0.130에서 AxWork.tsx에서 떼어 냄 — 품목 화면과 같이 씀)
-exports.C = { bg: '#FAFAFA', card: '#FFFFFF', line: '#E5E5E5', line2: '#D4D4D4', hover: '#F5F5F5', text: '#0A0A0A', sub: '#525252', faint: '#8A8A8A',
-    accent: '#4F46E5', accentBg: '#EEF2FF', ok: '#16A34A', soon: '#EA580C', late: '#DC2626', lock: '#A3A3A3' };
-exports.font = '"Pretendard", "Malgun Gothic", "Segoe UI", -apple-system, sans-serif';
-exports.CSS = `
-.axw{font-family:${exports.font};color:${exports.C.text};background:${exports.C.bg};font-size:14px;line-height:1.45;min-height:100vh;-webkit-font-smoothing:antialiased}
-.axw *{box-sizing:border-box}
-.axw button{font-family:inherit}
-.axw-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid ${exports.C.line};cursor:pointer;min-height:44px}
-.axw-row:first-child{border-top:none}
-.axw-row:hover{background:${exports.C.hover}}
-.axw-row.on{background:${exports.C.accentBg}}
-.axw-main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
-.axw-todo{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
-.axw-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.axw-panel{position:sticky;top:72px}
-.axw-x{display:none}
-.axw-show-sm{display:none}
-.axw-rail{display:flex;gap:2px}
-@media (max-width:820px){
-  .axw-main,.axw-todo{grid-template-columns:minmax(0,1fr)}
-  .axw-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .axw-panel{position:static}
-  .axw-panel.sheet{position:fixed;left:0;right:0;bottom:0;top:auto;max-height:80vh;overflow:auto;z-index:30;border-radius:14px 14px 0 0 !important;box-shadow:0 -8px 30px rgba(0,0,0,.15)}
-  .axw-x{display:inline-block}
-  .axw-hide-sm{display:none !important}
-  .axw-show-sm{display:block}
-  .axw-rail{overflow-x:auto}
-  .axw-rail > button{min-width:108px !important;flex:0 0 108px !important}
-  .axw-pad{padding-left:14px !important;padding-right:14px !important}
-  .axw-top{gap:8px !important}
-  .axw-top nav button{padding:0 6px !important;font-size:13px !important}
-  .axw-top nav{flex:1 1 0;min-width:0;overflow-x:auto;scrollbar-width:none}
-  .axw-top nav::-webkit-scrollbar{display:none}
-  .axw-top > span[data-flex]{display:none}
-  .axw-cnt{display:none}
-  .axw-dash2{grid-template-columns:minmax(0,1fr) !important}
-}`;
-exports.btn = { border: `1px solid ${exports.C.line2}`, background: exports.C.card, color: exports.C.text, borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: exports.font, whiteSpace: 'nowrap' };
-exports.primary = Object.assign(Object.assign({}, exports.btn), { background: exports.C.accent, borderColor: exports.C.accent, color: '#fff' });
-exports.inp = { border: `1px solid ${exports.C.line2}`, borderRadius: 6, padding: '7px 9px', fontSize: 13, fontFamily: exports.font, color: exports.C.text, background: '#fff', minWidth: 0, width: '100%' };
-exports.card = { background: exports.C.card, border: `1px solid ${exports.C.line}`, borderRadius: 10 };
-exports.label = { fontSize: 12, color: exports.C.faint, fontWeight: 600 };
-const nowIso = () => new Date().toISOString();
-exports.nowIso = nowIso;
-const md = (s) => (s ? `${Number(s.slice(5, 7))}/${Number(s.slice(8, 10))}` : '—');
-exports.md = md;
-const uid = (p) => p + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
-exports.uid = uid;
-const teamsChat = (mail, msg) => `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(mail)}&message=${encodeURIComponent(msg)}`;
-exports.teamsChat = teamsChat;
-const pageUrl = () => window.location.href.split('#')[0];
-exports.pageUrl = pageUrl;
-// 1.0.132
-// 유형 표시 — 회색 테두리 작은 글자 (상태색 안 씀)
-const TypeTag = (props) => React.createElement("span", { "data-ax-type": (0, devtype_1.typeOf)(props.p), title: (0, devtype_1.typeInfo)((0, devtype_1.typeOf)(props.p)).label, style: { display: 'inline-block', verticalAlign: 'middle', marginRight: 8, fontSize: 11.5, fontWeight: 700, lineHeight: '18px', padding: '0 6px', borderRadius: 4, border: `1px solid ${exports.C.line2}`, color: exports.C.sub, background: exports.C.card } }, (0, devtype_1.typeInfo)((0, devtype_1.typeOf)(props.p)).tag);
-exports.TypeTag = TypeTag;
-exports.SHORT = ['컨셉·기획', '공동검토', '설계·시제품', '개발·검증', '양산준비', '생산', '출시 후'];
-exports.ST_COLOR = { done: exports.C.ok, skip: exports.C.lock, late: exports.C.late, soon: exports.C.soon, open: exports.C.line2, lock: exports.C.lock, wait: exports.C.soon };
-function Dot(props) {
-    const z = props.size || 8;
-    return React.createElement("span", { style: { display: 'inline-block', width: z, height: z, borderRadius: '50%', flex: `0 0 ${z}px`, background: props.s === 'open' ? 'transparent' : exports.ST_COLOR[props.s], border: props.s === 'open' ? `1.5px solid ${exports.C.line2}` : 'none' } });
-}
-function Due(props) {
-    const left = (0, ax_1.daysTo)(props.due);
-    if (props.done)
-        return React.createElement("span", { style: { fontSize: 12.5, color: exports.C.faint } }, (0, exports.md)(props.due));
-    if (left === undefined)
-        return React.createElement("span", { style: { fontSize: 12.5, color: exports.C.faint } }, "\uAE30\uD55C \uC5C6\uC74C");
-    const col = left < 0 ? exports.C.late : left <= 7 ? exports.C.soon : exports.C.sub;
-    return React.createElement("span", { style: { fontSize: 12.5, color: col, fontWeight: left <= 7 ? 700 : 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } },
-        left < 0 ? `${-left}일 지연` : left === 0 ? '오늘' : `D-${left}`,
-        " ",
-        React.createElement("span", { style: { color: exports.C.faint, fontWeight: 500 } }, (0, exports.md)(props.due)));
-}
-const FileIcon = (props) => (React.createElement("svg", { width: "14", height: "16", viewBox: "0 0 14 16", style: { flex: '0 0 14px', opacity: props.on ? 1 : 0.25 }, "aria-label": props.on ? '파일 있음' : '파일 없음' },
-    React.createElement("path", { d: "M2 1h6l4 4v10H2z", fill: "none", stroke: props.on ? exports.C.text : exports.C.faint, strokeWidth: "1.3" }),
-    React.createElement("path", { d: "M8 1v4h4", fill: "none", stroke: props.on ? exports.C.text : exports.C.faint, strokeWidth: "1.3" })));
-exports.FileIcon = FileIcon;
-function PanelHead(props) {
-    return (React.createElement("div", { style: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: '14px 16px', borderBottom: `1px solid ${exports.C.line}` } },
-        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-            React.createElement("div", { style: { fontWeight: 700, fontSize: 15 } }, props.title),
-            props.sub && React.createElement("div", { style: { fontSize: 12, color: exports.C.faint, marginTop: 2 } }, props.sub)),
-        React.createElement("button", { "data-ax-panel-close": true, onClick: props.onClose, style: Object.assign(Object.assign({}, exports.btn), { padding: '3px 9px' }) }, "\uB2EB\uAE30")));
-}
-const Field = (props) => React.createElement("label", { style: { display: 'flex', flexDirection: 'column', gap: 5 } },
-    React.createElement("span", { style: exports.label }, props.l),
-    props.children);
-exports.Field = Field;
 
 };
 __m["src/webparts/huromAxPlm/components/RegRadar.js"]=function(module,exports,require){"use strict";
