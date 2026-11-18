@@ -233,7 +233,7 @@ function AxWork(props) {
     const cur = items.filter(x => x.id === sel)[0] || items[0];
     const tabs = [['home', '아이템', undefined], ['todo', '내 할 일', mine.length], ['project', '프로젝트', undefined], ['sched', '전체 일정', undefined], ['item', '품목', items.length], ['vendor', '협력사', undefined], ['all', '전체 현황', items.length], ['guide', '기본 업무', undefined], ['dash', '전체 보기', undefined]];
     return (React.createElement(Dash_1.AiCtx.Provider, { value: aiApi },
-        React.createElement("div", { "data-axplm": true, "data-ax-v": "137", className: "axw" },
+        React.createElement("div", { "data-axplm": true, "data-ax-v": "138", className: "axw" },
             React.createElement("style", null, ui_1.CSS),
             React.createElement("div", { className: "axw-pad axw-top", style: { background: ui_1.C.card, borderBottom: `1px solid ${ui_1.C.line}`, padding: '0 24px', display: 'flex', alignItems: 'center', gap: 20, position: 'sticky', top: 0, zIndex: 10, height: 56 } },
                 React.createElement("span", { style: { fontSize: 15, fontWeight: 800, letterSpacing: '-.01em', whiteSpace: 'nowrap' } }, "AX-PLM"),
@@ -1652,15 +1652,18 @@ async function relay() {
     return u;
 }
 async function aiOnline() {
-    try {
-        const u = await relay();
-        const r = await fetch(u, { method: 'GET' });
-        return r.ok;
-    }
-    catch (e) {
+    // 중계 주소가 바뀌면(PC 재시작 등) 옛 주소가 죽음 → relay.json을 새로 읽어 한 번 더 (곽두팔 msg 10533574)
+    for (let i = 0; i < 2; i++) {
+        try {
+            const u = await relay();
+            const r = await fetch(u, { method: 'GET' });
+            if (r.ok)
+                return true;
+        }
+        catch (e) { /* 아래에서 다시 */ }
         relayUrl = undefined;
-        return false;
     }
+    return false;
 }
 async function askAi(system, user) {
     let u;
@@ -2730,7 +2733,11 @@ function ItemDash(props) {
         window.localStorage.setItem(LAST, id);
     }
     catch (e) { /* 저장 안 돼도 됨 */ } };
+    const laneBox = React.useRef(null);
     const p0 = items.filter(x => x.id === sel)[0] || items[0];
+    // 폰: 일정 판을 지금 단계 바로 앞부터 보이게 밀어 둠 (곽두팔 msg 10533574 '④에서 잘림')
+    React.useEffect(() => { const el = laneBox.current; if (!p0 || !el || el.scrollWidth <= el.clientWidth + 4)
+        return; const cw = (el.scrollWidth - 14 - 110) / 7; el.scrollLeft = Math.max(0, cw * ((0, work_1.curIdx)(p0) - 1)); }, [p0 && p0.id]);
     if (!p0)
         return React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { padding: 24, color: ui_1.C.sub }) }, "\uC544\uC774\uD15C\uC774 \uC5C6\uC5B4\uC694. \u300C+ \uC0C8 \uD504\uB85C\uC81D\uD2B8\u300D\uB85C \uB9CC\uB4E4\uC5B4 \uC8FC\uC138\uC694.");
     const p = p0;
@@ -2753,7 +2760,10 @@ function ItemDash(props) {
     const issLate = iss.filter(i => i.due && i.due < now).length;
     const brief = (p.brief || []).slice(-1)[0];
     return (React.createElement("div", { "data-ax-idash": p.id },
-        React.createElement("div", { style: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 } }, items.map(x => {
+        React.createElement("select", { "data-ax-idash-select": true, className: "axw-show-sm", value: p.id, onChange: e => setSel(e.target.value), style: { width: '100%', border: `1px solid ${ui_1.C.line2}`, borderRadius: 8, padding: '9px 10px', fontSize: 14, fontWeight: 700, marginBottom: 12, background: ui_1.C.card } }, items.map(x => { const l = (0, work_1.projLate)(x); return React.createElement("option", { key: x.id, value: x.id },
+            x.name,
+            l > 0 ? ` · ${l}일 지연` : ''); })),
+        React.createElement("div", { className: "axw-hide-sm", style: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 } }, items.map(x => {
             const l = (0, work_1.projLate)(x);
             const on = x.id === p.id;
             return React.createElement("button", { key: x.id, "data-ax-idash-pick": x.id, onClick: () => setSel(x.id), style: Object.assign(Object.assign({}, ui_1.btn), { background: on ? ui_1.C.text : ui_1.C.card, color: on ? '#fff' : ui_1.C.sub, borderColor: on ? ui_1.C.text : ui_1.C.line2 }) },
@@ -2782,7 +2792,7 @@ function ItemDash(props) {
                     React.createElement("div", { "data-ax-idash-now": true, style: { fontSize: 20, fontWeight: 800, color: lt ? ui_1.C.late : ui_1.C.text } },
                         st[ck].no,
                         " ",
-                        ui_1.SHORT[ck],
+                        st[ck].short || st[ck].name,
                         lt ? ` · ${lt}일 지연` : '')),
                 React.createElement("div", null,
                     React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint } }, "\uAE30\uBCF8 \uC5C5\uBB34"),
@@ -2795,15 +2805,15 @@ function ItemDash(props) {
                 React.createElement(Dash_1.AiButton, { pid: p.id })),
             React.createElement("div", { className: "axw-rail", style: { marginTop: 12 } }, st.map((s, k) => {
                 const ss = (0, sched_1.stageState)(p, k);
-                return React.createElement("button", { key: s.id, "data-ax-idash-stage": k, "data-ax-idash-stage-state": ss, onClick: () => props.onOpen(p.id, k), title: `${s.no} ${s.name} · ${Gantt_1.BAR[ss].label}`, style: { flex: 1, minWidth: 0, border: 'none', borderRadius: 5, height: 30, cursor: 'pointer', fontSize: 12, fontWeight: 700, background: ss === 'wait' ? '#E5E5E5' : Gantt_1.BAR[ss].act, color: ss === 'wait' ? ui_1.C.sub : '#fff', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', padding: '0 6px' } },
+                return React.createElement("button", { key: s.id, "data-ax-idash-stage": k, "data-ax-idash-stage-state": ss, onClick: () => props.onOpen(p.id, k), title: `${s.no} ${s.name} · ${Gantt_1.BAR[ss].label}`, "data-ax-idash-stage-name": s.short || s.name, style: { flex: 1, minWidth: 0, border: 'none', borderRadius: 5, height: 30, cursor: 'pointer', fontSize: 12, fontWeight: 700, background: ss === 'wait' ? '#E5E5E5' : Gantt_1.BAR[ss].act, color: ss === 'wait' ? ui_1.C.sub : '#fff', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', padding: '0 6px' } },
                     s.no,
                     " ",
-                    ui_1.SHORT[k]);
+                    s.short || s.name);
             })),
-            brief && React.createElement("div", { style: { fontSize: 13, color: ui_1.C.sub, marginTop: 10, paddingLeft: 10, borderLeft: `2px solid ${ui_1.C.accent}` } },
+            React.createElement("div", { "data-ax-idash-brief": true, style: { fontSize: 13, color: ui_1.C.sub, marginTop: 10, paddingLeft: 10, borderLeft: `2px solid ${ui_1.C.accent}` } },
                 React.createElement("b", { style: { color: ui_1.C.text } }, "\uC774\uBC88 \uC8FC \uC694\uC57D"),
                 " ",
-                brief.text)),
+                brief ? brief.text : React.createElement("span", { style: { color: ui_1.C.faint } }, "\uC544\uC9C1 \uC5C6\uC5B4\uC694 \u2014 \uAE08\uC694\uC77C 08:30 KST\uC5D0 AI\uAC00 \uC790\uB3D9\uC73C\uB85C \uC368\uC694"))),
         React.createElement("div", { className: "axw-idash" },
             React.createElement("section", { "data-ax-idash-card": "todo", style: ui_1.card },
                 React.createElement("div", { style: head },
@@ -2847,19 +2857,20 @@ function ItemDash(props) {
                 React.createElement(Row, { data: "ecr", l: "\uC124\uACC4 \uBCC0\uACBD", r: ecrs.length ? `진행 ${ecrs.length}` : '없음', col: ecrs.length ? ui_1.C.soon : undefined, onClick: () => props.onItem(p.id) }),
                 React.createElement(Row, { data: "cert", l: "\uC778\uC99D", r: certs.length ? certs.slice(0, 3).map(c => `${c.name} ${c.status}`).join(' · ') : '없음', col: certs.some(c => (0, item_1.certState)(c, now) === 'late') ? ui_1.C.late : certs.some(c => (0, item_1.certState)(c, now) === 'soon') ? ui_1.C.soon : undefined, onClick: () => props.onItem(p.id) })),
             React.createElement("section", { "data-ax-idash-card": "lanes", className: "axw-idash-wide", style: ui_1.card },
-                React.createElement("div", { style: head },
-                    "\uC774 \uC544\uC774\uD15C \uC77C\uC815 \uD310",
-                    React.createElement("span", { style: { fontSize: 12, color: ui_1.C.faint, fontWeight: 500 } }, "\uC5C5\uBB34 \uAD6C\uBD84 \u00D7 \uB2E8\uACC4 \u00B7 \uBE57\uAE08 = \uD574\uB2F9 \uC5C6\uC74C \u00B7 \uB204\uB974\uBA74 \uADF8 \uC0B0\uCD9C\uBB3C\uB85C")),
-                React.createElement("div", { style: { padding: '0 14px 14px', overflowX: 'auto' } },
+                React.createElement("div", { style: Object.assign(Object.assign({}, head), { whiteSpace: 'nowrap' }) },
+                    "\uC77C\uC815 \uD310",
+                    React.createElement("span", { className: "axw-hide-sm", style: { fontSize: 12, color: ui_1.C.faint, fontWeight: 500 } }, "\uC5C5\uBB34 \uAD6C\uBD84 \u00D7 \uB2E8\uACC4 \u00B7 \uBE57\uAE08 = \uD574\uB2F9 \uC5C6\uC74C \u00B7 \uB204\uB974\uBA74 \uADF8 \uC0B0\uCD9C\uBB3C\uB85C"),
+                    React.createElement("span", { className: "axw-show-sm", "data-ax-idash-swipe": true, style: { fontSize: 12, color: ui_1.C.accent, fontWeight: 600, marginLeft: 'auto' } }, "\uC606\uC73C\uB85C \uBC00\uBA74 \u2464~\u2466 \u203A")),
+                React.createElement("div", { ref: laneBox, "data-ax-idash-lanebox": true, style: { padding: '0 14px 14px 0', overflowX: 'auto' } },
                     React.createElement("div", { style: { minWidth: 560 } },
-                        React.createElement("div", { style: { display: 'grid', gridTemplateColumns: '96px repeat(7,minmax(0,1fr))', gap: 3, fontSize: 11.5, color: ui_1.C.faint, fontWeight: 700, marginBottom: 3 } },
-                            React.createElement("span", null),
+                        React.createElement("div", { style: { display: 'grid', gridTemplateColumns: '110px repeat(7,minmax(0,1fr))', gap: 3, fontSize: 11.5, color: ui_1.C.faint, fontWeight: 700, marginBottom: 3 } },
+                            React.createElement("span", { style: { position: 'sticky', left: 0, background: ui_1.C.card, zIndex: 1 } }),
                             st.map((s, k) => React.createElement("span", { key: k, style: { textAlign: 'center', color: k === ck ? ui_1.C.text : ui_1.C.faint } }, s.no))),
                         sched_1.LANES.map((l, i) => {
                             const off = (0, hatch_1.laneOff)(p, i);
                             const cs = (0, sched_1.laneCells)(p, i);
-                            return (React.createElement("div", { key: i, "data-ax-idash-lane": i, "data-ax-off": off ? '1' : '', title: off, style: { display: 'grid', gridTemplateColumns: '96px repeat(7,minmax(0,1fr))', gap: 3, marginBottom: 3, fontSize: 11.5 } },
-                                React.createElement("span", { style: { fontSize: 12.5, color: off ? ui_1.C.faint : ui_1.C.text, alignSelf: 'center' } }, l),
+                            return (React.createElement("div", { key: i, "data-ax-idash-lane": i, "data-ax-off": off ? '1' : '', title: off, style: { display: 'grid', gridTemplateColumns: '110px repeat(7,minmax(0,1fr))', gap: 3, marginBottom: 3, fontSize: 11.5 } },
+                                React.createElement("span", { style: { fontSize: 12.5, color: off ? ui_1.C.faint : ui_1.C.text, alignSelf: 'stretch', position: 'sticky', left: 0, background: ui_1.C.card, zIndex: 1, display: 'flex', alignItems: 'center', paddingLeft: 14 } }, l),
                                 st.map((s, k) => {
                                     const c = cs.filter(x => x.k === k)[0];
                                     const bg = off ? Guide_1.HATCH : !c ? '#F5F5F5' : c.state === 'wait' ? '#EEF2FF' : Gantt_1.BAR[c.state].act;
