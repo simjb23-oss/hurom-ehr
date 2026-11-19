@@ -46,8 +46,8 @@ const store_1 = require("src/webparts/huromDevHub/model/store.js");
 const work_1 = require("src/webparts/huromAxPlm/model/work.js");
 const aiSamples_1 = require("src/webparts/huromAxPlm/model/aiSamples.js");
 // 1.0.139 예시마다 AI가 해 놓은 일까지 (저장소 v5 — 옛 미리보기 데이터는 새로)
-const axSamples = () => (0, work_1.workSamples)().map(p => (Object.assign(Object.assign({}, p), { aiJobs: (0, aiSamples_1.aiSamples)(p.id, p.owner, (0, work_1.curIdx)(p)) })));
-const store = new store_1.LocalStore('hurom-axplm.projects.v5');
+const axSamples = () => (0, work_1.workSamples)().map(aiSamples_1.withAi);
+const store = new store_1.LocalStore('hurom-axplm.projects.v6');
 const params = new URLSearchParams(location.search);
 if (params.get('reset'))
     window.localStorage.clear();
@@ -90,9 +90,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = AxWork;
 const React = __importStar(require("react"));
@@ -104,10 +101,10 @@ const work_1 = require("src/webparts/huromAxPlm/model/work.js");
 const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
 const item_1 = require("src/webparts/huromAxPlm/model/item.js");
 const Vendors_1 = require("src/webparts/huromAxPlm/components/Vendors.js");
-const RegRadar_1 = __importDefault(require("src/webparts/huromAxPlm/components/RegRadar.js"));
 const Items_1 = require("src/webparts/huromAxPlm/components/Items.js");
 const aiSamples_1 = require("src/webparts/huromAxPlm/model/aiSamples.js");
 const Work139_1 = require("src/webparts/huromAxPlm/components/Work139.js");
+const Today_1 = require("src/webparts/huromAxPlm/components/Today.js");
 const Dash_1 = require("src/webparts/huromAxPlm/components/Dash.js");
 const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
 const auto_1 = require("src/webparts/huromAxPlm/model/auto.js");
@@ -120,7 +117,7 @@ function AxWork(props) {
     const [items, setItems] = React.useState(undefined);
     const [demo, setDemo] = React.useState(false);
     const [err, setErr] = React.useState('');
-    const [view, setView] = React.useState('status');
+    const [view, setView] = React.useState('today');
     const [sel, setSel0] = React.useState(() => { try {
         return window.localStorage.getItem(LAST) || undefined;
     }
@@ -149,7 +146,7 @@ function AxWork(props) {
     React.useEffect(() => {
         props.store.list().then(xs => { const open = xs.filter(x => !x.closed); if (!xs.length) {
             setDemo(true);
-            setItems((0, work_1.workSamples)().map(p => (Object.assign(Object.assign({}, p), { aiJobs: (0, aiSamples_1.aiSamples)(p.id, p.owner, (0, work_1.curIdx)(p)) })))); /* 1.0.139 예시마다 AI가 해 놓은 일 */
+            setItems((0, work_1.workSamples)().map(aiSamples_1.withAi)); /* 1.0.139 예시마다 AI가 해 놓은 일 */
         }
         else
             setItems(open); }, e => setErr(String((e && e.message) || e)));
@@ -249,7 +246,8 @@ function AxWork(props) {
     const mine = (0, work_1.todos)(items, who);
     const cur = items.filter(x => x.id === sel)[0] || items[0];
     const reviewAll = items.reduce((n, p) => n + (p.aiJobs || []).filter(j => (0, ai_1.jobState)(j) === 'review').length, 0);
-    const tabs = [['status', '현황', undefined], ['ai', 'AI 일함', reviewAll], ['project', '아이템', undefined]];
+    // 1.0.140 메뉴 2개 — 오늘 · 아이템 (현황표·AI 일함은 「오늘」 한 화면으로 합침)
+    const tabs = [['today', '오늘', reviewAll], ['project', '아이템', undefined]];
     void mine;
     const aiAct = {
         apply: (pid, j) => update(pid, x => (0, ai_1.applyJob)(x, j, who)),
@@ -258,14 +256,14 @@ function AxWork(props) {
         retry: (pid, j) => runAi(pid, j.kind, j.input, j.id)
     };
     return (React.createElement(Dash_1.AiCtx.Provider, { value: aiApi },
-        React.createElement("div", { "data-axplm": true, "data-ax-v": "139", className: "axw" },
+        React.createElement("div", { "data-axplm": true, "data-ax-v": "140", className: "axw" },
             React.createElement("style", null, ui_1.CSS),
             React.createElement("div", { className: "axw-pad axw-top", style: { background: ui_1.C.card, borderBottom: `1px solid ${ui_1.C.line}`, padding: '0 24px', display: 'flex', alignItems: 'center', gap: 20, position: 'sticky', top: 0, zIndex: 10, height: 56 } },
                 React.createElement("span", { style: { fontSize: 15, fontWeight: 800, letterSpacing: '-.01em', whiteSpace: 'nowrap' } }, "AX-PLM"),
                 React.createElement("nav", { style: { display: 'flex', gap: 2, height: '100%' } }, tabs.map(t => React.createElement("button", { key: t[0], "data-ax-view": t[0], onClick: () => { setView(t[0]); if (t[0] === 'item')
                         setItemSel(undefined); }, style: { border: 'none', background: 'transparent', padding: '0 10px', fontSize: 14, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', color: view === t[0] ? ui_1.C.text : ui_1.C.faint, boxShadow: view === t[0] ? `inset 0 -2px 0 ${ui_1.C.text}` : 'none' } },
                     t[1],
-                    t[2] !== undefined && React.createElement("span", { "data-ax-view-cnt": true, className: t[0] === 'ai' ? undefined : 'axw-cnt', style: { marginLeft: 5, fontSize: 12, color: t[0] === 'ai' && t[2] ? ui_1.C.soon : ui_1.C.faint, fontWeight: 700 } }, t[2])))),
+                    t[2] !== undefined && React.createElement("span", { "data-ax-view-cnt": true, className: t[0] === 'today' ? undefined : 'axw-cnt', style: { marginLeft: 5, fontSize: 12, color: t[0] === 'today' && t[2] ? ui_1.C.soon : ui_1.C.faint, fontWeight: 700 } }, t[2])))),
                 React.createElement("span", { "data-flex": true, style: { flex: 1 } }),
                 React.createElement("span", { className: "axw-hide-sm", style: { fontSize: 12.5, color: ui_1.C.faint } }, who),
                 React.createElement("button", { "data-ax-new": true, onClick: () => setAdding(true), style: ui_1.primary },
@@ -279,6 +277,7 @@ function AxWork(props) {
                     React.createElement("button", { onClick: () => setErr(''), style: ui_1.btn }, "\uB2EB\uAE30")),
                 demo && React.createElement("div", { "data-ax-demo": true, style: Object.assign(Object.assign({}, ui_1.card), { marginBottom: 12, padding: '9px 14px', fontSize: 13, color: ui_1.C.sub }) }, "\uB4F1\uB85D\uB41C \uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4 \uAC1C\uBC1C \uC720\uD615\uB9C8\uB2E4 \uC608\uC2DC \uD558\uB098\uC529(5\uAC1C) \uBCF4\uC5EC \uB4DC\uB824\uC694. \uC608\uC2DC\uB294 \uC800\uC7A5\uB418\uC9C0 \uC54A\uACE0, \uC0C8 \uD504\uB85C\uC81D\uD2B8\uB97C \uB9CC\uB4E4\uBA74 \uC0AC\uB77C\uC838\uC694."),
                 adding && React.createElement(NewForm, { who: who, items: items, onCancel: () => setAdding(false), onAdd: add }),
+                view === 'today' && React.createElement(Today_1.Today, { items: items, who: who, act: aiAct, onItem: id => { setSel(id); setFocus(undefined); setPick(undefined); setPtab('work'); setView('project'); window.scrollTo(0, 0); } }),
                 view === 'status' && React.createElement(Work139_1.StatusBoard, { items: items, onOpen: open, onAi: () => setView('ai') }),
                 view === 'ai' && React.createElement(Work139_1.AiInbox, { items: items, who: who, act: aiAct, onItem: (id, k) => open(id, k) }),
                 view === 'home' && React.createElement(ItemDash_1.ItemDash, { items: items, who: who, onOpen: open, onItem: id => { setItemSel(id); setView('item'); }, onVendor: () => setView('vendor'), onIssues: id => open(id) }),
@@ -427,12 +426,15 @@ function ProjectView(props) {
     const go = (t) => { props.setTab(t); props.setPick(undefined); };
     const toWork = (k2, key) => { props.setTab('work'); props.setFocus(k2); props.setPick(key); };
     const left = (0, work_1.stagesOf)(p)[ck].docs.length - (0, work_1.stageDocsOk)(p, (0, work_1.stagesOf)(p)[ck]);
-    const tabs = [['work', '산출물', left || undefined], ['gate', '관문 기준', undefined], ['bom', ti.bomDepth < 9 ? 'BOM' : 'BOM', (px.parts || []).length], ['vendor', '협력사', (px.vendors || []).length], ['lanes', '일정 판', undefined], ['gantt', '일정표', undefined],
-        ['doc', ti.id === 'odm' || ti.id === 'sourcing' ? '사양·규격서' : '도면·문서', (px.docs2 || []).length]];
+    // 1.0.140 탭 4개 — 진행(이번 단계 할 일·담당 AI/사람·관문) · 부품·협력사 · 일정 · 기록
+    const tabs = [['work', '진행', left || undefined], ['parts', '부품·협력사', undefined], ['lanes', '일정', undefined], ['log', '기록', (p.issues || []).filter(i => !i.done).length || undefined]];
+    const [sub, setSub] = React.useState('bom');
+    const subs = [['bom', 'BOM', (px.parts || []).length], ['vendor', '협력사', (px.vendors || []).length], ['doc', ti.id === 'odm' || ti.id === 'sourcing' ? '사양·규격서' : '도면·문서', (px.docs2 || []).length]];
     if (ti.mold)
-        tabs.push(['mold', '금형', (px.molds || []).length]);
-    tabs.push(['ecr', '설계 변경', (px.ecrs || []).length], ['cert', '인증', (px.certs || []).length], ['issue', '이슈·리스크', (p.issues || []).filter(i => !i.done).length], ['ai', 'AI 일', review || undefined], ['log', '기록', undefined]);
-    const itemTab = ['bom', 'vendor', 'doc', 'mold', 'ecr', 'cert'].indexOf(tab) >= 0;
+        subs.push(['mold', '금형', (px.molds || []).length]);
+    subs.push(['ecr', '설계 변경', (px.ecrs || []).length], ['cert', '인증', (px.certs || []).length]);
+    void Work139_1.GateBoard;
+    void Work139_1.AiInbox;
     return (React.createElement("div", { "data-ax-project": p.id, "data-ax-ptab": tab },
         React.createElement(Work139_1.ItemPick, { items: props.items, sel: p.id, onPick: props.onPick }),
         React.createElement("div", { style: { display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: 6 } },
@@ -473,22 +475,25 @@ function ProjectView(props) {
         React.createElement("div", { style: { marginTop: 16 } },
             tab === 'work' && React.createElement("div", { className: "axw-main" },
                 React.createElement("div", { style: { minWidth: 0 } },
-                    React.createElement(StageList, { p: p, k: k, pick: props.pick, setPick: props.setPick }),
-                    React.createElement(Guide_1.BaseList, { p: p, k: k, who: who, update: update }),
-                    React.createElement(Dash_1.StageAi, { p: p, k: k })),
+                    React.createElement(StageList, { p: p, k: k, pick: props.pick, setPick: props.setPick })),
                 React.createElement("div", { className: 'axw-panel' + (props.pick ? ' sheet' : ''), style: Object.assign({}, ui_1.card) }, props.pick === 'gate' && s.gate ? React.createElement(GatePanel, { key: 'g' + s.id, p: p, s: s, open: (0, work_1.unlocked)(p, k), who: who, update: update, onClose: () => props.setPick(undefined) })
                     : props.pick && s.docs.filter(d => d.key === props.pick).length ? React.createElement(ItemPanel, { key: props.pick, p: p, s: s, k: k, dkey: props.pick, who: who, update: update, onClose: () => props.setPick(undefined) })
                         : React.createElement(StageSummary, { p: p, k: k }))),
-            tab === 'gate' && React.createElement(Work139_1.GateBoard, { p: p, onPick: k2 => toWork(k2, 'gate') }),
-            itemTab && React.createElement(Items_1.ItemDetail, { key: tab, p: p, items: props.items, who: who, update: update, onPick: props.onPick, onProject: () => go('work'), only: tab }),
-            tab === 'lanes' && React.createElement(Work139_1.LaneBoard, { p: p, onOpen: toWork }),
-            tab === 'gantt' && React.createElement(Dash_1.ProjectSchedule, { p: p, who: who, update: update, onOpen: toWork }),
-            tab === 'ai' && React.createElement(Work139_1.AiInbox, { items: props.items, pid: p.id, who: who, act: props.act }),
-            tab === 'issue' && React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { padding: 14 }) },
-                props.pick === 'issue-new' && React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { marginBottom: 12 }) },
-                    React.createElement(IssueForm, { p: p, who: who, update: update, onClose: () => props.setPick(undefined) })),
-                React.createElement(Issues, { p: p, who: who, update: update, onNew: () => props.setPick('issue-new') })),
+            tab === 'parts' && React.createElement(React.Fragment, null,
+                React.createElement("div", { "data-ax-subs": true, style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 } }, subs.map(t => React.createElement("button", { key: t[0], "data-ax-sub": t[0], onClick: () => setSub(t[0]), style: Object.assign(Object.assign({}, ui_1.btn), { padding: '5px 12px', background: sub === t[0] ? ui_1.C.text : ui_1.C.card, color: sub === t[0] ? '#fff' : ui_1.C.sub, borderColor: sub === t[0] ? ui_1.C.text : ui_1.C.line2 }) },
+                    t[1],
+                    " ",
+                    React.createElement("span", { style: { opacity: 0.6 } }, t[2])))),
+                React.createElement(Items_1.ItemDetail, { key: sub, p: p, items: props.items, who: who, update: update, onPick: props.onPick, onProject: () => go('work'), only: sub })),
+            tab === 'lanes' && React.createElement("div", { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
+                React.createElement(Work139_1.LaneBoard, { p: p, onOpen: toWork }),
+                React.createElement(Dash_1.ProjectSchedule, { p: p, who: who, update: update, onOpen: toWork })),
             tab === 'log' && React.createElement("div", { style: { display: 'flex', flexDirection: 'column', gap: 12 } },
+                React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { padding: 14 }) },
+                    React.createElement("div", { style: { fontWeight: 700, marginBottom: 8 } }, "\uC774\uC288\u00B7\uB9AC\uC2A4\uD06C"),
+                    props.pick === 'issue-new' && React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { marginBottom: 12 }) },
+                        React.createElement(IssueForm, { p: p, who: who, update: update, onClose: () => props.setPick(undefined) })),
+                    React.createElement(Issues, { p: p, who: who, update: update, onNew: () => props.setPick('issue-new') })),
                 React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { padding: 14 }) },
                     React.createElement("div", { style: { fontWeight: 700, marginBottom: 8 } }, "\uC0AC\uC591 \uBCC0\uACBD"),
                     React.createElement(Changes, { p: p, who: who, update: update })),
@@ -530,6 +535,7 @@ function StageList(props) {
     const op = (0, work_1.unlocked)(p, k);
     const n = (0, work_1.stageDocsOk)(p, s);
     const end = (p.plan || {})[s.id];
+    const api = React.useContext(Dash_1.AiCtx);
     return (React.createElement("div", { "data-ax-stage": s.id, style: ui_1.card },
         React.createElement("div", { style: { display: 'flex', alignItems: 'baseline', gap: 10, padding: '12px 14px', borderBottom: `1px solid ${ui_1.C.line}`, flexWrap: 'wrap' } },
             React.createElement("span", { style: { fontSize: 15, fontWeight: 700 } },
@@ -558,12 +564,16 @@ function StageList(props) {
                 const ok = (0, work_1.docOk)(st);
                 const due = st.due || end;
                 const left = (0, ax_1.daysTo)(due);
+                const aj = ((p.aiJobs || []).filter(j => j.doc === d.key && j.state !== 'dismissed').slice(-1))[0];
                 const dot = st.done ? 'done' : st.skip ? 'skip' : !op ? 'lock' : left !== undefined && left < 0 ? 'late' : left !== undefined && left <= 7 ? 'soon' : 'open';
                 return (React.createElement("div", { key: d.key, className: 'axw-row' + (props.pick === d.key ? ' on' : ''), "data-ax-item": d.key, "data-ax-item-state": st.done ? 'done' : st.skip ? 'skip' : 'todo', onClick: () => props.setPick(d.key) },
                     React.createElement(ui_1.Dot, { s: dot }),
                     React.createElement("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500, color: ok ? ui_1.C.faint : ui_1.C.text, textDecoration: st.skip ? 'line-through' : 'none' } }, d.label),
-                    React.createElement("span", { className: "axw-hide-sm", style: { width: 84, fontSize: 13, color: st.who ? ui_1.C.sub : ui_1.C.faint, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, st.who || '미정'),
-                    React.createElement("span", { style: { width: 118, flex: '0 0 auto', textAlign: 'right' } }, st.done ? React.createElement("span", { style: { fontSize: 12.5, color: ui_1.C.ok, fontWeight: 600 } }, "\uC644\uB8CC") : st.skip ? React.createElement("span", { style: { fontSize: 12.5, color: ui_1.C.faint } }, "\uD544\uC694 \uC5C6\uC74C") : React.createElement(ui_1.Due, { due: due })),
+                    React.createElement("span", { "data-ax-doc-owner": st.ai ? 'ai' : 'human', style: { width: 84, fontSize: 13, color: st.who ? ui_1.C.sub : ui_1.C.faint, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, st.ai ? React.createElement("span", { style: { background: ui_1.C.accentBg, color: ui_1.C.accent, fontWeight: 800, fontSize: 11, borderRadius: 5, padding: '2px 6px' } }, "AI") : st.who || '미정'),
+                    React.createElement("span", { style: { width: 118, flex: '0 0 auto', textAlign: 'right' } }, st.done ? React.createElement("span", { style: { fontSize: 12.5, color: ui_1.C.ok, fontWeight: 600 } }, "\uC644\uB8CC") : st.skip ? React.createElement("span", { style: { fontSize: 12.5, color: ui_1.C.faint } }, "\uD544\uC694 \uC5C6\uC74C")
+                        : aj && (0, ai_1.jobState)(aj) === 'review' ? React.createElement("button", { "data-ax-doc-review": true, onClick: e => { e.stopPropagation(); if (api)
+                                api.open(p.id, aj.id); }, style: Object.assign(Object.assign({}, ui_1.primary), { padding: '3px 10px', fontSize: 12.5 }) }, "\uD655\uC778\uD558\uAE30")
+                            : aj && ['running', 'queued', 'offline'].indexOf((0, ai_1.jobState)(aj)) >= 0 ? React.createElement("span", { style: { fontSize: 12.5, color: ui_1.C.accent, fontWeight: 600 } }, "AI \uC4F0\uB294 \uC911") : React.createElement(ui_1.Due, { due: due })),
                     React.createElement(ui_1.FileIcon, { on: !!st.link })));
             }),
             s.gate && (() => {
@@ -596,6 +606,12 @@ function ItemPanel(props) {
             React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 } },
                 React.createElement(ui_1.Dot, { s: st.done ? 'done' : st.skip ? 'skip' : op ? 'open' : 'lock' }),
                 st.done ? `완료 · ${st.by || ''} ${(0, ax_1.fmt)(st.at)}` : st.skip ? `필요 없음 — ${st.skip}` : op ? '진행 전' : '잠긴 단계'),
+            React.createElement("div", { "data-ax-doc-who": true, style: { display: 'flex', gap: 6, alignItems: 'center' } },
+                React.createElement("span", { style: Object.assign(Object.assign({}, ui_1.label), { marginRight: 4 }) }, "\uB204\uAC00 \uD558\uB098\uC694"),
+                React.createElement("button", { "data-ax-doc-human": true, onClick: () => set({ ai: undefined }, '담당 사람으로'), style: Object.assign(Object.assign({}, ui_1.btn), { padding: '4px 10px', background: !st.ai ? ui_1.C.text : ui_1.C.card, color: !st.ai ? '#fff' : ui_1.C.sub }) }, "\uC0AC\uB78C"),
+                React.createElement("button", { "data-ax-doc-ai": true, onClick: () => { if (st.ai)
+                        return; update(x => { const y = Object.assign(Object.assign({}, x), { docs: Object.assign(Object.assign({}, x.docs), { [dkey]: Object.assign(Object.assign({}, (x.docs[dkey] || {})), { ai: true }) }), log: x.log.concat([{ at: (0, ui_1.nowIso)(), who, kind: 'doc', what: `${d.label} — AI에게 맡김` }]) }); return op ? (0, auto_1.addJobs)(y, (0, auto_1.aiDocTasks)(y, props.k, dkey), who) : y; }); }, style: Object.assign(Object.assign({}, ui_1.btn), { padding: '4px 10px', background: st.ai ? ui_1.C.accent : ui_1.C.card, color: st.ai ? '#fff' : ui_1.C.accent, borderColor: ui_1.C.accent }) }, "AI\uC5D0\uAC8C \uB9E1\uAE30\uAE30")),
+            st.ai && React.createElement("div", { style: { fontSize: 12.5, color: ui_1.C.sub } }, op ? 'AI가 초안을 쓰고, 다 되면 「오늘」과 이 줄의 「확인하기」로 올라와요. 확인하고 승인하면 완료돼요.' : '이 단계가 열리면 AI가 바로 초안을 써요.'),
             React.createElement("div", { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 } },
                 React.createElement(ui_1.Field, { l: "\uB2F4\uB2F9" },
                     React.createElement("input", { "data-ax-item-who": true, value: owner, placeholder: "\uC774\uB984", onChange: e => setOwner(e.target.value), onBlur: () => { const v = owner.trim(); if (v !== (st.who || ''))
@@ -702,9 +718,7 @@ function StageSummary(props) {
             row('산출물', `${(0, work_1.stageDocsOk)(p, s)} / ${s.docs.length}`),
             React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { margin: '12px 0 4px' }) }, "\uC0AC\uB78C\uC774 \uD560 \uC77C"),
             React.createElement("div", { style: { fontSize: 13, color: ui_1.C.sub } }, (s.human || []).join(' · ')),
-            React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { margin: '12px 0 4px' }) }, "\uB3C4\uC6B0\uBBF8\uAC00 \uCC59\uAE38 \uC77C"),
-            React.createElement("div", { style: { fontSize: 13, color: ui_1.C.sub } }, (s.ai || []).join(' · ')),
-            React.createElement(RegRadar_1.default, { stage: s.id, stageLabel: `${s.no} ${s.name}` }))));
+            React.createElement("div", { style: { fontSize: 12.5, color: ui_1.C.faint, marginTop: 12 } }, "\uB2F4\uB2F9\uC774 \u300CAI\u300D\uC778 \uC904\uC740 AI\uAC00 \uCD08\uC548\uC744 \uC4F0\uACE0, \uB2E4 \uB418\uBA74 \u300C\uD655\uC778\uD558\uAE30\u300D\uAC00 \uB5A0\uC694. \uADDC\uC81C\u00B7\uC778\uC99D \uC810\uAC80\uB3C4 AI\uAC00 \uCC59\uACA8\uC11C \u300C\uC624\uB298\u300D\uB85C \uC62C\uB824\uC694."))));
 }
 function Settings(props) {
     const { p } = props;
@@ -1669,6 +1683,7 @@ exports.AI_KINDS = [
     K('ask', '질문 — 근거와 함께 답', 'common', 0, { ask: '무엇이 궁금해요? (예: G2 왜 막혔어?)', item: true, others: true, do: '아래 질문에 이 데이터만 근거로 답하고, 근거가 된 줄을 「근거:」로 적어라.' }),
     K('draft', '산출물 초안·점검', 'common', 0, { ask: '어떤 산출물? (예: 요구 사양서, 시사출 결과 보고서)', item: true }),
     K('regchk', '규제·리콜 사전 점검 — 이 제품에 걸리는 것', 'common', 0, { item: true, do: '이 제품(유형·재질·전원·식품 접촉·판매 나라)에 걸릴 수 있는 국내외 규제와 비슷한 제품의 최근 리콜 사례 유형을 짚고, 지금 단계에서 미리 할 일을 3~6줄로 적어라. 확실하지 않은 것은 「확인 필요」.' }),
+    K('do', '맡긴 일 — 말로 맡긴 요청 처리', 'common', 0, { ask: '무엇을 맡길까요?', item: true, others: true, do: '아래 요청을 이 프로젝트 데이터로 처리해 바로 쓸 수 있는 결과물(초안·메일·표·목록)을 만들어라. 메일이면 첫 줄은 "제목: ...". 데이터에 없는 값은 「확인 필요」.' }),
     K('docchk', '산출물 점검·요약 (올라오면 자동)', 'common', 0, { ask: '어떤 산출물?', item: true, do: '방금 완료된 아래 산출물을 이 단계 목표·관문 기준·남은 산출물과 대조해 ① 요약 3줄 ② 빠졌거나 확인할 것 ③ 다음 할 일을 써라. 파일 내용은 볼 수 없으니 이름·링크·기록만 근거로.' }),
 ];
 const branchOf = (t) => (t === 'own' || t === 'derive' ? 'juicer' : 'goods');
@@ -1842,6 +1857,8 @@ function applyJob(p, j, who) {
         } }); });
         next.plan = plan;
     }
+    if (j.doc)
+        next.docs = Object.assign(Object.assign({}, p.docs), { [j.doc]: Object.assign(Object.assign({}, (p.docs[j.doc] || {})), { done: true, by: `${who} (AI 초안 확인)`, at }) }); // 1.0.140
     next.aiJobs = (p.aiJobs || []).map(x => (x.id === j.id ? Object.assign(Object.assign({}, x), { state: 'applied', by: who, doneAt: x.doneAt || at }) : x));
     next.log = (p.log || []).concat([{ at, who, kind: 'note', ai: true, what: `AI 결과 반영 — ${j.label}: ${text.split('\n')[0].slice(0, 120)}` }]);
     return next;
@@ -2648,6 +2665,13 @@ exports.CSS = `
   .axw-hide-sm{display:none !important}
   .axw-show-sm{display:block}
   .axw-rail{overflow-x:auto}
+  .axw-irow{flex-wrap:wrap;row-gap:4px}
+  .axw-irow .axw-iname{width:auto !important;flex:1 1 100% !important}
+  .axw-irow .axw-inow{flex:1 1 100% !important;order:5}
+  .axw-tcard{flex-wrap:wrap}
+  .axw-tbtns{width:100%;padding-left:34px}
+  .axw-askrow{flex-wrap:wrap}
+  .axw-askrow input{flex:1 1 100% !important}
   .axw-rail > button{min-width:108px !important;flex:0 0 108px !important}
   .axw-pad{padding-left:14px !important;padding-right:14px !important}
   .axw-top{gap:8px !important}
@@ -3403,6 +3427,7 @@ __m["src/webparts/huromAxPlm/model/auto.js"]=function(module,exports,require){"u
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.staleReviews = void 0;
 exports.stageTasks = stageTasks;
+exports.aiDocTasks = aiDocTasks;
 exports.eventTasks = eventTasks;
 exports.kstNow = kstNow;
 exports.dailyTasks = dailyTasks;
@@ -3421,7 +3446,14 @@ function stageTasks(p, k) {
     const b = (0, ai_1.branchOf)((0, devtype_1.typeOf)(p));
     const s = (0, work_1.stagesOf)(p)[k];
     return (0, ai_1.kindsFor)(b, k + 1).filter(x => (!x.ask || x.autoInput) && !(x.id === 'j_back' && Object.keys(p.plan || {}).length))
-        .map(x => ({ kind: x.id, why: `${s.no} ${s.short || s.name} 단계 열림`, input: x.autoInput }));
+        .map(x => ({ kind: x.id, why: `${s.no} ${s.short || s.name} 단계 열림`, input: x.autoInput }))
+        .concat(aiDocTasks(p, k));
+}
+// 1.0.140 AI 담당 산출물 — 단계가 열리면(또는 AI에게 맡기면) 초안부터
+function aiDocTasks(p, k, only) {
+    const s = (0, work_1.stagesOf)(p)[k];
+    return s.docs.filter(d => (only ? d.key === only : (p.docs[d.key] || {}).ai) && !(0, work_1.docOk)(p.docs[d.key]))
+        .map(d => ({ kind: 'draft', why: `AI 담당 — ${d.label}`, input: d.label, doc: d.key, owner: p.owner }));
 }
 // 일이 생기면 바로 — 바뀐 것을 비교해서
 function eventTasks(a, b) {
@@ -3499,7 +3531,7 @@ function addJobs(p, tasks, who, online) {
         if (jobs.some(j => j.kind === t.kind && (j.input || '') === (t.input || '') && (['queued', 'running'].indexOf((0, ai_1.jobState)(j)) >= 0 || (j.at.slice(0, 10) === td && ['review', 'nodata', 'offline'].indexOf((0, ai_1.jobState)(j)) >= 0))))
             return;
         const info = (0, ai_1.kindInfo)(t.kind);
-        const job = { id: 'ai' + Date.now().toString(36) + (n++) + Math.floor(Math.random() * 1e4).toString(36), kind: t.kind, label: info.label, input: t.input, at: new Date().toISOString(), who: t.why ? 'AI 자동' : who, auto: t.why || undefined, owner: t.owner || p.owner, stage: info.stage ? info.stage - 1 : (0, work_1.curIdx)(p),
+        const job = { id: 'ai' + Date.now().toString(36) + (n++) + Math.floor(Math.random() * 1e4).toString(36), kind: t.kind, label: info.label, input: t.input, at: new Date().toISOString(), who: t.why ? 'AI 자동' : who, auto: t.why || undefined, owner: t.owner || p.owner, stage: info.stage ? info.stage - 1 : (0, work_1.curIdx)(p), doc: t.doc,
             state: info.nodata ? 'nodata' : online === false ? 'offline' : 'queued', note: info.nodata };
         jobs.push(job);
     });
@@ -5604,97 +5636,6 @@ function VendorPanel(props) {
 }
 
 };
-__m["src/webparts/huromAxPlm/components/RegRadar.js"]=function(module,exports,require){"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.REG_SITE = void 0;
-exports.loadReg = loadReg;
-exports.default = RegRadar;
-const React = __importStar(require("react"));
-// 규제·리콜·불량 미리 보기 — 곽두팔이 만든 「휴롬 규제 리콜 사이트」(GitHub Pages)와 연동 (심준보 msg 10342690·10342743, 곽두팔 msg 10343124)
-// 데이터: REG_SITE + 'axplm.json' = { updated, source, items: [{ stage:'S1'..'S7', kind:'규제'|'리콜'|'불량', title, region?, note?, url?, when?, pri?:'상'|'중'|'하' }] } — 곽두팔이 단계 안 순서(규제→불량→리콜, 우선순위)로 정렬해 올림 — 없으면 사이트 링크만
-exports.REG_SITE = 'https://simjb23-oss.github.io/hurom-regradar/';
-let cache;
-function loadReg() {
-    if (!cache)
-        cache = fetch(exports.REG_SITE + 'axplm.json', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : { items: [] })).then(d => (d && Array.isArray(d.items) ? d.items : []), () => []);
-    return cache;
-}
-const C = { brand: '#0B7A53', text: '#111827', faint: '#5B6472', line: '#E3E6EA', red: '#C81E1E', redBg: '#FDECEC', amber: '#9A5B00', amberBg: '#FFF4DB' }; // 밝은 화면 (1.0.128)
-const TAG = { 규제: [C.brand, '#E3F4EC'], 리콜: [C.red, C.redBg], 불량: [C.amber, C.amberBg] };
-function RegRadar(props) {
-    const [items, setItems] = React.useState(undefined);
-    React.useEffect(() => { let live = true; loadReg().then(xs => { if (live)
-        setItems(xs); }, () => { if (live)
-        setItems([]); }); return () => { live = false; }; }, []);
-    const mine = (items || []).filter(x => x.stage === props.stage);
-    const [all, setAll] = React.useState(false);
-    React.useEffect(() => { setAll(false); }, [props.stage]);
-    const cnt = {};
-    mine.forEach(x => { cnt[x.kind] = (cnt[x.kind] || 0) + 1; });
-    const sum = ['규제', '리콜', '불량'].filter(k => cnt[k]).map(k => `${k} ${cnt[k]}`).join(' · ');
-    const shown = all ? mine : mine.slice(0, 5);
-    return (React.createElement("div", { "data-ax-reg": true, style: { marginTop: 18 } },
-        React.createElement("div", { style: { display: 'flex', alignItems: 'baseline', gap: 8 } },
-            React.createElement("span", { style: { fontSize: 14, fontWeight: 900 } }, "\uC774 \uB2E8\uACC4 \uADDC\uC81C\u00B7\uB9AC\uCF5C\u00B7\uBD88\uB7C9"),
-            React.createElement("span", { style: { fontSize: 12, color: C.faint } },
-                props.stageLabel,
-                sum ? ` · ${sum}` : ''),
-            React.createElement("span", { style: { flex: 1 } }),
-            React.createElement("a", { href: exports.REG_SITE, target: "_blank", rel: "noopener noreferrer", style: { fontSize: 12, color: C.brand, fontWeight: 700 } }, "\uADDC\uC81C \uC0AC\uC774\uD2B8 \uC5F4\uAE30")),
-        items === undefined && React.createElement("div", { style: { fontSize: 12.5, color: C.faint, padding: '6px 0' } }, "\uBD88\uB7EC\uC624\uB294 \uC911\u2026"),
-        items !== undefined && mine.length === 0 && React.createElement("div", { style: { fontSize: 12.5, color: C.faint, padding: '6px 0' } }, "AI\uAC00 \uC774 \uB2E8\uACC4\uC5D0\uC11C \uBBF8\uB9AC \uBCFC \uADDC\uC81C\u00B7\uB9AC\uCF5C\u00B7\uBD88\uB7C9\uC744 \uCC44\uC6B0\uB294 \uC911\uC774\uC5D0\uC694. \uC9C0\uAE08\uC740 \uADDC\uC81C \uC0AC\uC774\uD2B8\uC5D0\uC11C \uBC95\uADDC\uBCC4 \uC810\uAC80\uD45C\u00B7\uB9AC\uCF5C \uC0AC\uB840\uB97C \uBCFC \uC218 \uC788\uC5B4\uC694."),
-        shown.map((x, k) => {
-            const t = TAG[x.kind] || [C.faint, '#F1F3F5'];
-            return (React.createElement("div", { key: k, "data-ax-reg-item": true, style: { display: 'flex', gap: 8, alignItems: 'flex-start', padding: '6px 0', borderTop: `1px solid ${C.line}`, fontSize: 12.5 } },
-                React.createElement("span", { style: { flex: '0 0 auto', fontSize: 11, fontWeight: 800, color: t[0], background: t[1], borderRadius: 4, padding: '1px 6px' } }, x.kind),
-                React.createElement("span", { style: { flex: 1, minWidth: 0 } },
-                    x.url ? React.createElement("a", { href: x.url, target: "_blank", rel: "noopener noreferrer", style: { color: C.text, fontWeight: 700 } }, x.title) : React.createElement("b", null, x.title),
-                    x.pri === '상' ? React.createElement("span", { "data-ax-reg-pri": true, style: { marginLeft: 6, fontSize: 10.5, fontWeight: 800, color: C.red, background: C.redBg, borderRadius: 4, padding: '0 5px' } }, "\uC911\uC694") : null,
-                    x.region ? React.createElement("span", { style: { color: C.faint } },
-                        " \u00B7 ",
-                        x.region) : null,
-                    x.when ? React.createElement("span", { style: { color: C.amber } },
-                        " \u00B7 ",
-                        x.when) : null,
-                    x.note ? React.createElement("div", { title: x.note, style: { color: C.faint, marginTop: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflowWrap: 'anywhere' } }, x.note) : null)));
-        }),
-        mine.length > 5 && React.createElement("button", { "data-ax-reg-more": true, onClick: () => setAll(!all), style: { marginTop: 4, border: `1px solid ${C.line}`, background: '#fff', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700, color: C.brand, cursor: 'pointer' } }, all ? '접기' : `${mine.length - 5}건 더 보기`)));
-}
-
-};
 __m["src/webparts/huromAxPlm/components/Items.js"]=function(module,exports,require){"use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -6385,10 +6326,12 @@ function MoldPanel(props) {
 __m["src/webparts/huromAxPlm/model/aiSamples.js"]=function(module,exports,require){"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.aiSamples = aiSamples;
+exports.withAi = withAi;
 // AX-PLM 1.0.139 — 예시 아이템에 「AI가 해 놓은 일」 (저장 안 함)
 // 심준보 기준(곽두팔 2026-11-18 #ax-plm msg 10583671): AI가 먼저 일하고 사람은 확인·승인만 — 예시에서도 결재함이 비어 보이지 않게
 const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
 const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
 const addDays = (a, k) => { const x = new Date(a + 'T00:00:00'); x.setDate(x.getDate() + k); return `${x.getFullYear()}-${('0' + (x.getMonth() + 1)).slice(-2)}-${('0' + x.getDate()).slice(-2)}`; };
 const ago = (h) => new Date(Date.now() - h * 3600000).toISOString();
 let n = 0;
@@ -6432,6 +6375,25 @@ function aiSamples0(id, owner) {
         ];
     return [];
 }
+// 1.0.140 예시: 지금 단계에서 담당이 안 정해진 산출물은 AI 담당 — 하나는 초안이 확인 대기, 나머지는 작성 중으로 보이게
+function withAi(p0) {
+    const k = (0, work_1.curIdx)(p0);
+    const s = (0, work_1.stagesOf)(p0)[k];
+    const docs = Object.assign({}, p0.docs);
+    const jobs = aiSamples(p0.id, p0.owner, k);
+    let first = true;
+    s.docs.forEach(d => {
+        const st = docs[d.key] || {};
+        if ((0, work_1.docOk)(st) || (st.who && !/검토서|보고서|정리|계획|사양서|요약|대장|평가/.test(d.label)))
+            return;
+        docs[d.key] = Object.assign(Object.assign({}, st), { ai: true });
+        jobs.unshift(first
+            ? J('draft', k, 0.7, `${d.label} 초안\n1. 목적: ${p0.name} ${s.no} ${s.name} 단계 산출물\n2. 내용: 지금까지 기록(BOM·협력사·이슈)으로 채움 — 수치는 확인 필요 표시\n3. 남은 확인: 담당 PM 검토 후 승인하면 완료 처리`, { auto: `AI 담당 — ${d.label}`, input: d.label, doc: d.key, owner: p0.owner })
+            : J('draft', k, 0, '', { auto: `AI 담당 — ${d.label}`, input: d.label, doc: d.key, owner: p0.owner, state: 'queued', doneAt: undefined }));
+        first = false;
+    });
+    return Object.assign(Object.assign({}, p0), { docs, aiJobs: jobs });
+}
 
 };
 __m["src/webparts/huromAxPlm/components/Work139.js"]=function(module,exports,require){"use strict";
@@ -6472,6 +6434,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.blocks = blocks;
 exports.StatusBoard = StatusBoard;
 exports.AiInbox = AiInbox;
+exports.JobPanel = JobPanel;
 exports.GateBoard = GateBoard;
 exports.LaneBoard = LaneBoard;
 exports.ItemPick = ItemPick;
@@ -6862,6 +6825,181 @@ function ItemPick(props) {
                     l,
                     "\uC77C \uC9C0\uC5F0"));
         }))));
+}
+
+};
+__m["src/webparts/huromAxPlm/components/Today.js"]=function(module,exports,require){"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.mailHref = void 0;
+exports.friendly = friendly;
+exports.Today = Today;
+const React = __importStar(require("react"));
+// AX-PLM 1.0.140 「오늘」 — 첫 화면 하나로 끝 (심준보 2026-11-19 #ax-plm msg 10738686~10738864 '단순·진짜 필요한 일만·AI한테 맡길 구조·휴롬 PLM과 차별점', 설계도 msg 10739074 → '네' 10739566)
+// 맨 위 AI에게 말로 맡기기 → AI가 해 놓은 일(확인해 주세요) → 아이템 한 줄씩(늦은 것부터, 지금 누가 뭘 하는지)
+const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
+const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
+const Dash_1 = require("src/webparts/huromAxPlm/components/Dash.js");
+const Work139_1 = require("src/webparts/huromAxPlm/components/Work139.js");
+const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
+const AiTag = () => React.createElement("span", { "data-ax-ai-tag": true, style: { background: ui_1.C.accentBg, color: ui_1.C.accent, fontWeight: 800, fontSize: 11, borderRadius: 5, padding: '2px 6px', whiteSpace: 'nowrap', flex: '0 0 auto' } }, "AI");
+const Who = (props) => React.createElement("span", { style: { background: '#F4F4F5', color: ui_1.C.sub, fontWeight: 700, fontSize: 11.5, borderRadius: 5, padding: '1px 6px', whiteSpace: 'nowrap', flex: '0 0 auto' } }, props.n);
+const short = (n) => n.split(' (')[0];
+const first = (t) => (t || '').split('\n').map(x => x.replace(/^\s*(-|\d+\.|제목\s*[:：])\s*/, '').trim()).filter(x => x)[0] || '';
+const subj = (t) => { const l = (t || '').split('\n').filter(x => /^\s*제목\s*[:：]/.test(x))[0]; return l ? l.replace(/^\s*제목\s*[:：]\s*/, '') : ''; };
+const isMail = (j) => !!(0, ai_1.kindInfo)(j.kind).mail || /^\s*제목\s*[:：]/m.test(j.result || '');
+const mailHref = (t) => `mailto:?subject=${encodeURIComponent(subj(t).slice(0, 120))}&body=${encodeURIComponent(t.slice(0, 1800))}`;
+exports.mailHref = mailHref;
+// AI 결과를 사람 말로 — 무엇을 해 놨고, 누르면 무엇이 되는지
+function friendly(j) {
+    if (isMail(j))
+        return { title: '메일 써 놨어요', go: '메일 열기' };
+    if (j.kind === 'replan' || j.kind === 'j_back')
+        return { title: '일정을 다시 짰어요', go: '적용' };
+    if (j.kind === 'gate')
+        return { title: '관문 승인 요청 글 준비했어요', go: '확인' };
+    if (j.kind === 'weekly')
+        return { title: '이번 주 요약 써 놨어요', go: '올리기' };
+    if (j.kind === 'draft' && j.doc)
+        return { title: `「${j.input || '산출물'}」 초안 써 놨어요`, go: '확인 끝' };
+    if (j.kind === 'regchk')
+        return { title: '규제·리콜 미리 점검했어요', go: '확인' };
+    if (j.kind === 'do')
+        return { title: `맡긴 일 끝났어요 — ${(j.input || '').slice(0, 30)}`, go: '확인' };
+    const T = { g_sample: '샘플 평가를 정리했어요', oldrev: '업체에 나간 옛 도면을 찾았어요', bomdiff: '기반 모델과 BOM 차이를 정리했어요', vendor: '업체 인증서를 점검했어요', docchk: `「${j.input || '산출물'}」을 점검했어요`, j_food: '식품 접촉 재질을 점검했어요', j_bom: 'BOM 원가를 합산했어요', g_cost: '목표 원가를 다시 계산했어요', ecr: '설계 변경 영향을 정리했어요', certlist: '나라별 필요 인증을 정리했어요', delay: '지연 영향을 점검했어요', minutes: '회의록에서 할 일을 뽑았어요' };
+    return { title: T[j.kind] || `${(0, ai_1.kindInfo)(j.kind).label.split(' — ')[0]} — 해 놨어요`, go: '확인' };
+}
+const DOING = { delay: '일정 점검하는 중', replan: '일정 다시 짜는 중', weekly: '주간 요약 쓰는 중', gate: '관문 요청 글 쓰는 중' };
+const doing = (j) => (j.kind === 'draft' && j.input ? `「${j.input}」 쓰는 중` : DOING[j.kind] || `${(0, ai_1.kindInfo)(j.kind).label.split(' — ')[0]} 하는 중`);
+function Today(props) {
+    const api = React.useContext(Dash_1.AiCtx);
+    const [more, setMore] = React.useState(false);
+    const [open, setOpen] = React.useState(undefined);
+    const now = (0, ax_1.today)();
+    const rows = [];
+    props.items.forEach(p => (p.aiJobs || []).forEach(j => rows.push({ p: p, j })));
+    const review = rows.filter(r => (0, ai_1.jobState)(r.j) === 'review').sort((a, b) => ((a.j.doneAt || a.j.at) < (b.j.doneAt || b.j.at) ? 1 : -1));
+    const doneToday = rows.filter(r => (r.j.doneAt || '').slice(0, 10) === now).length;
+    const shown = more ? review : review.slice(0, 5);
+    const items = props.items.slice().sort((a, b) => ((0, work_1.projLate)(b) - (0, work_1.projLate)(a)) || ((a.target || '9') < (b.target || '9') ? -1 : 1));
+    const cur = open ? rows.filter(r => r.j.id === open.id)[0] : undefined;
+    const go = (p, j) => { if (isMail(j) && j.result)
+        window.location.href = (0, exports.mailHref)(j.result); props.act.apply(p.id, j); };
+    return (React.createElement("div", { "data-ax-today": true },
+        React.createElement(AskBox, { items: props.items, api: api }),
+        React.createElement("section", { "data-ax-today-review": true, style: { marginTop: 22 } },
+            React.createElement("div", { style: { display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 10 } },
+                React.createElement("h2", { style: { fontSize: 18, fontWeight: 800, margin: 0 } },
+                    "AI\uAC00 \uD574 \uB193\uC740 \uC77C \u2014 \uD655\uC778\uD574 \uC8FC\uC138\uC694 ",
+                    React.createElement("span", { "data-ax-today-n": true, style: { color: review.length ? ui_1.C.soon : ui_1.C.faint } }, review.length)),
+                React.createElement("span", { style: { fontSize: 13, color: ui_1.C.faint } },
+                    "\uC624\uB298 AI\uAC00 \uD55C \uC77C ",
+                    doneToday,
+                    "\uAC74")),
+            !review.length && React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { padding: '18px 16px', color: ui_1.C.faint, fontSize: 14 }) }, "\uC9C0\uAE08 \uD655\uC778\uD560 \uAC83\uC774 \uC5C6\uC5B4\uC694. AI\uAC00 \uC77C\uC744 \uB05D\uB0B4\uBA74 \uC5EC\uAE30\uC5D0 \uC62C\uB77C\uC640\uC694."),
+            shown.map(({ p, j }) => {
+                const f = friendly(j);
+                return (React.createElement("div", { key: j.id, "data-ax-today-card": j.kind, className: "axw-tcard", style: Object.assign(Object.assign({}, ui_1.card), { display: 'flex', gap: 12, alignItems: 'center', padding: '12px 14px', marginBottom: 8 }) },
+                    React.createElement(AiTag, null),
+                    React.createElement("div", { style: { flex: 1, minWidth: 0, cursor: 'pointer' }, onClick: () => setOpen({ pid: p.id, id: j.id }) },
+                        React.createElement("div", { style: { fontWeight: 700, fontSize: 14.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, f.title),
+                        React.createElement("div", { style: { fontSize: 12.5, color: ui_1.C.faint, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 } },
+                            short(p.name),
+                            " \u00B7 ",
+                            subj(j.result) || first(j.result))),
+                    React.createElement("div", { className: "axw-tbtns", style: { display: 'flex', gap: 6, flex: '0 0 auto' } },
+                        React.createElement("button", { "data-ax-today-go": true, onClick: () => go(p, j), style: Object.assign(Object.assign({}, ui_1.primary), { padding: '5px 12px' }) }, f.go),
+                        React.createElement("button", { "data-ax-today-fix": true, onClick: () => setOpen({ pid: p.id, id: j.id }), style: Object.assign(Object.assign({}, ui_1.btn), { padding: '5px 10px' }) }, "\uACE0\uCE58\uAE30"),
+                        React.createElement("button", { "data-ax-today-no": true, onClick: () => props.act.reject(p.id, j, '안 함'), style: Object.assign(Object.assign({}, ui_1.btn), { padding: '5px 10px', color: ui_1.C.sub }) }, "\uC548 \uD568"))));
+            }),
+            review.length > 5 && React.createElement("button", { "data-ax-today-more": true, onClick: () => setMore(!more), style: Object.assign(Object.assign({}, ui_1.btn), { border: 'none', background: 'transparent', color: ui_1.C.accent }) }, more ? '접기' : `+ ${review.length - 5}건 더`)),
+        React.createElement("section", { "data-ax-today-items": true, style: { marginTop: 22 } },
+            React.createElement("h2", { style: { fontSize: 18, fontWeight: 800, margin: '0 0 10px' } },
+                "\uC544\uC774\uD15C ",
+                items.length,
+                "\uAC1C ",
+                React.createElement("span", { style: { fontSize: 13, color: ui_1.C.faint, fontWeight: 500 } }, "\uB2A6\uC740 \uAC83\uBD80\uD130")),
+            React.createElement("div", { style: ui_1.card }, items.map(p => {
+                const lt = (0, work_1.projLate)(p);
+                const k = (0, work_1.curIdx)(p);
+                const pa = p;
+                const runs = (pa.aiJobs || []).filter(j => ['running', 'queued', 'offline'].indexOf((0, ai_1.jobState)(j)) >= 0);
+                const t = (0, work_1.todos)([p], '*').filter(x => x.kind === '산출물' && !(p.docs[x.key || ''] || {}).ai)[0];
+                const run = runs.filter(j => j.doc)[0] || (t ? undefined : runs[0]); // 산출물 쓰는 AI → 사람 할 일 → 그 밖의 AI 순
+                const who = t ? ((p.docs[t.key || ''] || {}).who || p.owner || '') : '';
+                return (React.createElement("div", { key: p.id, "data-ax-today-item": p.id, "data-ax-late": lt || '', className: "axw-row axw-irow", onClick: () => props.onItem(p.id) },
+                    React.createElement("b", { className: "axw-iname", style: { width: 170, flex: '0 0 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, short(p.name)),
+                    React.createElement("span", { className: "axw-ibar", title: `${(0, work_1.stagesOf)(p)[k].no} ${(0, work_1.stagesOf)(p)[k].name}`, style: { display: 'flex', gap: 2, width: 112, flex: '0 0 auto' } }, (0, work_1.stagesOf)(p).map((s, i) => { const f = (0, work_1.perf)(p, i); return React.createElement("i", { key: s.id, style: { flex: 1, height: 7, borderRadius: 2, background: f.state === 'done' ? ui_1.C.text : f.state === 'doing' ? (lt ? ui_1.C.late : ui_1.C.accent) : ui_1.C.line } }); })),
+                    React.createElement("span", { style: { width: 66, flex: '0 0 auto', fontWeight: 700, fontSize: 13, color: lt ? ui_1.C.late : ui_1.C.ok } }, lt ? `${lt}일 늦음` : '정상'),
+                    React.createElement("span", { className: "axw-inow", style: { flex: 1, minWidth: 0, display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, color: ui_1.C.sub, overflow: 'hidden' } }, run ? React.createElement(React.Fragment, null,
+                        React.createElement(AiTag, null),
+                        React.createElement("span", { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, doing(run)))
+                        : t ? React.createElement(React.Fragment, null,
+                            React.createElement(Who, { n: who || '담당 없음' }),
+                            React.createElement("span", { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+                                t.text,
+                                " ",
+                                t.left !== undefined && t.left < 0 ? '— 마감 지남' : '하는 중')) : React.createElement("span", { style: { color: ui_1.C.faint } },
+                            (0, work_1.stagesOf)(p)[k].no,
+                            " ",
+                            (0, work_1.stagesOf)(p)[k].short)),
+                    React.createElement("span", { style: { fontSize: 12.5, color: ui_1.C.faint, whiteSpace: 'nowrap', flex: '0 0 auto' } }, (0, ax_1.dday)(p.target))));
+            }))),
+        cur && React.createElement("div", { "data-ax-today-sheet": true, onClick: () => setOpen(undefined), style: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.28)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 } },
+            React.createElement("div", { className: "axw-sheetbox", onClick: e => e.stopPropagation(), style: Object.assign(Object.assign({}, ui_1.card), { width: 620, maxWidth: '100%', maxHeight: '88vh', overflow: 'auto' }) },
+                React.createElement(Work139_1.JobPanel, { p: cur.p, j: cur.j, k: cur.j.stage !== undefined ? cur.j.stage : (0, work_1.curIdx)(cur.p), who: props.who, act: Object.assign(Object.assign({}, props.act), { apply: (pid, j) => { go(cur.p, j); setOpen(undefined); }, reject: (pid, j, w) => { props.act.reject(pid, j, w); setOpen(undefined); } }), onClose: () => setOpen(undefined), onItem: () => { setOpen(undefined); props.onItem(cur.p.id); } })))));
+}
+// AI에게 말로 맡기기 — 아이템 이름이 글에 있으면 그 아이템, 없으면 고른 아이템
+function AskBox(props) {
+    const [t, setT] = React.useState('');
+    const [pid, setPid] = React.useState('');
+    const [sent, setSent] = React.useState('');
+    const guess = (s) => { const hit = props.items.filter(p => short(p.name).split(/\s+/).some(w => w.length >= 2 && s.indexOf(w) >= 0))[0]; return hit ? hit.id : ''; };
+    const target = pid || guess(t) || (props.items[0] ? props.items[0].id : '');
+    const send = () => { if (!t.trim() || !props.api || !target)
+        return; props.api.run(target, 'do', t.trim()); setSent(`${short((props.items.filter(p => p.id === target)[0] || { name: '' }).name)}에 맡겼어요 — 끝나면 아래 「확인해 주세요」에 올라와요`); setT(''); };
+    return (React.createElement("div", { "data-ax-ask": true, style: Object.assign(Object.assign({}, ui_1.card), { border: `2px solid ${ui_1.C.accent}`, padding: '10px 12px' }) },
+        React.createElement("div", { className: "axw-askrow", style: { display: 'flex', gap: 8, alignItems: 'center' } },
+            React.createElement("input", { "data-ax-ask-input": true, value: t, onChange: e => { setT(e.target.value); setSent(''); }, onKeyDown: e => { if (e.key === 'Enter')
+                    send(); }, placeholder: "AI\uC5D0\uAC8C \uC77C \uB9E1\uAE30\uAE30 \u2014 \uC608: \uAC00\uC2B5\uAE30 G2 \uC2B9\uC778 \uC694\uCCAD \uAE00 \uC368\uC918", style: Object.assign(Object.assign({}, ui_1.inp), { border: 'none', fontSize: 15, padding: '8px 4px', flex: 1 }) }),
+            React.createElement("select", { "data-ax-ask-item": true, value: pid, onChange: e => setPid(e.target.value), style: Object.assign(Object.assign({}, ui_1.inp), { width: 'auto', maxWidth: 170, flex: '0 1 auto' }) },
+                React.createElement("option", { value: "" }, t && guess(t) ? `${short((props.items.filter(p => p.id === guess(t))[0] || { name: '' }).name)} (자동)` : '아이템 고르기'),
+                props.items.map(p => React.createElement("option", { key: p.id, value: p.id }, short(p.name)))),
+            React.createElement("button", { "data-ax-ask-go": true, disabled: !t.trim(), onClick: send, style: Object.assign(Object.assign({}, ui_1.primary), { padding: '8px 16px', opacity: t.trim() ? 1 : 0.45 }) }, "\uB9E1\uAE30\uAE30")),
+        sent && React.createElement("div", { "data-ax-ask-sent": true, style: { fontSize: 12.5, color: ui_1.C.accent, fontWeight: 600, padding: '4px 4px 0' } }, sent)));
 }
 
 };
