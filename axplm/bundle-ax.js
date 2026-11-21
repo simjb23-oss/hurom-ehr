@@ -7947,6 +7947,11 @@ function Standup(props) {
     const before9 = new Date(Date.now() + 9 * 3600000).getUTCHours() < 9;
     const stuck = rows.reduce((n, x) => n + x.stuck.length, 0);
     const list = open ? rows : rows.slice(0, 6);
+    // 1.0.151 막힌 것만 Teams로 — 아이템마다 승인자(PM) 메일로 Teams 대화 열고 글 채움 (곽두팔 msg 11203338: 승인 요청 Teams 링크와 같은 길)
+    const dow = new Date(today + 'T00:00:00Z').getUTCDay();
+    const sendTime = !before9 && dow !== 0 && dow !== 6;
+    const byItem = props.items.map(p => ({ p, xs: standup([p]).reduce((a, r) => a.concat(r.stuck.map(t => `${t.split(' · ')[0]} · ${r.name} · ${t.split(' · ').slice(1).join(' · ')}`)), []) })).filter(x => x.xs.length);
+    const msgOf = (xs) => `[AX-PLM 아침 스탠드업 ${md(today)}] 막힌 AI 일 ${xs.length}건\n` + xs.map(x => '- ' + x).join('\n') + `\n${(0, ui_1.pageUrl)()}`;
     const md = (s) => s.slice(5).replace('-', '/');
     const LB = { did: '어제 한 일', todo: '오늘 할 일', stuck: '막힌 것' };
     const cell = (xs, col, k) => React.createElement("div", { "data-ax-su-cell": k, style: { color: xs.length ? col : ui_1.C.faint, minWidth: 0 } },
@@ -7968,7 +7973,24 @@ function Standup(props) {
                 "\uB9C9\uD78C \uAC83 ",
                 stuck,
                 "\uAC74"),
-            React.createElement(ui_1.Tip, { t: "AI \uD300\uC6D0\uB9C8\uB2E4 \uC2E4\uC81C AI \uC77C \uAE30\uB85D\uC5D0\uC11C \uBF51\uC544\uC694. \uC5B4\uC81C \uD55C \uC77C = \uC9C0\uB09C \uADFC\uBB34\uC77C\uC5D0 \uB05D\uB0B8 \uC77C, \uC624\uB298 \uD560 \uC77C = \uB300\uAE30\u00B7\uC9C4\uD589 \uC911\uC774\uAC70\uB098 \uC0AC\uB78C \uD655\uC778\uC744 \uAE30\uB2E4\uB9AC\uB294 \uC77C, \uB9C9\uD78C \uAC83 = \uC2E4\uD328\uD55C \uC77C. \uB9C9\uD78C \uAC83\uB9CC \uD3C9\uC77C 09:00\uC5D0 Teams\uB85C \uAC11\uB2C8\uB2E4." })),
+            React.createElement(ui_1.Tip, { t: "AI \uD300\uC6D0\uB9C8\uB2E4 \uC2E4\uC81C AI \uC77C \uAE30\uB85D\uC5D0\uC11C \uBF51\uC544\uC694. \uC5B4\uC81C \uD55C \uC77C = \uC9C0\uB09C \uADFC\uBB34\uC77C\uC5D0 \uB05D\uB0B8 \uC77C, \uC624\uB298 \uD560 \uC77C = \uB300\uAE30\u00B7\uC9C4\uD589 \uC911\uC774\uAC70\uB098 \uC0AC\uB78C \uD655\uC778\uC744 \uAE30\uB2E4\uB9AC\uB294 \uC77C, \uB9C9\uD78C \uAC83 = \uC2E4\uD328\uD55C \uC77C. \uB9C9\uD78C \uAC83\uC740 \uD3C9\uC77C 09:00\uBD80\uD130 \uBE68\uAC04 \uC904\uC758 \uBC84\uD2BC\uC73C\uB85C \uC544\uC774\uD15C PM(\uC2B9\uC778\uC790)\uC5D0\uAC8C Teams\uB85C \uBCF4\uB0B4\uC694 \u2014 \uB204\uB974\uBA74 Teams \uB300\uD654\uCC3D\uC774 \uAE00\uC774 \uCC44\uC6CC\uC9C4 \uCC44\uB85C \uC5F4\uB824\uC694." })),
+        byItem.length > 0 && React.createElement("div", { "data-ax-su-teams": true, style: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', margin: '4px 0 8px', padding: '8px 10px', borderRadius: 8, background: sendTime ? 'rgba(248,113,113,.1)' : 'transparent', border: `1px solid ${sendTime ? ui_1.C.late : ui_1.C.line}` } },
+            React.createElement("span", { style: { fontSize: 12.5, fontWeight: 700, color: sendTime ? ui_1.C.late : ui_1.C.sub } }, sendTime ? '09:00 — 막힌 것 Teams로 보낼 때예요' : '막힌 것 Teams로'),
+            byItem.map(x => x.p.approverMail
+                ? React.createElement("a", { key: x.p.id, "data-ax-su-send": x.p.id, href: (0, ui_1.teamsChat)(x.p.approverMail, msgOf(x.xs)), target: "_blank", rel: "noopener noreferrer", style: Object.assign(Object.assign({}, ui_1.btn), { textDecoration: 'none', fontSize: 12.5, padding: '3px 10px' }) },
+                    x.p.name,
+                    " ",
+                    x.xs.length,
+                    "\uAC74 \u2192 ",
+                    x.p.approver || 'PM')
+                : React.createElement("button", { key: x.p.id, "data-ax-su-copy": x.p.id, title: "\uC2B9\uC778\uC790 \uBA54\uC77C\uC774 \uC5C6\uC5B4 \uAE00\uB9CC \uBCF5\uC0AC\uD574\uC694 (\uC124\uC815\uC5D0\uC11C \uC2B9\uC778\uC790 \uBA54\uC77C\uC744 \uB123\uC73C\uBA74 \uBC14\uB85C Teams\uB85C \uC5F4\uB824\uC694)", onClick: () => { try {
+                        navigator.clipboard.writeText(msgOf(x.xs));
+                    }
+                    catch (e) { /* 복사 안 돼도 됨 */ } }, style: Object.assign(Object.assign({}, ui_1.btn), { fontSize: 12.5, padding: '3px 10px' }) },
+                    x.p.name,
+                    " ",
+                    x.xs.length,
+                    "\uAC74 \uBCF5\uC0AC"))),
         !rows.length ? React.createElement("div", { style: { fontSize: 13, color: ui_1.C.faint, padding: '6px 0' } }, "\uC5B4\uC81C\u00B7\uC624\uB298 AI \uC77C\uC774 \uC5C6\uC5B4\uC694.") : React.createElement(React.Fragment, null,
             React.createElement("div", { className: "axsu-row axsu-h", style: { fontSize: 12, color: ui_1.C.faint, fontWeight: 700 } },
                 React.createElement("span", null, "AI \uD300\uC6D0"),
