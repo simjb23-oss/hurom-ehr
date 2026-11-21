@@ -122,6 +122,8 @@ const team_1 = require("src/webparts/huromAxPlm/model/team.js");
 const history_1 = require("src/webparts/huromAxPlm/model/history.js"); // 1.0.148 경험 창고
 const Mates_1 = require("src/webparts/huromAxPlm/components/Mates.js");
 const Gate_1 = require("src/webparts/huromAxPlm/components/Gate.js");
+const Office_1 = require("src/webparts/huromAxPlm/components/Office.js");
+const P150_1 = require("src/webparts/huromAxPlm/components/P150.js"); // 1.0.150
 const Sticky_1 = __importDefault(require("src/webparts/huromPlm/components/Sticky.js"));
 const LAST = 'axplm-last-item';
 function AxWork(props) {
@@ -295,9 +297,13 @@ function AxWork(props) {
         return React.createElement("div", { "data-axplm": true, className: "axw", style: { padding: 32, color: ui_1.C.sub } },
             React.createElement("style", null, ui_1.CSS),
             err || '불러오는 중…');
-    const mine = (0, work_1.todos)(items, who);
-    const cur = items.filter(x => x.id === sel)[0] || items[0];
-    const reviewAll = items.reduce((n, p) => n + (p.aiJobs || []).filter(j => (0, ai_1.jobState)(j) === 'review').length, 0);
+    // 1.0.150 왼쪽 메뉴 구분값 — 사람별 저장, 아래 모든 화면이 걸러진 아이템만 봄 (자동 실행은 전체 그대로)
+    const filt = { line: sets.me.fLine || 'all', type: sets.me.fType || 'all' };
+    const shown = items.filter((0, P150_1.passF)(filt));
+    const aiOn = online === undefined ? 'wait' : online ? 'on' : 'off';
+    const mine = (0, work_1.todos)(shown, who);
+    const cur = shown.filter(x => x.id === sel)[0] || shown[0];
+    const reviewAll = shown.reduce((n, p) => n + (p.aiJobs || []).filter(j => (0, ai_1.jobState)(j) === 'review').length, 0);
     // 1.0.140 메뉴 2개 — 오늘 · 아이템 (현황표·AI 일함은 「오늘」 한 화면으로 합침)
     // 1.0.141 위 탭 = 마스터(전체 아이템·AI 확인) + 아이템마다 한 탭 (심준보 2026-11-19 #ax-plm msg 10751313)
     const goItem = (id) => { setSel(id); setFocus(undefined); setPick(undefined); setPtab('over'); setView('project'); window.scrollTo(0, 0); };
@@ -309,7 +315,7 @@ function AxWork(props) {
         retry: (pid, j) => runAi(pid, j.kind, j.input, j.id)
     };
     // 1.0.147 왼쪽 메뉴 → 화면
-    const gatesWait = items.reduce((n, p) => n + (0, work_1.stagesOf)(p).filter(x => x.gate && (0, work_1.gateState)(p, x) === 'requested').length, 0);
+    const gatesWait = shown.reduce((n, p) => n + (0, work_1.stagesOf)(p).filter(x => x.gate && (0, work_1.gateState)(p, x) === 'requested').length, 0);
     const go = (m) => {
         setSideOpen(false);
         if (m === 'notes') {
@@ -339,24 +345,24 @@ function AxWork(props) {
     };
     const toItem = (id) => { goItem(id); setMenu('item'); };
     const toPart = (id, sb) => { setSel(id); setFocus(undefined); setPick(undefined); setView('project'); setPtab('parts'); setSub0({ s: sb, n: Date.now() }); setMenu(sb); window.scrollTo(0, 0); };
-    const recent = (0, Shell_1.readRecent)().filter(id => id !== (cur && cur.id)).map(id => items.filter(x => x.id === id)[0]).filter(Boolean).slice(0, 3);
+    const recent = (0, Shell_1.readRecent)().filter(id => id !== (cur && cur.id)).map(id => shown.filter(x => x.id === id)[0]).filter(Boolean).slice(0, 3);
     const size = sets.me.size === 's' ? 0.92 : sets.me.size === 'l' ? 1.1 : 1;
     const screen = cur ? { product: cur.id, code: cur.itemCode || '', name: cur.name, line: '', tab: String(view === 'project' ? ptab : view), tabLabel: menu, stage: '', stageLabel: '' } : undefined;
     return (React.createElement(Shell_1.SetCtx.Provider, { value: sets },
         React.createElement(Dash_1.AiCtx.Provider, { value: aiApi },
-            React.createElement("div", { "data-axplm": true, "data-ax-v": "147", "data-ax-menu-on": menu, className: 'axw' + (sets.me.light ? ' axw-light' : ''), style: size !== 1 ? { zoom: size } : undefined },
-                React.createElement("style", null, ui_1.CSS + Overview_1.OV_CSS + ui_1.TIP_CSS + Shell_1.SHELL_CSS),
-                React.createElement(Sticky_1.default, { store: props.notes, who: who, ver: props.ver || '미리보기', off: demo && !props.notes, screen: screen, listNonce: noteList, linkOf: sc => { const u = window.location.href.split('?')[0]; return sc ? `${u}?item=${encodeURIComponent(sc.product)}` : u; }, go: sc => { if (items.filter(x => x.id === sc.product).length)
+            React.createElement("div", { "data-axplm": true, "data-ax-v": "150", "data-ax-menu-on": menu, className: 'axw' + (sets.me.light ? ' axw-light' : ''), style: size !== 1 ? { zoom: size } : undefined },
+                React.createElement("style", null, ui_1.CSS + Overview_1.OV_CSS + ui_1.TIP_CSS + Shell_1.SHELL_CSS + P150_1.P150_CSS),
+                React.createElement(Sticky_1.default, { store: props.notes, who: who, ver: props.ver || '미리보기', off: demo && !props.notes, screen: screen, listNonce: noteList, linkOf: sc => { const u = window.location.href.split('?')[0]; return sc ? `${u}?item=${encodeURIComponent(sc.product)}` : u; }, go: sc => { if (shown.filter(x => x.id === sc.product).length)
                         toItem(sc.product); } },
                     React.createElement("div", { className: "axs" },
-                        React.createElement(Shell_1.Side, { menu: menu, go: go, fold: fold, setFold: setFold, open: sideOpen, counts: { home: reviewAll, gate: gatesWait } }),
+                        React.createElement(Shell_1.Side, { menu: menu, go: go, fold: fold, setFold: setFold, open: sideOpen, counts: { home: reviewAll, gate: gatesWait }, filt: filt, setFilt: x => sets.saveMe({ fLine: x.line, fType: x.type }) }),
                         sideOpen && React.createElement("div", { onClick: () => setSideOpen(false), style: { position: 'fixed', inset: 0, zIndex: 19, background: 'rgba(0,0,0,.45)' } }),
                         React.createElement("div", { className: "axs-body" },
                             React.createElement("div", { className: "axs-top axw-top", "data-ax-topbar": true },
                                 React.createElement("button", { className: "axs-burger", "data-ax-burger": true, onClick: () => setSideOpen(true), style: Object.assign(Object.assign({}, ui_1.btn), { padding: '5px 9px' }), "aria-label": "\uBA54\uB274" }, "\u2630"),
-                                React.createElement(Shell_1.ItemSelect, { items: items, cur: view === 'project' ? cur : undefined, onPick: toItem }),
+                                React.createElement(Shell_1.ItemSelect, { items: shown, cur: view === 'project' ? cur : undefined, onPick: toItem }),
                                 React.createElement("div", { className: "axs-recent", "data-ax-recent-row": true, style: { display: 'flex', gap: 5, minWidth: 0 } }, recent.map(x => React.createElement("button", { key: x.id, "data-ax-recent": x.id, className: "axs-chip", title: x.name, onClick: () => toItem(x.id) }, x.name))),
-                                React.createElement(Shell_1.SearchBox, { items: items, onItem: toItem, onPart: toPart, onMenu: go, cur: cur, onCmd: (k, key) => { if (!cur)
+                                React.createElement(Shell_1.SearchBox, { items: shown, onItem: toItem, onPart: toPart, onMenu: go, cur: cur, onCmd: (k, key) => { if (!cur)
                                         return; if (key === 'lanes' || key === 'log') {
                                         goItem(cur.id);
                                         setPtab(key);
@@ -387,24 +393,36 @@ function AxWork(props) {
                                 demo && React.createElement("div", { "data-ax-demo": true, style: Object.assign(Object.assign({}, ui_1.card), { marginBottom: 12, padding: '7px 14px', fontSize: 13, color: ui_1.C.sub, display: 'inline-flex', alignItems: 'center' }) },
                                     "\uC608\uC2DC 5\uAC1C",
                                     React.createElement(ui_1.Tip, { t: "\uB4F1\uB85D\uB41C \uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4 \uAC1C\uBC1C \uC720\uD615\uB9C8\uB2E4 \uC608\uC2DC \uD558\uB098\uC529 \uBCF4\uC5EC \uB4DC\uB824\uC694. \uC608\uC2DC\uB294 \uC800\uC7A5\uB418\uC9C0 \uC54A\uACE0, \uC0C8 \uD504\uB85C\uC81D\uD2B8\uB97C \uB9CC\uB4E4\uBA74 \uC0AC\uB77C\uC838\uC694." })),
-                                adding && React.createElement(NewForm, { who: who, items: items, onCancel: () => setAdding(false), onAdd: add }),
-                                view === 'today' && React.createElement(Mates_1.Brief, { items: items, onItem: toItem, onGates: () => go('gate') }),
-                                view === 'today' && React.createElement(Today_1.Today, { items: items, who: who, act: aiAct, onItem: toItem }),
-                                view === 'gates' && React.createElement(Shell_1.GatesView, { items: items, who: who, onOpen: (id, k) => { open(id, k, 'gate'); setMenu('gate'); } }),
-                                view === 'team' && React.createElement(Shell_1.TeamView, { p: cur, items: items }),
-                                view === 'set' && React.createElement(Shell_1.SettingsView, { who: who, ver: props.ver || '미리보기', items: items }),
-                                view === 'status' && React.createElement(Work139_1.StatusBoard, { items: items, onOpen: open, onAi: () => setView('ai') }),
-                                view === 'ai' && React.createElement(Work139_1.AiInbox, { items: items, who: who, act: aiAct, onItem: (id, k) => open(id, k) }),
-                                view === 'home' && React.createElement(ItemDash_1.ItemDash, { items: items, who: who, onOpen: open, onItem: id => { setItemSel(id); setView('item'); }, onVendor: () => setView('vendor'), onIssues: id => open(id) }),
-                                view === 'dash' && React.createElement(Dash_1.Dashboard, { items: items, who: who, onOpen: open, onVendor: () => setView('vendor') }),
-                                view === 'sched' && React.createElement(Dash_1.AllSchedule, { items: items, onOpen: open }),
-                                view === 'todo' && React.createElement(TodoView, { list: mine, items: items, who: who, onOpen: open }),
-                                view === 'all' && React.createElement(AllView, { items: items, onOpen: open }),
-                                view === 'guide' && React.createElement(Guide_1.Guidebook, { items: items }),
-                                view === 'vendor' && React.createElement(Vendors_1.VendorsView, { items: items, who: who, update: update, onItem: id => { setItemSel(id); setView('item'); } }),
-                                view === 'item' && !items.filter(x => x.id === itemSel).length && React.createElement(Items_1.ItemsList, { items: items, onOpen: setItemSel }),
-                                view === 'item' && items.filter(x => x.id === itemSel).map(x => React.createElement(Items_1.ItemDetail, { key: x.id, p: x, items: items, who: who, update: fn => update(x.id, fn), onPick: setItemSel, onProject: () => open(x.id) })),
-                                view === 'project' && cur && React.createElement(ProjectView, { key: cur.id + (sub0 ? sub0.n : ''), initSub: sub0 && sub0.s, p: cur, items: items, who: who, tab: ptab, setTab: setPtab, act: aiAct, focus: focus, setFocus: k => { setFocus(k); setPick(undefined); }, pick: pick, setPick: setPick, onPick: id => { setSel(id); setFocus(undefined); setPick(undefined); }, update: fn => update(cur.id, fn), onItem: () => { setItemSel(cur.id); setView('item'); } }),
+                                adding && React.createElement(NewForm, { who: who, items: shown, onCancel: () => setAdding(false), onAdd: add }),
+                                React.createElement(P150_1.NewVer, { ver: props.ver, latest: props.latest }),
+                                (0, P150_1.isF)(filt) && React.createElement("div", { "data-ax-fbar": true, style: { fontSize: 13, color: ui_1.C.sub, marginBottom: 10 } },
+                                    "\uAD6C\uBD84 ",
+                                    React.createElement("b", { style: { color: ui_1.C.accent } }, (0, P150_1.fWord)(filt)),
+                                    " \u00B7 \uC544\uC774\uD15C ",
+                                    shown.length,
+                                    "/",
+                                    items.length,
+                                    "\uAC1C ",
+                                    React.createElement("button", { "data-ax-fclear": true, onClick: () => sets.saveMe({ fLine: 'all', fType: 'all' }), style: Object.assign(Object.assign({}, ui_1.btn), { padding: '2px 9px', fontSize: 12, marginLeft: 6 }) }, "\uC804\uCCB4 \uBCF4\uAE30")),
+                                view === 'today' && React.createElement(Office_1.Office, { items: shown, online: aiOn, act: aiAct, title: `전체 아이템 ${shown.length}개 기준` }),
+                                view === 'today' && React.createElement(P150_1.Standup, { items: shown }),
+                                view === 'today' && React.createElement(Mates_1.Brief, { items: shown, onItem: toItem, onGates: () => go('gate') }),
+                                view === 'today' && React.createElement(Today_1.Today, { items: shown, who: who, act: aiAct, onItem: toItem }),
+                                view === 'gates' && React.createElement(Shell_1.GatesView, { items: shown, who: who, onOpen: (id, k) => { open(id, k, 'gate'); setMenu('gate'); } }),
+                                view === 'team' && React.createElement(Shell_1.TeamView, { p: cur, items: shown }),
+                                view === 'set' && React.createElement(Shell_1.SettingsView, { who: who, ver: props.ver || '미리보기', items: shown }),
+                                view === 'status' && React.createElement(Work139_1.StatusBoard, { items: shown, onOpen: open, onAi: () => setView('ai') }),
+                                view === 'ai' && React.createElement(Work139_1.AiInbox, { items: shown, who: who, act: aiAct, onItem: (id, k) => open(id, k) }),
+                                view === 'home' && React.createElement(ItemDash_1.ItemDash, { items: shown, who: who, onOpen: open, onItem: id => { setItemSel(id); setView('item'); }, onVendor: () => setView('vendor'), onIssues: id => open(id) }),
+                                view === 'dash' && React.createElement(Dash_1.Dashboard, { items: shown, who: who, onOpen: open, onVendor: () => setView('vendor') }),
+                                view === 'sched' && React.createElement(Dash_1.AllSchedule, { items: shown, onOpen: open }),
+                                view === 'todo' && React.createElement(TodoView, { list: mine, items: shown, who: who, onOpen: open }),
+                                view === 'all' && React.createElement(AllView, { items: shown, onOpen: open }),
+                                view === 'guide' && React.createElement(Guide_1.Guidebook, { items: shown }),
+                                view === 'vendor' && React.createElement(Vendors_1.VendorsView, { items: shown, who: who, update: update, onItem: id => { setItemSel(id); setView('item'); } }),
+                                view === 'item' && !shown.filter(x => x.id === itemSel).length && React.createElement(Items_1.ItemsList, { items: shown, onOpen: setItemSel }),
+                                view === 'item' && shown.filter(x => x.id === itemSel).map(x => React.createElement(Items_1.ItemDetail, { key: x.id, p: x, items: shown, who: who, update: fn => update(x.id, fn), onPick: setItemSel, onProject: () => open(x.id) })),
+                                view === 'project' && cur && React.createElement(ProjectView, { key: cur.id + (sub0 ? sub0.n : ''), initSub: sub0 && sub0.s, p: cur, items: shown, who: who, tab: ptab, setTab: setPtab, act: aiAct, focus: focus, setFocus: k => { setFocus(k); setPick(undefined); }, pick: pick, setPick: setPick, onPick: id => { setSel(id); setFocus(undefined); setPick(undefined); }, update: fn => update(cur.id, fn), onItem: () => { setItemSel(cur.id); setView('item'); } }),
                                 view === 'project' && !cur && React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { padding: 32, color: ui_1.C.faint, textAlign: 'center' }) }, "\uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4\uC694. \uC0C8 \uD504\uB85C\uC81D\uD2B8\uB85C \uC2DC\uC791\uD558\uC138\uC694.")),
                             dock && React.createElement(Mates_1.Dock, { p: cur, where: `${cur ? cur.name : ''} · ${{ over: '개요', work: '진행', parts: '부품·협력사', lanes: '일정', log: '기록' }[ptab] || String(view)}${pick ? ` · 고른 줄 ${pick}` : ''}`, onClose: () => setDock(false) }),
                             React.createElement("span", { "data-ax-hist": hist, style: { display: 'none' } }),
@@ -606,6 +624,7 @@ function ProjectView(props) {
                     React.createElement("span", { style: { opacity: 0.6 } }, t[2])))),
                 React.createElement(Items_1.ItemDetail, { key: sub, p: p, items: props.items, who: who, update: update, onPick: props.onPick, onProject: () => go('work'), only: sub })),
             tab === 'lanes' && React.createElement("div", { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
+                React.createElement(P150_1.PastOverlay, { p: p }),
                 React.createElement(Work139_1.LaneBoard, { p: p, onOpen: toWork }),
                 React.createElement(Dash_1.ProjectSchedule, { p: p, who: who, update: update, onOpen: toWork })),
             tab === 'log' && React.createElement("div", { style: { display: 'flex', flexDirection: 'column', gap: 12 } },
@@ -788,6 +807,7 @@ function GatePanel(props) {
     return (React.createElement("div", { "data-ax-boss-card": (0, work_1.gateKey)(gate), "data-ax-boss": (0, work_1.gateKey)(gate), "data-ax-boss-state": g },
         React.createElement(ui_1.PanelHead, { title: gate, sub: `승인자 ${p.approver || '없음 — 설정에서 지정'}`, onClose: props.onClose }),
         React.createElement("div", { style: { padding: 16, display: 'flex', flexDirection: 'column', gap: 12 } },
+            React.createElement(P150_1.PastOverlay, { p: p, at: Math.max(0, (0, work_1.stagesOf)(p).map(x => x.id).indexOf(s.id)) }),
             React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 } },
                 React.createElement(ui_1.Dot, { s: g === 'approved' ? 'done' : g === 'requested' ? 'wait' : g === 'rejected' ? 'late' : 'open' }),
                 g === 'approved' ? `승인됨${la ? ` · ${la.who} ${(0, ax_1.fmt)(la.at)}` : ''}` : g === 'requested' ? (held ? `보류 — ${la && la.note ? la.note : '사유 없음'} · ${la ? la.who : ''}` : `승인 대기${la ? ` · ${la.who} ${(0, ax_1.fmt)(la.at)} 요청` : ''}`) : g === 'rejected' ? `반려됨 — ${la && la.note ? la.note : '사유 없음'}` : ready ? '승인 요청할 수 있어요' : !docsReady ? `산출물 ${s.docs.length - (0, work_1.stageDocsOk)(p, s)}개를 채우면 요청할 수 있어요` : '아래 승인 기준을 채우면 요청할 수 있어요'),
@@ -6280,6 +6300,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.mateOf = exports.TEAM = exports.DEPTS = void 0;
 exports.inboxOf = inboxOf;
 exports.teamOf = teamOf;
+exports.teamAll = teamAll;
 const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
 const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
 const work_1 = require("src/webparts/huromAxPlm/model/work.js");
@@ -6344,6 +6365,20 @@ function teamOf(p) {
         const off = !!m.only && m.only !== b;
         const state = off ? 'off' : running.length ? 'run' : review.length ? 'review' : 'idle';
         return { m, i, state, jobs: mine, review, running, done: mine.filter(j => (0, ai_1.jobState)(j) === 'applied').length, inbox: off ? [] : inbox[m.id] || [], last: mine.slice().sort((a, c) => (c.doneAt || c.at).localeCompare(a.doneAt || a.at))[0] };
+    });
+}
+// 1.0.150 홈 AI 사무실 — 전체 아이템(걸러진 것) 합쳐서 AI마다 한 줄
+function teamAll(items) {
+    const rows = items.map(teamOf);
+    return exports.TEAM.map((m, i) => {
+        const xs = rows.map(r => r[i]);
+        const jobs = [].concat(...xs.map(x => x.jobs));
+        const review = [].concat(...xs.map(x => x.review));
+        const running = [].concat(...xs.map(x => x.running));
+        const off = !xs.length || xs.every(x => x.state === 'off');
+        const state = off ? 'off' : running.length ? 'run' : review.length ? 'review' : 'idle';
+        const inbox = [].concat(...xs.map((x, k) => x.inbox.map(t => items[k].name + ' · ' + t)));
+        return { m, i, state, jobs, review, running, done: xs.reduce((n, x) => n + x.done, 0), inbox, last: jobs.slice().sort((a, c) => (c.doneAt || c.at).localeCompare(a.doneAt || a.at))[0] };
     });
 }
 
@@ -7050,7 +7085,9 @@ exports.OFFICE_CSS = `
 function Office(props) {
     const set = React.useContext(Shell_1.SetCtx);
     const aiOff = (set && set.org.aiOff) || {};
-    const team = (0, team_1.teamOf)(props.p);
+    const team = props.items ? (0, team_1.teamAll)(props.items) : props.p ? (0, team_1.teamOf)(props.p) : (0, team_1.teamAll)([]);
+    const pidOf = {};
+    (props.items || (props.p ? [props.p] : [])).forEach(x => (x.aiJobs || []).forEach(j => { pidOf[j.id] = x.id; }));
     const dark = props.online === 'off';
     const moods = {};
     team.forEach(t => { moods[t.m.id] = moodOf(t, !!aiOff[t.m.id]); });
@@ -7075,12 +7112,12 @@ function Office(props) {
         return () => clearTimeout(t);
     }, [key]);
     const [sel, setSel] = React.useState(undefined);
-    const [fold, setFold] = React.useState(() => typeof window !== 'undefined' && window.innerWidth < 600);
+    const [fold, setFold] = React.useState(false); // 1.0.150 폰에서도 기본 펼침 (준보님 'ai사무실안보임')
     // 자리
     const seat = {};
     team_1.DEPTS.forEach((d, z) => { const [zx, zy] = zoneXY(z); team_1.TEAM.filter(m => m.dept === d).forEach((m, i) => { seat[m.id] = [zx + 0.55 + (i % 3) * 1.15, zy + 0.6 + Math.floor(i / 3) * 1.2]; }); });
     // 일 넘겨주기 — 이어진 일(job.from)이 대기·진행 중일 때만
-    const jobs = props.p.aiJobs || [];
+    const jobs = [].concat(...(props.items || (props.p ? [props.p] : [])).map(x => x.aiJobs || []));
     const flies = [];
     jobs.forEach(j => {
         if (!j.from || ['queued', 'running'].indexOf((0, ai_1.jobState)(j)) < 0)
@@ -7098,6 +7135,7 @@ function Office(props) {
     return (React.createElement("div", { "data-axf2": true, "data-axf2-ai": props.online, className: 'axf2' + (dark ? ' axf2-dark' : '') },
         React.createElement("div", { style: { position: 'absolute', left: 14, top: 10, zIndex: 2, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', right: 14 } },
             React.createElement("b", { style: { fontSize: 15 } }, "AI \uC0AC\uBB34\uC2E4"),
+            props.title && React.createElement("span", { "data-axf2-scope": true, style: { fontSize: 12.5, color: ui_1.C.faint } }, props.title),
             React.createElement("span", { style: { fontSize: 13, color: ui_1.C.sub } },
                 "\uC77C\uD558\uB294 \uC911 ",
                 React.createElement("b", { style: { color: ui_1.C.ok } }, busy),
@@ -7152,7 +7190,7 @@ function Office(props) {
                         React.createElement("path", { d: path, fill: "none", stroke: "rgba(79,209,107,.35)", strokeDasharray: "3 4" }),
                         React.createElement("text", { className: "axf2-fly", fontSize: 13, style: { offsetPath: `path('${path}')` } }, "\uD83D\uDCC4"));
                 }))),
-        mate && React.createElement(MatePanel, { t: mate, mood: moods[mate.m.id], p: props.p, act: props.act, onClose: () => setSel(undefined) })));
+        mate && React.createElement(MatePanel, { t: mate, mood: moods[mate.m.id], p: props.p, pidOf: pidOf, act: props.act, onClose: () => setSel(undefined) })));
 }
 function MatePanel(props) {
     const { t, p, act } = props;
@@ -7165,8 +7203,8 @@ function MatePanel(props) {
                     " \u00B7 ",
                     j.auto)),
             btns && React.createElement(React.Fragment, null,
-                React.createElement("button", { onClick: () => act.apply(p.id, j), style: Object.assign(Object.assign({}, ui_1.btn), { background: ui_1.C.accent, color: ui_1.C.inv, borderColor: ui_1.C.accent }) }, f.go),
-                React.createElement("button", { onClick: () => act.reject(p.id, j, '안 함'), style: ui_1.btn }, "\uC548 \uD568"))));
+                React.createElement("button", { onClick: () => act.apply(props.pidOf[j.id] || (p ? p.id : ''), j), style: Object.assign(Object.assign({}, ui_1.btn), { background: ui_1.C.accent, color: ui_1.C.inv, borderColor: ui_1.C.accent }) }, f.go),
+                React.createElement("button", { onClick: () => act.reject(props.pidOf[j.id] || (p ? p.id : ''), j, '안 함'), style: ui_1.btn }, "\uC548 \uD568"))));
     };
     const done = t.jobs.filter(j => (0, ai_1.jobState)(j) === 'applied').slice(-5).reverse();
     return (React.createElement("div", { "data-axf2-panel": t.m.id, style: Object.assign(Object.assign({}, ui_1.card), { position: 'fixed', right: 12, top: 70, bottom: 12, width: 360, maxWidth: 'calc(100vw - 24px)', zIndex: 60, overflowY: 'auto', boxShadow: '0 16px 40px rgba(0,0,0,.6)' }) },
@@ -7181,8 +7219,8 @@ function MatePanel(props) {
                     " \u00B7 ",
                     WORD[props.mood])),
             React.createElement("button", { "data-axf2-close": true, onClick: props.onClose, style: ui_1.btn }, "\uB2EB\uAE30")),
-        React.createElement("div", { style: { padding: '10px 16px' } },
-            React.createElement(Dash_1.AiButton, { pid: p.id, kinds: t.m.kinds, label: "\uC774 AI\uC5D0\uAC8C \uB9E1\uAE30\uAE30" })),
+        p ? React.createElement("div", { style: { padding: '10px 16px' } },
+            React.createElement(Dash_1.AiButton, { pid: p.id, kinds: t.m.kinds, label: "\uC774 AI\uC5D0\uAC8C \uB9E1\uAE30\uAE30" })) : React.createElement("div", { style: { padding: '10px 16px', fontSize: 12.5, color: ui_1.C.faint } }, "\uC77C\uC744 \uB9E1\uAE30\uB824\uBA74 \uC544\uC774\uD15C\uC744 \uACE0\uB978 \uB4A4 \uAC1C\uC694\uC5D0\uC11C \uB20C\uB7EC \uC8FC\uC138\uC694."),
         React.createElement("div", { style: { padding: '0 0 6px' } },
             React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: ui_1.C.faint, padding: '6px 16px' } },
                 "\uC9C0\uAE08 \uD558\uB294 \uC77C ",
@@ -7248,6 +7286,7 @@ const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
 const work_1 = require("src/webparts/huromAxPlm/model/work.js");
 const team_1 = require("src/webparts/huromAxPlm/model/team.js");
 const Gate_1 = require("src/webparts/huromAxPlm/components/Gate.js");
+const P150_1 = require("src/webparts/huromAxPlm/components/P150.js");
 const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
 exports.ROLE_LABEL = { view: '보기', edit: '편집', approve: '승인', admin: '관리자' };
 exports.ORG_ID = 'org';
@@ -7339,6 +7378,7 @@ function Side(props) {
         React.createElement("div", { className: "axs-logo" },
             React.createElement("span", { style: { width: 26, height: 26, borderRadius: 8, background: ui_1.C.accent, color: ui_1.C.inv, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900 } }, "AX"),
             React.createElement("span", { className: "axs-t" }, "AX-PLM")),
+        props.filt && props.setFilt && React.createElement(P150_1.FilterBox, { f: props.filt, set: props.setFilt, onUnfold: () => props.setFold(false) }),
         exports.MENUS.map(m => React.createElement("button", { key: m[0], "data-ax-menu": m[0], title: m[1], className: 'axs-m' + (props.menu === m[0] ? ' on' : ''), onClick: () => props.go(m[0]), style: m[0] === 'set' ? { marginTop: 'auto' } : undefined },
             React.createElement(Ico, { d: ICON[m[0]] }),
             React.createElement("span", { className: "axs-t" }, m[1]),
@@ -7713,6 +7753,263 @@ function GatePill(props) {
     if (st === 'approved')
         return React.createElement("span", { "data-ax-gate-pill": "done", style: { fontSize: 12, fontWeight: 800, color: ui_1.C.ok } }, "\uC2B9\uC778\uB428");
     return React.createElement("span", { "data-ax-gate-pill": g ? 'gap' : 'ok', title: g ? '산출물·기준 중 안 채운 것' : '산출물·기준 다 채움', style: { fontSize: 12, fontWeight: 800, borderRadius: 999, padding: '2px 9px', background: g ? 'rgba(248,113,113,.14)' : 'rgba(79,209,107,.14)', color: g ? ui_1.C.late : ui_1.C.ok, whiteSpace: 'nowrap' } }, g ? `부족 ${g}건` : '통과 가능');
+}
+
+};
+__m["src/webparts/huromAxPlm/components/P150.js"]=function(module,exports,require){"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.P150_CSS = exports.fWord = exports.isF = exports.passF = exports.TYPE_OPTS = exports.LINE_OPTS = void 0;
+exports.FilterBox = FilterBox;
+exports.PastOverlay = PastOverlay;
+exports.standupDay = standupDay;
+exports.standup = standup;
+exports.Standup = Standup;
+exports.NewVer = NewVer;
+const React = __importStar(require("react"));
+const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+const team_1 = require("src/webparts/huromAxPlm/model/team.js");
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
+const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
+const history_1 = require("src/webparts/huromAxPlm/model/history.js");
+const Today_1 = require("src/webparts/huromAxPlm/components/Today.js");
+const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
+exports.LINE_OPTS = [['all', '전체'], ['juicer', '원액기군'], ['goods', '상품군']];
+exports.TYPE_OPTS = [['all', '전체']].concat(devtype_1.DEV_TYPES.map(d => [d.id, d.tag]));
+const passF = (f) => (p) => (f.line === 'all' || (0, ai_1.branchOf)((0, devtype_1.typeOf)(p)) === f.line) && (f.type === 'all' || (0, devtype_1.typeOf)(p) === f.type);
+exports.passF = passF;
+const isF = (f) => f.line !== 'all' || f.type !== 'all';
+exports.isF = isF;
+const fWord = (f) => [f.line !== 'all' ? exports.LINE_OPTS.filter(x => x[0] === f.line)[0][1] : '', f.type !== 'all' ? exports.TYPE_OPTS.filter(x => x[0] === f.type)[0][1] : ''].filter(Boolean).join(' · ');
+exports.fWord = fWord;
+exports.P150_CSS = `
+.axs-flt{display:flex;flex-direction:column;gap:6px;padding:0 4px 12px;margin-bottom:8px;border-bottom:1px solid ${ui_1.C.line}}
+.axs-flt label{font-size:11.5px;font-weight:700;color:${ui_1.C.faint};padding:0 6px}
+.axs-flt select{width:100%;background:${ui_1.C.card};color:${ui_1.C.text};border:1px solid ${ui_1.C.line2};border-radius:8px;padding:6px 8px;font-size:13px;font-family:inherit}
+.axs-flt select.on{border-color:${ui_1.C.accent};color:${ui_1.C.accent}}
+.axs-side.fold .axs-flt{display:none}
+.axs-fico{display:none}
+.axs-side.fold .axs-fico{display:flex}
+.axp-ghost{position:relative;height:22px;border-radius:6px}
+.axp-seg{position:absolute;top:0;bottom:0;border-right:1px solid rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;overflow:hidden;white-space:nowrap}
+.axp-mk{position:absolute;top:-4px;width:2px;bottom:-4px;background:${ui_1.C.soon}}
+.axp-now{position:absolute;top:-8px;bottom:-8px;width:2px;background:${ui_1.C.text}}
+.axsu-row{display:grid;grid-template-columns:150px repeat(3,minmax(0,1fr));gap:10px;padding:8px 0;border-top:1px solid ${ui_1.C.line};font-size:13px;align-items:start}
+.axsu-row:first-of-type{border-top:none}
+.axsu-l{display:none}
+@media (max-width:820px){.axsu-row{grid-template-columns:minmax(0,1fr);gap:6px}.axsu-h{display:none !important}.axsu-l{display:block;font-size:11.5px;font-weight:700;color:${ui_1.C.faint}}}
+`;
+function FilterBox(props) {
+    const { f } = props;
+    return (React.createElement(React.Fragment, null,
+        React.createElement("div", { className: "axs-flt", "data-ax-filter": true },
+            React.createElement("label", null, "\uC81C\uD488\uAD70"),
+            React.createElement("select", { "data-ax-fline": true, className: f.line !== 'all' ? 'on' : '', value: f.line, onChange: e => props.set(Object.assign(Object.assign({}, f), { line: e.target.value })) }, exports.LINE_OPTS.map(o => React.createElement("option", { key: o[0], value: o[0] }, o[1]))),
+            React.createElement("label", null, "\uAC1C\uBC1C \uC720\uD615"),
+            React.createElement("select", { "data-ax-ftype": true, className: f.type !== 'all' ? 'on' : '', value: f.type, onChange: e => props.set(Object.assign(Object.assign({}, f), { type: e.target.value })) }, exports.TYPE_OPTS.map(o => React.createElement("option", { key: o[0], value: o[0] }, o[1])))),
+        React.createElement("button", { "data-ax-fico": true, className: "axs-m axs-fico", title: (0, exports.isF)(f) ? '구분: ' + (0, exports.fWord)(f) : '구분 (제품군 · 개발 유형)', onClick: props.onUnfold, style: { position: 'relative', color: (0, exports.isF)(f) ? ui_1.C.accent : undefined } },
+            React.createElement("svg", { width: "18", height: "18", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round" },
+                React.createElement("path", { d: "M3 5h18l-7 8v6l-4 2v-8z" })))));
+}
+// ───────── ② 과거 모델 겹쳐 보기
+// 과거 기록은 전체 기간·지연 일수·이슈만 있어서, 단계 길이는 개발 유형 표준 비율로 나눠 겹침. 이슈는 유형으로 단계에 놓음
+const ISSUE_STAGE = [[/기획|컨셉|사양/, 0], [/디자인|구조|설계|금형|부품|전장|SW|소프트/, 2], [/시험|신뢰성|인증|법규|전자파/, 3], [/초도|양산|생산|공정|품질/, 4], [/시장|불량|A\/S|출시|물류/, 5]];
+const stageOfIssue = (t) => { const m = ISSUE_STAGE.filter(x => x[0].test(t))[0]; return m ? m[1] : 3; };
+function PastOverlay(props) {
+    const { p } = props;
+    if (!(0, history_1.history)().length)
+        return null;
+    const m = (0, history_1.similar)(p, 1)[0];
+    if (!m || !m.months)
+        return null;
+    const st = (0, work_1.stagesOf)(p);
+    const std = sched_1.STD_DAYS[(0, devtype_1.typeOf)(p)] || sched_1.STD_DAYS.own;
+    const stdSum = std.reduce((a, b) => a + b, 0);
+    const pastDays = Math.round(m.months * 30.4);
+    const start = p.start || new Date().toISOString().slice(0, 10);
+    // 이번 아이템: 계획 날짜(없으면 표준 일수)
+    const ends = [];
+    let acc = 0;
+    st.forEach((s, i) => { const pl = (p.plan || {})[s.id]; const d = pl ? (0, sched_1.diffDays)(start, pl) : acc + (std[i] || 0); acc = Math.max(acc, d); ends.push(acc); });
+    const nowDays = (p.target ? Math.max(ends[ends.length - 1] || 0, (0, sched_1.diffDays)(start, p.target)) : ends[ends.length - 1]) || stdSum;
+    const pEnds = [];
+    let a2 = 0;
+    std.forEach(d => { a2 += d; pEnds.push(Math.round(a2 / stdSum * pastDays)); });
+    const span = Math.max(nowDays, pastDays, 1);
+    const k = props.at !== undefined ? props.at : (0, work_1.curIdx)(p);
+    const pct = (d) => (Math.max(0, Math.min(1, d / span)) * 100).toFixed(2) + '%';
+    const seg = (arr, solid) => arr.map((e, i) => {
+        const b = i ? arr[i - 1] : 0;
+        return (React.createElement("div", { key: i, className: "axp-seg", style: { left: pct(b), width: `calc(${pct(e)} - ${pct(b)})`, background: solid ? (i === k ? ui_1.C.accent : i < k ? 'rgba(79,209,107,.45)' : '#2A2A30') : 'rgba(255,255,255,.07)', color: solid && i === k ? ui_1.C.inv : ui_1.C.sub, border: solid ? undefined : `1px dashed ${ui_1.C.line2}` } }, (st[i] && st[i].no) || ''));
+    });
+    const iss = m.issues.map(x => (Object.assign(Object.assign({}, x), { k: Math.min(stageOfIssue(x.type + ' ' + x.text), std.length - 1) })));
+    const here = iss.filter(x => x.k === k);
+    const nowAt = p.start ? (0, sched_1.diffDays)(start, new Date().toISOString().slice(0, 10)) : undefined;
+    const sName = st[k] ? `${st[k].no} ${st[k].short || st[k].name}` : '';
+    return (React.createElement("div", { "data-ax-past": true, style: Object.assign(Object.assign({}, ui_1.card), { padding: '12px 16px', marginBottom: 12 }) },
+        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 10 } },
+            React.createElement("b", { style: { fontSize: 14 } }, "\uACFC\uAC70 \uBAA8\uB378 \uACB9\uCCD0 \uBCF4\uAE30"),
+            React.createElement("span", { style: { fontSize: 13, color: ui_1.C.sub } },
+                m.name,
+                " \u00B7 ",
+                m.cat,
+                " \u00B7 ",
+                m.months,
+                "\uAC1C\uC6D4",
+                m.delayDays ? ` · ${m.delayDays}일 밀림` : ''),
+            React.createElement(ui_1.Tip, { t: "\uACBD\uD5D8 \uCC3D\uACE0\uC5D0\uC11C \uC774 \uC544\uC774\uD15C\uACFC \uAC00\uC7A5 \uBE44\uC2B7\uD55C \uACFC\uAC70 \uBAA8\uB378 1\uAC1C\uC608\uC694. \uACFC\uAC70 \uAE30\uB85D\uC5D4 \uB2E8\uACC4\uBCC4 \uB0A0\uC9DC\uAC00 \uC5C6\uC5B4\uC11C \uAC1C\uBC1C \uC720\uD615 \uD45C\uC900 \uBE44\uC728\uB85C \uB098\uB220 \uACB9\uCCE4\uACE0, \uC774\uC288\uB294 \uC885\uB958(\uC778\uC99D\u00B7\uAD6C\uC870\u00B7\uCD08\uB3C4\uC591\uC0B0 \u2026)\uB85C \uB2E8\uACC4\uC5D0 \uB193\uC558\uC5B4\uC694." })),
+        React.createElement("div", { style: { display: 'grid', gridTemplateColumns: '70px minmax(0,1fr)', gap: '10px 10px', alignItems: 'center', fontSize: 12.5 } },
+            React.createElement("span", { style: { color: ui_1.C.text, fontWeight: 700 } }, "\uC774\uBC88"),
+            React.createElement("div", { className: "axp-ghost", "data-ax-past-now": true },
+                seg(ends, true),
+                nowAt !== undefined && nowAt >= 0 && React.createElement("div", { className: "axp-now", style: { left: pct(nowAt) }, title: "\uC624\uB298" })),
+            React.createElement("span", { style: { color: ui_1.C.faint } }, "\uACFC\uAC70"),
+            React.createElement("div", { className: "axp-ghost", "data-ax-past-old": true, style: { opacity: .85 } },
+                seg(pEnds, false),
+                iss.map((x, i) => { const b = x.k ? pEnds[x.k - 1] : 0; const e = pEnds[x.k]; return React.createElement("div", { key: i, className: "axp-mk", "data-ax-past-mk": x.k, title: `${x.type} — ${x.text}`, style: { left: pct(b + (e - b) * (0.35 + 0.15 * (i % 3))) } }); }))),
+        React.createElement("div", { "data-ax-past-here": true, style: { marginTop: 10, fontSize: 13, color: here.length ? ui_1.C.soon : ui_1.C.sub } },
+            here.length ? `그때 여기(${sName})서: ${here.map(x => `${x.type} — ${x.text}`).join(' · ')}${m.delayDays ? ` → 전체 ${m.delayDays}일 밀림` : ''}. 이번엔 미리 챙기세요.`
+                : `그때 ${sName}에선 기록된 문제 없음.${iss.length ? ` 다음에 조심할 것: ${iss.filter(x => x.k > k).slice(0, 2).map(x => `${st[x.k] ? st[x.k].no : ''} ${x.type} — ${x.text}`).join(' · ') || '없음'}` : ''}`,
+            pastDays > nowDays && React.createElement("span", { style: { color: ui_1.C.faint } },
+                " \u00B7 \uACFC\uAC70\uB294 ",
+                pastDays - nowDays,
+                "\uC77C \uB354 \uAC78\uB838\uC5B4\uC694"))));
+}
+// ───────── ③ 아침 스탠드업 (평일 09:00 KST 기준)
+const kst = (d) => new Date(d.getTime() + 9 * 3600000).toISOString().slice(0, 10);
+function standupDay(now = new Date()) {
+    const t = kst(now);
+    let p = (0, sched_1.addDays)(t, -1);
+    const dow = (s) => new Date(s + 'T00:00:00Z').getUTCDay();
+    while (dow(p) === 0 || dow(p) === 6)
+        p = (0, sched_1.addDays)(p, -1); // 지난 근무일
+    return { today: t, prev: p };
+}
+function standup(items, now = new Date()) {
+    const { today, prev } = standupDay(now);
+    const rows = {};
+    const r = (i) => (rows[i] = rows[i] || { id: team_1.TEAM[i].id, name: team_1.TEAM[i].name, dept: team_1.TEAM[i].dept, did: [], todo: [], stuck: [] });
+    items.forEach(p => (p.aiJobs || []).forEach((j) => {
+        const i = (0, team_1.mateOf)(j);
+        const st = (0, ai_1.jobState)(j);
+        const t = `${p.name} · ${(0, Today_1.friendly)(j).title}`;
+        const done = j.doneAt ? kst(new Date(j.doneAt)) : '';
+        if ((st === 'review' || st === 'applied') && done >= prev && done < today)
+            r(i).did.push(t);
+        if (st === 'queued' || st === 'running' || st === 'offline')
+            r(i).todo.push(t);
+        else if (st === 'review')
+            r(i).todo.push(t + ' (사람 확인 대기)');
+        if (st === 'error' && done >= prev)
+            r(i).stuck.push(t);
+        else if (st === 'error' && !j.doneAt && kst(new Date(j.at)) >= prev)
+            r(i).stuck.push(t);
+    }));
+    return Object.keys(rows).map(k => rows[+k]).sort((a, b) => (b.stuck.length - a.stuck.length) || (b.did.length + b.todo.length - a.did.length - a.todo.length));
+}
+function Standup(props) {
+    const [open, setOpen] = React.useState(false);
+    const { today, prev } = standupDay();
+    const rows = standup(props.items);
+    const before9 = new Date(Date.now() + 9 * 3600000).getUTCHours() < 9;
+    const stuck = rows.reduce((n, x) => n + x.stuck.length, 0);
+    const list = open ? rows : rows.slice(0, 6);
+    const md = (s) => s.slice(5).replace('-', '/');
+    const LB = { did: '어제 한 일', todo: '오늘 할 일', stuck: '막힌 것' };
+    const cell = (xs, col, k) => React.createElement("div", { "data-ax-su-cell": k, style: { color: xs.length ? col : ui_1.C.faint, minWidth: 0 } },
+        React.createElement("small", { className: "axsu-l" }, LB[k]),
+        xs.length ? xs.slice(0, 3).map((x, i) => React.createElement("div", { key: i, style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, title: x }, x)) : '—',
+        xs.length > 3 && React.createElement("div", { style: { color: ui_1.C.faint } },
+            "\uC678 ",
+            xs.length - 3,
+            "\uAC74"));
+    return (React.createElement("div", { "data-ax-standup": true, style: Object.assign(Object.assign({}, ui_1.card), { padding: '14px 16px', marginBottom: 14 }) },
+        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 } },
+            React.createElement("b", { style: { fontSize: 15 } }, "\uC544\uCE68 \uC2A4\uD0E0\uB4DC\uC5C5"),
+            React.createElement("span", { style: { fontSize: 13, color: ui_1.C.sub } },
+                md(today),
+                " 09:00 \uAE30\uC900 \u00B7 \uC5B4\uC81C = ",
+                md(prev),
+                before9 ? ' · 09:00 전이라 어제 판' : ''),
+            stuck > 0 && React.createElement("span", { "data-ax-su-stuck": stuck, style: { fontSize: 13, fontWeight: 800, color: ui_1.C.late } },
+                "\uB9C9\uD78C \uAC83 ",
+                stuck,
+                "\uAC74"),
+            React.createElement(ui_1.Tip, { t: "AI \uD300\uC6D0\uB9C8\uB2E4 \uC2E4\uC81C AI \uC77C \uAE30\uB85D\uC5D0\uC11C \uBF51\uC544\uC694. \uC5B4\uC81C \uD55C \uC77C = \uC9C0\uB09C \uADFC\uBB34\uC77C\uC5D0 \uB05D\uB0B8 \uC77C, \uC624\uB298 \uD560 \uC77C = \uB300\uAE30\u00B7\uC9C4\uD589 \uC911\uC774\uAC70\uB098 \uC0AC\uB78C \uD655\uC778\uC744 \uAE30\uB2E4\uB9AC\uB294 \uC77C, \uB9C9\uD78C \uAC83 = \uC2E4\uD328\uD55C \uC77C. \uB9C9\uD78C \uAC83\uB9CC \uD3C9\uC77C 09:00\uC5D0 Teams\uB85C \uAC11\uB2C8\uB2E4." })),
+        !rows.length ? React.createElement("div", { style: { fontSize: 13, color: ui_1.C.faint, padding: '6px 0' } }, "\uC5B4\uC81C\u00B7\uC624\uB298 AI \uC77C\uC774 \uC5C6\uC5B4\uC694.") : React.createElement(React.Fragment, null,
+            React.createElement("div", { className: "axsu-row axsu-h", style: { fontSize: 12, color: ui_1.C.faint, fontWeight: 700 } },
+                React.createElement("span", null, "AI \uD300\uC6D0"),
+                React.createElement("span", null, "\uC5B4\uC81C \uD55C \uC77C"),
+                React.createElement("span", null, "\uC624\uB298 \uD560 \uC77C"),
+                React.createElement("span", null, "\uB9C9\uD78C \uAC83")),
+            list.map(x => (React.createElement("div", { key: x.id, className: "axsu-row", "data-ax-su": x.id },
+                React.createElement("span", null,
+                    React.createElement("b", null, x.name),
+                    React.createElement("br", null),
+                    React.createElement("small", { style: { color: ui_1.C.faint } }, x.dept)),
+                cell(x.did, ui_1.C.text, 'did'),
+                cell(x.todo, ui_1.C.sub, 'todo'),
+                cell(x.stuck, ui_1.C.late, 'stuck')))),
+            rows.length > 6 && React.createElement("button", { "data-ax-su-more": true, onClick: () => setOpen(!open), style: Object.assign(Object.assign({}, ui_1.btn), { marginTop: 8 }) }, open ? '접기' : `${rows.length - 6}명 더 보기`))));
+}
+// ───────── ④ 새 판 있음
+const vNum = (v) => v.split('.').slice(0, 4).reduce((a, x) => a * 1000 + (parseInt(x, 10) || 0), 0);
+function NewVer(props) {
+    const [lat, setLat] = React.useState(undefined);
+    React.useEffect(() => {
+        if (!props.latest || !props.ver)
+            return;
+        const chk = () => { props.latest().then(v => setLat(v), () => undefined); };
+        chk();
+        const t = setInterval(chk, 10 * 60000);
+        return () => clearInterval(t);
+    }, []);
+    if (!lat || !props.ver || vNum(lat) <= vNum(props.ver))
+        return null;
+    return (React.createElement("div", { "data-ax-newver": lat, style: Object.assign(Object.assign({}, ui_1.card), { marginBottom: 12, padding: '9px 14px', fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 10, borderColor: ui_1.C.accent, color: ui_1.C.accent, flexWrap: 'wrap' }) },
+        React.createElement("b", null,
+            "\uC0C8 \uD310 ",
+            lat.replace(/\.0$/, ''),
+            " \uC788\uC74C"),
+        React.createElement("span", { style: { color: ui_1.C.sub } },
+            "\uC9C0\uAE08 \uD654\uBA74\uC740 ",
+            props.ver.replace(/\.0$/, ''),
+            " \u2014 \uC0C8\uB85C \uACE0\uCE58\uBA74 \uBC14\uB85C \uBC14\uB00C\uC5B4\uC694."),
+        React.createElement("span", { style: { flex: 1 } }),
+        React.createElement("button", { "data-ax-reload": true, onClick: () => window.location.reload(), style: Object.assign(Object.assign({}, ui_1.btn), { background: ui_1.C.accent, color: ui_1.C.inv, borderColor: ui_1.C.accent }) }, "\uC0C8\uB85C \uACE0\uCE68")));
 }
 
 };
