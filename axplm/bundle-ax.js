@@ -101,7 +101,7 @@ const work_1 = require("src/webparts/huromAxPlm/model/work.js");
 const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
 const item_1 = require("src/webparts/huromAxPlm/model/item.js");
 const Vendors_1 = require("src/webparts/huromAxPlm/components/Vendors.js");
-const AiFloor_1 = require("src/webparts/huromAxPlm/components/AiFloor.js");
+const Overview_1 = require("src/webparts/huromAxPlm/components/Overview.js"); // 1.0.144 개요 다시 짬 (AiFloor 컨베이어·책상 연출은 뺌)
 const Items_1 = require("src/webparts/huromAxPlm/components/Items.js");
 const aiSamples_1 = require("src/webparts/huromAxPlm/model/aiSamples.js");
 const Work139_1 = require("src/webparts/huromAxPlm/components/Work139.js");
@@ -259,8 +259,8 @@ function AxWork(props) {
         retry: (pid, j) => runAi(pid, j.kind, j.input, j.id)
     };
     return (React.createElement(Dash_1.AiCtx.Provider, { value: aiApi },
-        React.createElement("div", { "data-axplm": true, "data-ax-v": "141", className: "axw" },
-            React.createElement("style", null, ui_1.CSS + AiFloor_1.AIF_CSS),
+        React.createElement("div", { "data-axplm": true, "data-ax-v": "144", className: "axw" },
+            React.createElement("style", null, ui_1.CSS + Overview_1.OV_CSS),
             React.createElement("div", { className: "axw-pad axw-top", style: { background: ui_1.C.card, borderBottom: `1px solid ${ui_1.C.line}`, padding: '0 24px', display: 'flex', alignItems: 'center', gap: 20, position: 'sticky', top: 0, zIndex: 10, height: 56 } },
                 React.createElement("span", { style: { fontSize: 15, fontWeight: 800, letterSpacing: '-.01em', whiteSpace: 'nowrap' } }, "AX-PLM"),
                 React.createElement("nav", { style: { display: 'flex', gap: 2, height: '100%' } },
@@ -481,7 +481,7 @@ function ProjectView(props) {
             t[1],
             t[2] ? React.createElement("span", { style: { marginLeft: 5, fontSize: 12, color: t[0] === 'ai' ? ui_1.C.soon : ui_1.C.faint } }, t[2]) : null))),
         React.createElement("div", { style: { marginTop: 16 } },
-            tab === 'over' && React.createElement(AiFloor_1.AiFloor, { p: p, who: who, act: props.act, onWork: () => go('work'), onLog: () => go('log') }),
+            tab === 'over' && React.createElement(Overview_1.Overview, { p: p, who: who, act: props.act, nav: { work: (k2, key) => toWork(k2 === undefined ? ck : k2, key), parts: sb => { setSub(sb); go('parts'); }, lanes: () => go('lanes'), log: () => go('log') } }),
             tab === 'work' && React.createElement("div", { className: "axw-main" },
                 React.createElement("div", { style: { minWidth: 0 } },
                     React.createElement(StageList, { p: p, k: k, pick: props.pick, setPick: props.setPick })),
@@ -662,11 +662,12 @@ function GatePanel(props) {
     const ready = docsReady && checks.every(c => c.ok);
     const [note, setNote] = React.useState('');
     const isApprover = !p.approver || p.approver.replace(/\s/g, '') === who.replace(/\s/g, '');
+    const held = (0, work_1.isHeld)(p, gate);
     const act = (kind) => {
-        update(x => (Object.assign(Object.assign({}, x), { approvals: (x.approvals || []).concat([{ gate, kind, at: (0, ui_1.nowIso)(), who, note: note.trim() || undefined }]), log: x.log.concat([{ at: (0, ui_1.nowIso)(), who, kind: 'gate', what: `${gate} ${kind === 'request' ? '승인 요청' : kind === 'approve' ? '승인' : '반려'}${note.trim() ? ` — ${note.trim()}` : ''}` }]) })));
+        update(x => (Object.assign(Object.assign({}, x), { approvals: (x.approvals || []).concat([{ gate, kind, at: (0, ui_1.nowIso)(), who, note: note.trim() || undefined }]), log: x.log.concat([{ at: (0, ui_1.nowIso)(), who, kind: 'gate', what: `${gate} ${kind === 'request' ? '승인 요청' : kind === 'approve' ? '승인' : kind === 'hold' ? '보류' : '반려'}${note.trim() ? ` — ${note.trim()}` : ''}` }]) })));
         setNote('');
     };
-    const hist = (p.approvals || []).filter(a => a.gate === gate);
+    const hist = (p.approvals || []).filter(a => (0, work_1.sameGate)(a.gate, gate));
     const la = (0, work_1.lastApproval)(p, gate);
     const msg = `[AX-PLM] ${p.name} ${gate} 승인 부탁드려요. ${(0, ui_1.pageUrl)()}`;
     return (React.createElement("div", { "data-ax-boss-card": (0, work_1.gateKey)(gate), "data-ax-boss": (0, work_1.gateKey)(gate), "data-ax-boss-state": g },
@@ -674,7 +675,7 @@ function GatePanel(props) {
         React.createElement("div", { style: { padding: 16, display: 'flex', flexDirection: 'column', gap: 12 } },
             React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 } },
                 React.createElement(ui_1.Dot, { s: g === 'approved' ? 'done' : g === 'requested' ? 'wait' : g === 'rejected' ? 'late' : 'open' }),
-                g === 'approved' ? `승인됨${la ? ` · ${la.who} ${(0, ax_1.fmt)(la.at)}` : ''}` : g === 'requested' ? `승인 대기${la ? ` · ${la.who} ${(0, ax_1.fmt)(la.at)} 요청` : ''}` : g === 'rejected' ? `반려됨 — ${la && la.note ? la.note : '사유 없음'}` : ready ? '승인 요청할 수 있어요' : !docsReady ? `산출물 ${s.docs.length - (0, work_1.stageDocsOk)(p, s)}개를 채우면 요청할 수 있어요` : '아래 승인 기준을 채우면 요청할 수 있어요'),
+                g === 'approved' ? `승인됨${la ? ` · ${la.who} ${(0, ax_1.fmt)(la.at)}` : ''}` : g === 'requested' ? (held ? `보류 — ${la && la.note ? la.note : '사유 없음'} · ${la ? la.who : ''}` : `승인 대기${la ? ` · ${la.who} ${(0, ax_1.fmt)(la.at)} 요청` : ''}`) : g === 'rejected' ? `반려됨 — ${la && la.note ? la.note : '사유 없음'}` : ready ? '승인 요청할 수 있어요' : !docsReady ? `산출물 ${s.docs.length - (0, work_1.stageDocsOk)(p, s)}개를 채우면 요청할 수 있어요` : '아래 승인 기준을 채우면 요청할 수 있어요'),
             React.createElement("div", { style: { display: 'flex', justifyContent: 'flex-end' } },
                 React.createElement(Dash_1.AiButton, { pid: p.id, kinds: ['gate'], label: "AI \uAE30\uC900 \uC810\uAC80\u00B7\uC694\uCCAD \uAE00", small: true })),
             React.createElement("div", { "data-ax-gate-rule": true, style: { fontSize: 12.5, color: ui_1.C.sub } },
@@ -686,10 +687,12 @@ function GatePanel(props) {
                 React.createElement(ui_1.Dot, { s: c.ok ? 'done' : 'open', size: 7 }),
                 c.label))),
             props.open && g !== 'approved' && React.createElement(React.Fragment, null,
-                React.createElement("input", { "data-ax-gate-note": true, placeholder: g === 'requested' ? '의견 (반려는 필수)' : '요청 메모', value: note, onChange: e => setNote(e.target.value), style: ui_1.inp }),
+                React.createElement("input", { "data-ax-gate-note": true, placeholder: g === 'requested' ? '의견 (보류·반려는 필수)' : '요청 메모', value: note, onChange: e => setNote(e.target.value), style: ui_1.inp }),
                 React.createElement("div", { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
                     (g === 'wait' || g === 'rejected') && React.createElement("button", { "data-ax-gate-request": true, disabled: !ready, onClick: () => act('request'), style: Object.assign(Object.assign({}, ui_1.primary), { flex: 1, opacity: ready ? 1 : 0.4 }) }, "\uC2B9\uC778 \uC694\uCCAD"),
                     g === 'requested' && React.createElement("button", { "data-ax-gate-approve": true, disabled: !isApprover, title: isApprover ? '' : `승인자(${p.approver})만 승인할 수 있어요`, onClick: () => act('approve'), style: Object.assign(Object.assign({}, ui_1.primary), { flex: 1, opacity: isApprover ? 1 : 0.4 }) }, "\uC2B9\uC778"),
+                    g === 'requested' && !held && React.createElement("button", { "data-ax-gate-hold": true, disabled: !isApprover || !note.trim(), title: "\uACB0\uC815\uC744 \uBBF8\uB8F8 \u2014 \uC0AC\uC720\uB97C \uC801\uC5B4 \uC8FC\uC138\uC694", onClick: () => act('hold'), style: Object.assign(Object.assign({}, ui_1.btn), { opacity: isApprover && note.trim() ? 1 : 0.4 }) }, "\uBCF4\uB958"),
+                    g === 'requested' && held && React.createElement("button", { "data-ax-gate-rerequest": true, disabled: !ready, onClick: () => act('request'), style: Object.assign(Object.assign({}, ui_1.btn), { opacity: ready ? 1 : 0.4 }) }, "\uBCF4\uC644\uD574\uC11C \uB2E4\uC2DC \uC694\uCCAD"),
                     g === 'requested' && React.createElement("button", { "data-ax-gate-reject": true, disabled: !isApprover || !note.trim(), onClick: () => act('reject'), style: Object.assign(Object.assign({}, ui_1.btn), { color: ui_1.C.late, opacity: isApprover && note.trim() ? 1 : 0.4 }) }, "\uBC18\uB824")),
                 g === 'requested' && (p.approverMail ? React.createElement("a", { "data-ax-gate-teams": true, href: (0, ui_1.teamsChat)(p.approverMail, msg), target: "_blank", rel: "noopener noreferrer", style: Object.assign(Object.assign({}, ui_1.btn), { textDecoration: 'none', textAlign: 'center' }) }, "Teams\uB85C \uC2B9\uC778\uC790\uC5D0\uAC8C \uC54C\uB9AC\uAE30") : React.createElement("span", { style: { fontSize: 12, color: ui_1.C.faint } }, "\uC124\uC815\uC5D0 \uC2B9\uC778\uC790 \uBA54\uC77C\uC744 \uB123\uC73C\uBA74 Teams\uB85C \uC54C\uB9B4 \uC218 \uC788\uC5B4\uC694."))),
             g === 'approved' && props.open && React.createElement("button", { "data-ax-gate-undo": true, disabled: !isApprover, onClick: () => act('reject'), style: Object.assign(Object.assign({}, ui_1.btn), { alignSelf: 'flex-start', opacity: isApprover ? 1 : 0.4 }) }, "\uC2B9\uC778 \uCDE8\uC18C"),
@@ -1267,55 +1270,56 @@ const S7 = { name: '출시 후 유통관리', short: '출시 후', focus: '시�
 const TPL = {
     own: {
         S1: { name: '컨셉·기획', short: '컨셉·기획', focus: '고객가치·차별점·기술 가능성 확인', gate: 'G1 기획 승인', rule: '기획안·사업성 검토 끝, 경영진 결정 기록', docs: [VOC, d('plan', '신제품 기획안 (컨셉)', 'PROC-11'), d('biz', '사업성 검토서', 'PROC-12'), G1REP] },
-        S2: { name: '공동검토·개발발의', short: '공동검토', focus: '요구사항·예산·일정·역할 합의', docs: [RR, d('spec', '최종 사양서', 'PROC-22'), d('kickoff', '개발발의서', 'PROC-23')] },
+        S2: { gate: 'G2 개발발의 승인', rule: 'PM·R&R 정함, 사양·개발발의서 끝', name: '공동검토·개발발의', short: '공동검토', focus: '요구사항·예산·일정·역할 합의', docs: [RR, d('spec', '최종 사양서', 'PROC-22'), d('kickoff', '개발발의서', 'PROC-23')] },
         S3: { name: '설계·시제품검증', short: '설계·시제품', focus: '금형 착수 전 설계 방향·평가 계획 확정', docs: [d('sched', 'Kick off 회의록·대일정표', 'PROC-24'), d('cad', '3D 도면·Part list', 'PROC-26'), d('dr', '설계 DR 결과서', 'PROC-27A'), d('proto', '시제품 평가 결과서', 'PROC-28')] },
-        S4: { name: '금형·시사출 (T0~T2)', short: '금형·시사출', focus: '금형 발주 → T0·T1·T2 시사출 → 부품 승인, 인증·인쇄물 준비', gate: 'G2 금형 T1 합격', rule: '모든 금형이 T1 이상 시사출 합격 (금형 탭)',
+        S4: { name: '금형·시사출 (T0~T2)', short: '금형·시사출', focus: '금형 발주 → T0·T1·T2 시사출 → 부품 승인, 인증·인쇄물 준비', gate: 'G3 금형 T1 합격', rule: '모든 금형이 T1 이상 시사출 합격 (금형 탭)',
             docs: [d('mold', '금형 발주·계약서 (금형 번호·업체)', 'PROC-35'), d('t0', 'T0 시사출 검토서', 'PROC-40'), d('t1', 'T1 시사출 검토서', 'PROC-40'), d('t2', 'T2 수정·최종 승인', 'PROC-40'), d('ppap', '부품 승인원', 'PROC-61'), CERT, PRINT, ISSUE] },
-        S5: { name: '양산·출시준비', short: '양산준비', focus: '양산 품질·생산 준비, 영업·마케팅·CS 출시 지원', gate: 'G3 출시 승인', rule: '인증 모두 취득, 출시 자료 끝', docs: [FAQ, d('usp', '제품 USP·웹기술서', 'PROC-84B'), LAUNCH] },
-        S6: { name: '생산', short: '생산', focus: '초도 생산·출하·초도품 확인', docs: [d('first', '초도 생산·출하 현황', 'PROC-86'), d('mpqa', '양산 검수 보고서', 'PROC-87')] },
+        S5: { name: '양산·출시준비', short: '양산준비', focus: '양산 품질·생산 준비, 영업·마케팅·CS 출시 지원', gate: 'G4 출시 승인', rule: '인증 모두 취득, 출시 자료 끝', docs: [FAQ, d('usp', '제품 USP·웹기술서', 'PROC-84B'), LAUNCH] },
+        S6: { gate: 'G5 양산 전환 승인', rule: '초도 생산·검수 끝, 진행 중 설계 변경 없음', name: '생산', short: '생산', focus: '초도 생산·출하·초도품 확인', docs: [d('first', '초도 생산·출하 현황', 'PROC-86'), d('mpqa', '양산 검수 보고서', 'PROC-87')] },
         S7,
     },
     derive: {
         S1: { name: '파생 기획', short: '파생 기획', focus: '기반 모델과 무엇이 다른지(색상·부품·사양) 정함', gate: 'G1 파생 기획 승인', rule: '기반 모델·바뀌는 부품 목록 확정', docs: [d('base', '기반 모델·바뀌는 부품 목록'), d('plan', '파생 기획안 (색상·사양 차이)', 'PROC-11'), G1REP] },
-        S2: { name: '변경 사양 합의', short: '변경 합의', focus: '바뀌는 것만 사양·원가·일정 합의', docs: [RR, d('spec', '변경 사양서', 'PROC-22')] },
-        S3: { name: '변경 설계', short: '변경 설계', focus: '바뀐 부품만 설계 변경(ECR→ECO), 색상 샘플 승인', gate: 'G2 변경 부품 승인', rule: '진행 중 설계 변경 없음, 바뀐 부품 모두 ECO 승인',
+        S2: { gate: 'G2 개발발의 승인', rule: 'PM·R&R 정함, 사양·개발발의서 끝', name: '변경 사양 합의', short: '변경 합의', focus: '바뀌는 것만 사양·원가·일정 합의', docs: [RR, d('spec', '변경 사양서', 'PROC-22')] },
+        S3: { name: '변경 설계', short: '변경 설계', focus: '바뀐 부품만 설계 변경(ECR→ECO), 색상 샘플 승인', gate: 'G3 변경 부품 승인', rule: '진행 중 설계 변경 없음, 바뀐 부품 모두 ECO 승인',
             docs: [d('ecr', '설계 변경 요청·ECO'), d('cmf', '색상·CMF 승인 샘플'), d('dr', '변경 부품 DR', 'PROC-27A')] },
         S4: { name: '변경 검증', short: '변경 검증', focus: '바뀐 부품 승인원, 인증 변경 신고, 인쇄물 변경분', docs: [d('ppap', '변경 부품 승인원', 'PROC-61'), d('certchg', '인증 변경·추가 신고'), d('print', '인쇄물·라벨 변경분', 'PROC-77A'), ISSUE] },
-        S5: { name: '양산·출시준비', short: '양산준비', focus: '파생 모델 출시 자료', gate: 'G3 출시 승인', rule: '인증 변경 끝, 출시 자료 끝', docs: [d('usp', '파생 모델 소개·상세페이지', 'PROC-84B'), LAUNCH] },
-        S6: { name: '생산', short: '생산', focus: '초도 생산·색상 확인', docs: [d('first', '초도 생산·출하 현황', 'PROC-86'), d('mpqa', '양산 검수 보고서', 'PROC-87')] },
+        S5: { name: '양산·출시준비', short: '양산준비', focus: '파생 모델 출시 자료', gate: 'G4 출시 승인', rule: '인증 변경 끝, 출시 자료 끝', docs: [d('usp', '파생 모델 소개·상세페이지', 'PROC-84B'), LAUNCH] },
+        S6: { gate: 'G5 양산 전환 승인', rule: '초도 생산·검수 끝, 진행 중 설계 변경 없음', name: '생산', short: '생산', focus: '초도 생산·색상 확인', docs: [d('first', '초도 생산·출하 현황', 'PROC-86'), d('mpqa', '양산 검수 보고서', 'PROC-87')] },
         S7,
     },
     oem: {
         S1: { name: '컨셉·기획', short: '컨셉·기획', focus: '고객가치·차별점, 생산 업체 후보', gate: 'G1 기획 승인', rule: '기획안·사업성 검토 끝, 경영진 결정 기록', docs: [VOC, d('plan', '신제품 기획안 (컨셉)', 'PROC-11'), d('biz', '사업성 검토서 (업체 단가 포함)', 'PROC-12'), G1REP] },
-        S2: { name: '공동검토·생산 업체 선정', short: '업체 선정', focus: '사양 확정, 생산 업체 선정·계약', docs: [RR, d('spec', '최종 사양서', 'PROC-22'), d('vendor', '생산 업체 선정·계약서')] },
+        S2: { gate: 'G2 착수 승인', rule: 'PM·R&R 정함, 업체·계약 확정', name: '공동검토·생산 업체 선정', short: '업체 선정', focus: '사양 확정, 생산 업체 선정·계약', docs: [RR, d('spec', '최종 사양서', 'PROC-22'), d('vendor', '생산 업체 선정·계약서')] },
         S3: { name: '설계·도면 배포', short: '설계·배포', focus: '우리 도면 확정, 업체에 나간 판 기록', docs: [d('cad', '3D 도면·Part list', 'PROC-26'), d('dr', '설계 DR 결과서', 'PROC-27A'), d('release', '업체 배포 도면 판 기록'), d('proto', '시제품 평가 결과서', 'PROC-28')] },
-        S4: { name: '업체 생산·초도품 검사', short: '초도품 검사', focus: '업체 금형·시사출 확인, 초도품 검사·수입검사 기준', gate: 'G2 초도품 검사 합격', rule: '업체에 나간 도면이 최신 판, 초도품 검사 성적서 합격',
+        S4: { name: '업체 생산·초도품 검사', short: '초도품 검사', focus: '업체 금형·시사출 확인, 초도품 검사·수입검사 기준', gate: 'G3 초도품 검사 합격', rule: '업체에 나간 도면이 최신 판, 초도품 검사 성적서 합격',
             docs: [d('mold', '업체 금형·시사출 확인', 'PROC-40'), d('fai', '초도품 검사 성적서'), d('iqc', '수입검사 기준서'), CERT, PRINT, ISSUE] },
-        S5: { name: '양산·출시준비', short: '양산준비', focus: '양산 품질·출시 자료', gate: 'G3 출시 승인', rule: '인증 모두 취득, 출시 자료 끝', docs: [FAQ, LAUNCH] },
-        S6: { name: '생산·수입검사', short: '수입검사', focus: '초도 입고·수입검사', docs: [d('first', '초도 입고·출하 현황', 'PROC-86'), d('mpqa', '수입검사 결과', 'PROC-87')] },
+        S5: { name: '양산·출시준비', short: '양산준비', focus: '양산 품질·출시 자료', gate: 'G4 출시 승인', rule: '인증 모두 취득, 출시 자료 끝', docs: [FAQ, LAUNCH] },
+        S6: { gate: 'G5 양산 전환 승인', rule: '초도 생산·검수 끝, 진행 중 설계 변경 없음', name: '생산·수입검사', short: '수입검사', focus: '초도 입고·수입검사', docs: [d('first', '초도 입고·출하 현황', 'PROC-86'), d('mpqa', '수입검사 결과', 'PROC-87')] },
         S7,
     },
     odm: {
         S1: { name: '요구 사양·업체 선정', short: '요구 사양', focus: '무엇을 원하는지 사양서로, ODM 업체 후보 평가', gate: 'G1 요구 사양 승인', rule: '요구 사양서 확정, ODM 업체 선정', docs: [VOC, d('req', '요구 사양서'), d('vendor', 'ODM 업체 후보 평가·선정'), G1REP] },
-        S2: { name: '견적·개발 계약', short: '개발 계약', focus: '단가·MOQ·일정·금형비 합의', docs: [RR, d('quote', '견적·개발 계약서')] },
+        S2: { gate: 'G2 착수 승인', rule: 'PM·R&R 정함, 업체·계약 확정', name: '견적·개발 계약', short: '개발 계약', focus: '단가·MOQ·일정·금형비 합의', docs: [RR, d('quote', '견적·개발 계약서')] },
         S3: { name: '샘플 차수 평가', short: '샘플 평가', focus: '1차·2차 샘플 평가, 주요 부품·재질·식품(물) 접촉부 확인', docs: [d('s1', '1차 샘플 평가서'), d('s2', '2차 샘플 평가서'), d('keyparts', '주요 부품·재질·접촉부 목록')] },
-        S4: { name: '승인원·인증', short: '승인원·인증', focus: '최종 샘플 합격 → 업체 승인원 승인 → 우리 명의 인증', gate: 'G2 승인원 승인', rule: 'ODM 업체 승인원 승인 (협력사 탭)',
+        S4: { name: '승인원·인증', short: '승인원·인증', focus: '최종 샘플 합격 → 업체 승인원 승인 → 우리 명의 인증', gate: 'G3 승인원 승인', rule: 'ODM 업체 승인원 승인 (협력사 탭)',
             docs: [d('s3', '최종 샘플 평가서'), d('aprv', '업체 승인원'), CERT, PRINT, ISSUE] },
-        S5: { name: '출시준비', short: '출시준비', focus: '출시 자료·CS', gate: 'G3 출시 승인', rule: '우리 명의 인증 모두 취득', docs: [FAQ, LAUNCH] },
-        S6: { name: '초도 입고', short: '초도 입고', focus: '초도 입고·수입검사', docs: [d('iqc', '초도 수입검사 결과'), d('first', '입고·출하 현황', 'PROC-86')] },
+        S5: { name: '출시준비', short: '출시준비', focus: '출시 자료·CS', gate: 'G4 출시 승인', rule: '우리 명의 인증 모두 취득', docs: [FAQ, LAUNCH] },
+        S6: { gate: 'G5 양산 전환 승인', rule: '초도 생산·검수 끝, 진행 중 설계 변경 없음', name: '초도 입고', short: '초도 입고', focus: '초도 입고·수입검사', docs: [d('iqc', '초도 수입검사 결과'), d('first', '입고·출하 현황', 'PROC-86')] },
         S7,
     },
     sourcing: {
         S1: { name: '구매 기획', short: '구매 기획', focus: '팔 제품·판매가·목표 마진', gate: 'G1 구매 기획 승인', rule: '단가·MOQ 견적 비교 끝', docs: [d('plan', '구매 기획 (판매가·목표 마진)'), d('price', '단가·MOQ 견적 비교'), G1REP] },
-        S2: { name: '업체 선정', short: '업체 선정', focus: '공급 업체 선정, 업체 인증서 확인', docs: [RR, d('vendor', '공급 업체 선정')] },
-        S3: { name: '샘플·규격 확인', short: '샘플·규격', focus: '샘플 평가, 구매 규격서, 업체 인증서·성적서', gate: 'G2 샘플 승인', rule: '샘플 합격 + 업체 인증서 확인 (협력사 탭)',
+        S2: { gate: 'G2 착수 승인', rule: 'PM·R&R 정함, 업체·계약 확정', name: '업체 선정', short: '업체 선정', focus: '공급 업체 선정, 업체 인증서 확인', docs: [RR, d('vendor', '공급 업체 선정')] },
+        S3: { name: '샘플·규격 확인', short: '샘플·규격', focus: '샘플 평가, 구매 규격서, 업체 인증서·성적서', gate: 'G3 샘플 승인', rule: '샘플 합격 + 업체 인증서 확인 (협력사 탭)',
             docs: [d('sample', '샘플 평가서'), d('specsheet', '구매 규격서'), d('vcert', '업체 인증서·시험성적서 확인')] },
         S4: { name: '포장·인증·발주', short: '포장·발주', focus: '포장·매뉴얼·라벨, 수입 신고·필요 인증, 발주', docs: [d('pack', '포장·매뉴얼·라벨 파일'), d('cert', '수입 신고·필요 인증'), d('po', '발주서')] },
-        S5: { name: '판매 준비', short: '판매 준비', focus: '상세페이지·판매 채널', gate: 'G3 판매 승인', rule: '인증·라벨 끝, 첫 입고 일정 확정', docs: [LAUNCH] },
-        S6: { name: '입고', short: '입고', focus: '입고 검사·출하', docs: [d('iqc', '입고 검사 결과'), d('first', '입고·출하 현황', 'PROC-86')] },
+        S5: { name: '판매 준비', short: '판매 준비', focus: '상세페이지·판매 채널', gate: 'G4 판매 승인', rule: '인증·라벨 끝, 첫 입고 일정 확정', docs: [LAUNCH] },
+        S6: { gate: 'G5 첫 입고 승인', rule: '입고 검사 끝, 출하 시작', name: '입고', short: '입고', focus: '입고 검사·출하', docs: [d('iqc', '입고 검사 결과'), d('first', '입고·출하 현황', 'PROC-86')] },
         S7,
     },
 };
+// 1.0.144 관문 G1~G5 (새 기획개발런칭 프로세스 — 곽두팔 msg 11182987·준보 msg 11184535 '응3개넣자'): G1 ① 기획 · G2 ② 개발 착수 · G3 유형별 확인(옛 G2) · G4 출시(옛 G3) · G5 ⑥ 양산 전환
 // 유형별 단계 — 같은 id(S1~S7)·번호, 사람/AI 역할은 기본 단계 것을 씀
 const CACHE = {};
 function stagesFor(t) {
@@ -1358,7 +1362,7 @@ exports.AX_STAGES = [
             d('mold', '금형 계약서', 'PROC-35'), d('trial', '시사출 검토서', 'PROC-40'), d('ppap', '부품 승인원', 'PROC-61'), d('cert', '국가별 인증서', 'PROC-56A'),
             d('print', '최종 인쇄물 파일', 'PROC-77A'), d('issue', '문제점 관리대장', 'PROC-74')
         ] },
-    { id: 'S5', no: '⑤', name: '양산·출시준비', focus: '양산 품질·생산 준비, 영업·마케팅·CS 출시 지원', gate: 'G3 출시 승인', docs: [
+    { id: 'S5', no: '⑤', name: '양산·출시준비', focus: '양산 품질·생산 준비, 영업·마케팅·CS 출시 지원', gate: 'G4 출시 승인', docs: [
             d('faq', 'FAQ 초안', 'PROC-84A'), d('usp', '제품 USP·웹기술서', 'PROC-84B'), d('launch', '출시 준비 보고서·소개서', 'PROC-85')
         ] },
     { id: 'S6', no: '⑥', name: '생산', focus: '초도 생산·출하·초도품 확인', docs: [
@@ -1374,7 +1378,7 @@ const ROLES = {
     S2: { human: ['요구사항·예산·일정 합의', 'G2 개발발의 승인'], ai: ['사양서·개발발의서 초안', '과거 비슷한 모델 불량·교훈 찾아 주기'] },
     S3: { human: ['설계 방향 결정, DR 주관', '시제품 평가'], ai: ['DR 체크리스트·과거 불량 미리 검토', '재질·부품 규제 확인(식품 접촉·RoHS 등)'] },
     S4: { human: ['금형·시사출 확인', '인증 접수·문제 해결'], ai: ['인증 일정·서류 빠짐 챙기기', '문제점 대장 정리·같은 불량 이력 찾기', '인쇄물 문구 규제 검토'] },
-    S5: { human: ['양산 준비 점검', 'G3 출시 승인'], ai: ['FAQ·USP·출시 자료 초안', '나라별 표시사항 마지막 점검'] },
+    S5: { human: ['양산 준비 점검', 'G4 출시 승인'], ai: ['FAQ·USP·출시 자료 초안', '나라별 표시사항 마지막 점검'] },
     S6: { human: ['초도 생산·출하 확인'], ai: ['초도품 검수 결과 요약', '출하 일정 지연 알림'] },
     S7: { human: ['VOC 대응 결정', '회고'], ai: ['VOC 분류·주간 요약', '회고 초안, 다음 제품에 넘길 교훈 정리'] },
 };
@@ -1961,8 +1965,10 @@ function moveEcr(p, id, to, who, note) {
             return x; const r = nextRev(x.rev); revs[x.no] = `${x.rev}→${r}`; return Object.assign(Object.assign({}, x), { rev: r }); });
         changes = changes.concat([{ id: (0, exports.uid)('c'), at, who, what: `${eco} ${e.title}`, why: e.why, stage: p.stage }]);
     }
+    const bomRev = to === '승인' ? nextRev(p.bomRev || 'A') : p.bomRev;
+    const bomLog = to === '승인' ? (p.bomLog || []).concat([{ rev: bomRev, at, who, what: `${eco} ${e.title}` }]) : p.bomLog;
     const what = `${e.no} ${to}${to === '승인' ? ` → ${eco} (부품 ${e.parts.length}개 Rev 올림)` : ''}${note ? ` — ${note}` : ''}`;
-    return Object.assign(Object.assign({}, p), { parts, changes, ecrs: (p.ecrs || []).map(x => (x.id === id ? Object.assign(Object.assign({}, x), { status: to, eco, revs, log: x.log.concat([{ at, who, what: `${to}${note ? ` — ${note}` : ''}` }]) }) : x)), log: p.log.concat([{ at, who, kind: 'edit', what }]) });
+    return Object.assign(Object.assign({}, p), { parts, changes, bomRev, bomLog, ecrs: (p.ecrs || []).map(x => (x.id === id ? Object.assign(Object.assign({}, x), { status: to, eco, revs, log: x.log.concat([{ at, who, what: `${to}${note ? ` — ${note}` : ''}` }]) }) : x)), log: p.log.concat([{ at, who, kind: 'edit', what }]) });
 }
 // 예시 품목 데이터 — 음식물처리기·초음파 가습기 (저장 안 함)
 function itemSamples(id) {
@@ -2053,16 +2059,16 @@ function gateChecks(p0, s) {
     const t = (0, devtype_1.typeOf)(p);
     const g = (s.gate || '').split(' ')[0];
     const out = [];
-    if (t === 'own' && g === 'G2') {
+    if (t === 'own' && g === 'G3') {
         const ms = p.molds || [];
         out.push({ label: `금형 ${ms.length}벌 모두 T1 이상 합격 (${ms.filter(exports.moldT1ok).length}/${ms.length})`, ok: ms.length > 0 && ms.every(exports.moldT1ok) });
     }
-    if (t === 'derive' && g === 'G2') {
+    if (t === 'derive' && g === 'G3') {
         const open = (p.ecrs || []).filter(e => e.status === '요청' || e.status === '검토').length;
         out.push({ label: `진행 중 설계 변경 없음 (${open}건 남음)`, ok: open === 0 });
         out.push({ label: `바뀐 부품 ${(0, exports.changedParts)(p).length}개 — ECO로 Rev 올라감`, ok: (0, exports.changedParts)(p).length > 0 });
     }
-    if (t === 'oem' && g === 'G2') {
+    if (t === 'oem' && g === 'G3') {
         const old = (p.docs2 || []).filter(d => d.kind === '도면').reduce((n, d) => n + releaseState(p, d).filter(r => r.old).length, 0);
         const sent = (p.docs2 || []).filter(d => d.kind === '도면' && releaseState(p, d).length).length;
         out.push({ label: `업체에 나간 도면이 모두 최신 판 (옛 판 ${old}건)`, ok: sent > 0 && old === 0 });
@@ -2070,21 +2076,36 @@ function gateChecks(p0, s) {
         const sm = v && (0, exports.lastSample)(v);
         out.push({ label: `생산 업체 초도품 검사 합격${sm ? ` (${sm.round} ${sm.result})` : ''}`, ok: !!sm && sm.result === '합격' });
     }
-    if (t === 'odm' && g === 'G2') { // 1.0.133 순서: 최종 샘플 합격 → 승인원 승인 (곽두팔 msg 10430179)
+    if (t === 'odm' && g === 'G3') { // 1.0.133 순서: 최종 샘플 합격 → 승인원 승인 (곽두팔 msg 10430179)
         const v = (p.vendors || []).filter(x => x.role === 'ODM' && x.aprvs.length)[0] || (0, exports.mainVendor)(p, 'ODM');
         const sm = v && (0, exports.lastSample)(v);
         const a = v && (0, exports.lastAprv)(v);
         out.push({ label: `최종 샘플 합격${sm ? ` (${sm.round} ${sm.result})` : ' — 아직 없음'}`, ok: !!sm && sm.result === '합격' });
         out.push({ label: `ODM 업체 승인원 승인${a ? ` (${a.title} Rev ${a.rev} ${a.status})` : ' — 아직 없음'}`, ok: !!a && a.status === '승인' && !!sm && sm.result === '합격' });
     }
-    if (t === 'sourcing' && g === 'G2') {
+    if (t === 'sourcing' && g === 'G3') {
         const v = (0, exports.mainVendor)(p, '완제품 공급');
         const sm = v && (0, exports.lastSample)(v);
         out.push({ label: `샘플 합격${sm ? ` (${sm.round} ${sm.result})` : ' — 아직 없음'}`, ok: !!sm && sm.result === '합격' });
         const vc = (v && v.vcerts) || [];
         out.push({ label: `업체 인증서 확인 (${vc.filter(c => c.ok).length}/${vc.length})`, ok: vc.length > 0 && vc.every(c => c.ok) });
     }
-    if (g === 'G3' && t !== 'sourcing') {
+    // 1.0.144 G1·G2·G5 기본 체크 (새 프로세스 관문)
+    if (g === 'G1')
+        out.push({ label: `PM 정함${p.owner ? ` (${p.owner})` : ''}`, ok: !!p.owner }, { label: `출시 목표일 정함${p.target ? ` (${p.target})` : ''}`, ok: !!p.target });
+    if (g === 'G2') {
+        out.push({ label: `승인자 정함${p.approver ? ` (${p.approver})` : ''}`, ok: !!p.approver });
+        out.push({ label: `BOM 초안 (부품 ${(p.parts || []).length}개)`, ok: (p.parts || []).length > 0 });
+    }
+    if (g === 'G4' || g === 'G5') {
+        const open = (p.ecrs || []).filter(e => e.status === '요청' || e.status === '검토').length;
+        out.push({ label: `진행 중 설계 변경 없음 (${open}건)`, ok: open === 0 });
+    }
+    if (g === 'G5') {
+        const nf = (p.parts || []).filter(x => !x.fixed).length;
+        out.push({ label: `BOM 모두 확정 (미확정 ${nf}개)`, ok: nf === 0 && (p.parts || []).length > 0 });
+    }
+    if (g === 'G4' && t !== 'sourcing') {
         const cs = p.certs || [];
         out.push({ label: `인증 모두 취득 (${cs.filter(c => c.status === '취득').length}/${cs.length})`, ok: cs.every(c => c.status === '취득') });
     }
@@ -2120,7 +2141,7 @@ exports.sampleOk = sampleOk;
 };
 __m["src/webparts/huromAxPlm/model/work.js"]=function(module,exports,require){"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.docLate = exports.projLate = exports.stageClear = exports.lastApproval = exports.stageDocsOk = exports.docOk = exports.gateKey = exports.ITEM_IMG = exports.stagesOf = void 0;
+exports.docLate = exports.projLate = exports.stageClear = exports.isHeld = exports.lastApproval = exports.sameGate = exports.oldGate = exports.stageDocsOk = exports.docOk = exports.gateKey = exports.ITEM_IMG = exports.stagesOf = void 0;
 exports.gateState = gateState;
 exports.unlocked = unlocked;
 exports.curIdx = curIdx;
@@ -2143,15 +2164,23 @@ const docOk = (d) => !!d && (!!d.done || !!d.skip);
 exports.docOk = docOk;
 const stageDocsOk = (p, s) => s.docs.filter(x => (0, exports.docOk)(p.docs[x.key])).length;
 exports.stageDocsOk = stageDocsOk;
-const lastApproval = (p, gate) => (p.approvals || []).filter(a => a.gate === gate).slice(-1)[0];
+// 1.0.144 관문 번호가 G3·G4로 바뀐 것(옛 G2·G3)도 같은 관문으로 읽음
+const oldGate = (gate) => { const m = /^G([34]) (.*)$/.exec(gate); return m ? `G${Number(m[1]) - 1} ${m[2]}` : ''; };
+exports.oldGate = oldGate;
+const sameGate = (a, gate) => a === gate || (!!(0, exports.oldGate)(gate) && a === (0, exports.oldGate)(gate));
+exports.sameGate = sameGate;
+const lastApproval = (p, gate) => (p.approvals || []).filter(a => (0, exports.sameGate)(a.gate, gate)).slice(-1)[0];
 exports.lastApproval = lastApproval;
+// 보류 = 승인자가 결정을 미룸 (상태는 '승인 대기' 그대로, 보류 표시만)
+const isHeld = (p, gate) => { const a = gate ? (0, exports.lastApproval)(p, gate) : undefined; return !!a && a.kind === 'hold'; };
+exports.isHeld = isHeld;
 function gateState(p, s) {
     if (!s.gate)
         return 'none';
     const a = (0, exports.lastApproval)(p, s.gate);
     if (a)
         return a.kind === 'approve' ? 'approved' : a.kind === 'reject' ? 'rejected' : 'requested';
-    if (p.gates && p.gates[s.gate])
+    if (p.gates && (p.gates[s.gate] || p.gates[(0, exports.oldGate)(s.gate)]))
         return 'approved'; // 1.0.127 이전에 넘긴 관문은 통과로 봄
     return 'wait';
 }
@@ -2278,7 +2307,17 @@ function workSamples0() {
 }
 // 1.0.130 — 예시에 품목·BOM·도면 판·설계 변경·인증 데이터까지
 // 1.0.132 — 유형별 기록을 붙이고 파생·OEM·소싱 예시 추가 (5개)
-function workSamples() { return workSamples0().map(p => (0, samples_1.typeTheTwo)(Object.assign(Object.assign({}, p), (0, item_1.itemSamples)(p.id)))).concat((0, samples_1.moreSamples)()); }
+function workSamples() { return workSamples0().map(p => (0, samples_1.typeTheTwo)(Object.assign(Object.assign({}, p), (0, item_1.itemSamples)(p.id)))).concat((0, samples_1.moreSamples)()).map(passGates); }
+// 1.0.144 예시: 관문이 G1~G5로 늘어서, 예시가 이미 지난 단계의 새 관문(G2·G5)은 승인된 걸로 채움
+function passGates(p) {
+    const k0 = (0, ax_1.stageIdx)(p.stage);
+    const add = [];
+    (0, devtype_1.stagesOf)(p).forEach((s, i) => { if (i < k0 && s.gate && gateState(p, s) !== 'approved') {
+        const at = ((p.actual || {})[s.id] || (p.plan || {})[s.id] || p.created.slice(0, 10)) + 'T09:00:00.000Z';
+        add.push({ gate: s.gate, kind: 'request', at, who: p.owner || '심준보' }, { gate: s.gate, kind: 'approve', at, who: p.approver || '김현숙' });
+    } });
+    return add.length ? Object.assign(Object.assign({}, p), { approvals: (p.approvals || []).concat(add) }) : p;
+}
 
 };
 __m["src/webparts/huromAxPlm/model/samples.js"]=function(module,exports,require){"use strict";
@@ -2547,7 +2586,7 @@ function gems(p, now = (0, ax_1.today)()) {
             return;
         const g = (0, work_1.gateState)(p, s);
         const plan = (p.plan || {})[s.id];
-        const ap = (p.approvals || []).filter(a => a.gate === s.gate && a.kind === 'approve').slice(-1)[0];
+        const ap = (p.approvals || []).filter(a => (0, work_1.sameGate)(a.gate, s.gate) && a.kind === 'approve').slice(-1)[0];
         const date = g === 'approved' && ap ? ap.at.slice(0, 10) : plan;
         if (!date)
             return;
@@ -5648,7 +5687,7 @@ function VendorPanel(props) {
 }
 
 };
-__m["src/webparts/huromAxPlm/components/AiFloor.js"]=function(module,exports,require){"use strict";
+__m["src/webparts/huromAxPlm/components/Overview.js"]=function(module,exports,require){"use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -5683,371 +5722,324 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.laneOf = exports.AIF_CSS = void 0;
-exports.desksOf = desksOf;
-exports.AiFloor = AiFloor;
+exports.OV_CSS = void 0;
+exports.Overview = Overview;
 const React = __importStar(require("react"));
-// AX-PLM 1.0.141 아이템 개요 — 업무 컨베이어 + AI 팀원 책상 (심준보 2026-11-19 #ax-plm 스레드 ch_aba23918… msg 10751872 '컨베이어 + AI 팀원 책상 두 개 다',
-// 10753837 '해당 업무 AI로 이름', 7:22~7:54 UTC '말풍선·머리 좌우·로봇 작게·옆에 칠판·AI 여러 담당자' · 2026-11-20 msg 10873351 「휴롬 AX 미래그림」 디자인·움직임 참고)
-// 업무 구분 8개(sched.LANES)가 컨베이어 칸이자 AI 팀원. 지금 단계 기본 업무(BASE_TASKS) 중 AI가 붙은 일이 있으면 그 AI가 일하는 중.
+// AX-PLM 1.0.144 아이템 「개요」 다시 짬 (심준보 2026-11-21 #ax-plm msg 11182395 '업무컨베이어 없애고 AI 구분 더 늘려줘' · 11185388 '개요 부족, 진짜 AI 동작하는지, 보기 불편한지' · 11186923 'AI 특화 PLM',
+//   곽두팔 msg 11182566·11182987·11185814): 맨 위 한 줄 상태 → 내가 할 일 → 요약 카드 4개(일정·BOM·설계 변경·이슈) → AI 팀원 16명(접힘, 실제로 한 일만) · AI 연결 상태
+//   1.0.141 컨베이어·책상 연출(AiFloor)은 뺌 — 움직임은 AI가 실제로 돌고 있을 때만
 const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
-const base_1 = require("src/webparts/huromAxPlm/model/base.js");
-const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
-const work_1 = require("src/webparts/huromAxPlm/model/work.js");
 const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
+const ai_2 = require("src/webparts/huromAxPlm/model/ai.js");
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+const team_1 = require("src/webparts/huromAxPlm/model/team.js");
 const Today_1 = require("src/webparts/huromAxPlm/components/Today.js");
 const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
-exports.AIF_CSS = `
-.axf-hero{position:relative;border-radius:24px;overflow:hidden;background:radial-gradient(120% 120% at 85% 0%,#0f2a17 0,#060807 55%,#000 100%);padding:26px 28px 22px;margin-bottom:16px;animation:axfRv .7s ease both}
-.axf-hero h1{font-size:34px;line-height:1.15;margin:12px 0 8px;letter-spacing:-.04em;font-weight:800}
-.axf-hero h1 em{font-style:normal;background:linear-gradient(90deg,#4fd16b,#b6f5a8);-webkit-background-clip:text;background-clip:text;color:transparent}
-.axf-tag{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.07);color:#b0b0b6;padding:6px 13px;border-radius:999px;font-size:12.5px;font-weight:700}
-.axf-dot{width:8px;height:8px;border-radius:50%;background:#4fd16b;box-shadow:0 0 12px #4fd16b;animation:axfBlink 1.6s infinite;flex:0 0 auto}
-.axf-kpis{display:flex;gap:26px;flex-wrap:wrap;margin-top:14px}
-.axf-kpis div{min-width:90px}.axf-kpis small{display:block;font-size:12px;color:#85858c;font-weight:700}.axf-kpis b{font-size:20px;font-weight:800;letter-spacing:-.02em}
-.axf-line{position:relative;width:140px;height:2px;background:#26262a;overflow:hidden;border-radius:2px;display:inline-block;vertical-align:middle;margin:0 10px}
-.axf-line:after{content:"";position:absolute;left:-40%;top:0;width:40%;height:100%;background:linear-gradient(90deg,transparent,#4fd16b);animation:axfSweep 1.8s linear infinite}
-.axf-blk{background:#111113;border-radius:20px;padding:20px 22px;margin-bottom:16px;animation:axfRv .8s ease both}
-.axf-eye{font-size:11.5px;font-weight:800;letter-spacing:.14em;color:#4fd16b;margin-bottom:2px}
-.axf-h2{font-size:19px;margin:0 0 4px;letter-spacing:-.02em;font-weight:800}.axf-sub{color:#85858c;font-size:13px;margin:0 0 14px}
-/* 컨베이어 */
-.axf-conv{position:relative;height:236px;overflow-x:auto;overflow-y:hidden}
-.axf-conv-in{position:relative;height:236px;min-width:860px}
-.axf-sts{position:absolute;left:0;right:0;top:0;display:grid;grid-template-columns:repeat(8,1fr);gap:8px}
-.axf-st{height:116px;border-radius:14px;background:#1b1b1e;padding:10px;position:relative;cursor:pointer;transition:transform .2s}
-.axf-st:hover{transform:translateY(-2px)}
-.axf-st .nm{font-weight:800;font-size:13px}.axf-st .who{display:flex;align-items:center;gap:6px;margin-top:7px;font-size:12px;font-weight:700;color:#b0b0b6}
-.axf-st .doing{font-size:11.5px;color:#85858c;margin-top:6px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.axf-st.done{opacity:.5}.axf-st.done .nm:after{content:" ✓";color:#4fd16b}
-.axf-st.work{background:#0f2416;box-shadow:0 0 0 1px rgba(79,209,107,.35),0 0 24px rgba(79,209,107,.12)}.axf-st.work .doing{color:#4fd16b;font-weight:700}
-.axf-st.wait{background:#2a1a0c;box-shadow:0 0 0 1px rgba(245,158,11,.45)}.axf-st.wait .doing{color:#fbbf24;font-weight:700}
-.axf-st.later .nm{color:#5f5f66}
-.axf-bot{width:22px;height:22px;border-radius:7px;background:#4fd16b;color:#04130a;display:grid;place-items:center;font-size:12px;animation:axfBob 1.2s ease-in-out infinite}
-.axf-bot.o{background:#f59e0b}.axf-bot.i{background:#26262a;color:#85858c;animation:none}
-.axf-belt{position:absolute;left:0;right:0;top:166px;height:30px;border-radius:15px;background:repeating-linear-gradient(90deg,#1f1f23 0 18px,#2b2b30 18px 36px);animation:axfBelt 1s linear infinite;box-shadow:inset 0 -4px 0 rgba(0,0,0,.4),0 0 0 1px #26262a}
-.axf-roll{position:absolute;top:200px;width:12px;height:12px;border-radius:50%;background:#3a3a40}
-.axf-card{position:absolute;top:136px;height:26px;padding:0 10px;border-radius:7px;font-size:11.5px;font-weight:800;display:flex;align-items:center;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.5)}
-.axf-card.a{background:#4fd16b;color:#04130a}.axf-card.h{background:#2a1a0c;color:#fbbf24;border:1.5px solid #f59e0b}
-.axf-mv{animation:axfMv 7s linear infinite}
-.axf-jam{position:absolute;top:212px;font-size:12px;font-weight:800;color:#fbbf24;background:#2a1a0c;border:1px solid #f59e0b;border-radius:20px;padding:2px 10px;white-space:nowrap;animation:axfBlink 1.6s ease-in-out infinite}
-/* AI 팀원 책상 */
-.axf-desks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.axf-desk{background:#1b1b1e;border-radius:16px;padding:12px 13px;position:relative;overflow:hidden;animation:axfRv .7s ease both}
-.axf-desk.work{box-shadow:0 0 0 1px rgba(79,209,107,.25)}.axf-desk.wait{box-shadow:0 0 0 1px rgba(245,158,11,.4)}
-.axf-desk .hd{display:flex;align-items:center;gap:8px}.axf-desk .n{font-weight:800;font-size:13.5px}
-.axf-state{margin-left:auto;font-size:11px;font-weight:800;border-radius:20px;padding:2px 8px;display:flex;align-items:center;gap:5px;white-space:nowrap}
-.axf-state:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;animation:axfBlink 1s infinite}
-.axf-state.work{background:rgba(79,209,107,.12);color:#4fd16b}.axf-state.wait{background:rgba(245,158,11,.14);color:#fbbf24}
-.axf-state.done,.axf-state.later{background:#26262a;color:#85858c}.axf-state.done:before,.axf-state.later:before{animation:none}
-.axf-scene{position:relative;height:112px;margin-top:8px;border-radius:12px;background:linear-gradient(#0c1a10,#08110b);overflow:hidden}
-.axf-desk.wait .axf-scene{background:linear-gradient(#1d140a,#120c06)}.axf-desk.done .axf-scene,.axf-desk.later .axf-scene{background:#141416}
-.axf-tbl{position:absolute;left:0;right:0;bottom:0;height:14px;background:#2b2b30;border-top:2px solid #3a3a40}
-.axf-board{position:absolute;left:8px;top:8px;bottom:18px;width:54%;background:#123222;border:3px solid #6b5640;border-radius:5px;padding:4px 7px;color:#e6f5e9;font-size:10.5px;line-height:1.45;overflow:hidden}
-.axf-board .tt{font-weight:800;font-size:11px;color:#fde68a;border-bottom:1px dashed rgba(255,255,255,.3);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.axf-board .it{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.55}
-.axf-board .it.ok{text-decoration:line-through;opacity:.6}.axf-board .it.now{opacity:1;color:#fff;font-weight:800;animation:axfChalk 1.2s ease-in-out infinite}
-.axf-mon{position:absolute;right:10px;bottom:14px;width:58px;height:40px;background:#050505;border-radius:5px;border:2px solid #3a3a40;overflow:hidden}
-.axf-code{position:absolute;left:5px;right:5px;top:5px;display:flex;flex-direction:column;gap:3px;animation:axfScroll 2.2s linear infinite}
-.axf-code i{display:block;height:3px;border-radius:2px;background:#4fd16b}.axf-code i:nth-child(2n){width:60%;background:#2fa84f}.axf-code i:nth-child(3n){width:80%;background:#b6f5a8}
-.axf-desk.wait .axf-code i{background:#f59e0b}.axf-desk.done .axf-code,.axf-desk.later .axf-code{animation:none;opacity:.3}
-.axf-bot2{position:absolute;right:72px;bottom:14px;width:32px;height:36px}
-.axf-bot2 .h{position:absolute;left:2px;top:0;width:28px;height:21px;border-radius:7px;background:#4fd16b;animation:axfNod 3.2s ease-in-out infinite}
-.axf-bot2 .h:before,.axf-bot2 .h:after{content:"";position:absolute;top:7px;width:5px;height:5px;border-radius:50%;background:#04130a;animation:axfEye 3s infinite}
-.axf-bot2 .h:before{left:6px}.axf-bot2 .h:after{right:6px}
-.axf-bot2 .ant{position:absolute;left:15px;top:-6px;width:2px;height:6px;background:#4fd16b}
-.axf-bot2 .ant:after{content:"";position:absolute;left:-2px;top:-4px;width:6px;height:6px;border-radius:50%;background:#fde68a;animation:axfBlink .9s infinite}
-.axf-bot2 .b{position:absolute;left:6px;top:22px;width:20px;height:14px;border-radius:5px 5px 0 0;background:#2fa84f}
-.axf-bot2 .arm{position:absolute;top:26px;width:11px;height:4px;border-radius:2px;background:#2fa84f;transform-origin:left center;animation:axfType .25s infinite alternate}
-.axf-bot2 .arm.l{left:20px}.axf-bot2 .arm.r{left:23px;animation-delay:.12s}
-.axf-desk.wait .axf-bot2 .h,.axf-desk.wait .axf-bot2 .ant{background:#f59e0b}.axf-desk.wait .axf-bot2 .b,.axf-desk.wait .axf-bot2 .arm{background:#d97706}
-.axf-desk.wait .axf-bot2 .arm{animation:none}
-.axf-desk.done .axf-bot2 *,.axf-desk.later .axf-bot2 *{background:#3a3a40 !important;animation:none !important}
-.axf-bub{position:absolute;right:6px;top:4px;max-width:40%;background:#f4f4f5;border-radius:10px;padding:4px 7px;font-size:10.5px;line-height:1.35;font-weight:700;color:#0a0a0a;transition:opacity .25s,transform .25s}
-.axf-bub:after{content:"";position:absolute;right:22px;bottom:-10px;border:5px solid transparent;border-top-color:#f4f4f5}
-.axf-bub.hide{opacity:0;transform:translateY(4px) scale(.96)}
-.axf-dots span{display:inline-block;width:4px;height:4px;margin:0 1.5px;border-radius:50%;background:#2fa84f;animation:axfDotA 1s infinite}
-.axf-dots span:nth-child(2){animation-delay:.15s}.axf-dots span:nth-child(3){animation-delay:.3s}
-.axf-fly{position:absolute;bottom:50px;left:48%;font-size:14px;opacity:0}
-.axf-fly.go{animation:axfDoc 1.4s ease-in forwards}
-.axf-log{margin-top:8px;height:52px;overflow:hidden;font-size:11px;color:#85858c;display:flex;flex-direction:column;gap:2px}
-.axf-log div{display:flex;gap:6px;align-items:center;animation:axfLogIn .35s ease-out;white-space:nowrap;overflow:hidden}
-.axf-log div span{overflow:hidden;text-overflow:ellipsis}
-.axf-log div b{color:#5f5f66;font-weight:600;margin-left:auto;font-size:10px;flex:0 0 auto}
-.axf-log div:first-child{color:#f4f4f5;font-weight:700}
-.axf-bar{margin-top:6px;height:5px;background:#26262a;border-radius:3px;overflow:hidden}.axf-bar i{display:block;height:100%;background:linear-gradient(90deg,#2fa84f,#4fd16b);border-radius:3px;transition:width .6s}
-.axf-desk.wait .axf-bar i{background:#f59e0b}
-.axf-foot{display:flex;justify-content:space-between;margin-top:5px;font-size:11px;color:#85858c}
-/* 확인 · 사람 할 일 */
-.axf-two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.axf-row{display:flex;gap:8px;align-items:center;font-size:13px;padding:9px 0;border-top:1px solid #26262a}
-.axf-row:first-of-type{border-top:none}
-.axf-pill{font-weight:800;font-size:11px;border-radius:999px;padding:2px 8px;white-space:nowrap;flex:0 0 auto}
-.axf-pill.ai{background:rgba(79,209,107,.14);color:#4fd16b}.axf-pill.hu{background:#26262a;color:#b0b0b6}
-.axf-b{border:none;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;font-family:inherit}
-.axf-b.g{background:#4fd16b;color:#04130a}.axf-b.q{background:#26262a;color:#b0b0b6}
-@keyframes axfRv{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
-@keyframes axfBlink{50%{opacity:.3}}
-@keyframes axfSweep{to{left:100%}}
-@keyframes axfBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-@keyframes axfBelt{to{background-position:36px 0}}
-@keyframes axfMv{0%{transform:translateX(0);opacity:0}8%{opacity:1}75%{opacity:1}90%,100%{transform:translateX(var(--axf-d,120px));opacity:0}}
-@keyframes axfChalk{50%{color:#fde68a}}
-@keyframes axfScroll{to{transform:translateY(-24px)}}
-@keyframes axfNod{0%,100%{transform:translateX(0) rotate(0)}20%{transform:translateX(-3px) rotate(-9deg)}45%{transform:translateX(0) rotate(0)}70%{transform:translateX(3px) rotate(9deg)}}
-@keyframes axfEye{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
-@keyframes axfType{to{transform:rotate(14deg)}}
-@keyframes axfDotA{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-3px);opacity:1}}
-@keyframes axfDoc{0%{left:46%;opacity:0;transform:rotate(-20deg)}20%{opacity:1}100%{left:calc(100% - 50px);bottom:28px;opacity:0;transform:rotate(10deg) scale(.6)}}
-@keyframes axfLogIn{from{opacity:0;transform:translateY(-6px)}}
-@media (max-width:820px){
-  .axf-desks{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .axf-two{grid-template-columns:minmax(0,1fr)}
-  .axf-hero{padding:20px 18px}.axf-hero h1{font-size:26px}
-  .axf-kpis{gap:16px}.axf-line{display:none}
-}
-@media (max-width:480px){.axf-desks{grid-template-columns:minmax(0,1fr)}
-  .axf-desk.later .axf-scene,.axf-desk.later .axf-log,.axf-desk.later .axf-bar,.axf-desk.done .axf-scene,.axf-desk.done .axf-log,.axf-desk.done .axf-bar{display:none}
-  .axf-desk.later .axf-foot,.axf-desk.done .axf-foot{margin-top:2px}}
-@media (prefers-reduced-motion:reduce){.axw *{animation:none !important}}
+const K = { card: '#141416', line: '#2C2C31', text: '#F4F4F5', sub: '#CFCFD4', faint: '#9C9CA3', ok: '#4FD16B', okBg: 'rgba(79,209,107,.14)', soon: '#FBBF24', soonBg: 'rgba(251,191,36,.14)', late: '#F87171', lateBg: 'rgba(248,113,113,.14)', ink: '#04130A' };
+exports.OV_CSS = `
+.axo{font-size:15px;line-height:1.5;color:${K.text}}
+.axo-card{background:${K.card};border:1px solid ${K.line};border-radius:14px;padding:16px 18px}
+.axo-h{font-size:16px;font-weight:800;margin:0 0 8px;display:flex;align-items:center;gap:8px}
+.axo-sub{font-size:14px;color:${K.faint}}
+.axo-status{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.axo-st{background:${K.card};border:1px solid ${K.line};border-radius:14px;padding:12px 14px;min-width:0}
+.axo-st small{display:block;font-size:13px;color:${K.faint};font-weight:700}
+.axo-st b{display:block;font-size:18px;font-weight:800;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.axo-st span{font-size:14px;color:${K.sub}}
+.axo-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid ${K.line};font-size:15px}
+.axo-row:first-of-type{border-top:none}
+.axo-pill{font-size:13px;font-weight:800;border-radius:999px;padding:2px 9px;white-space:nowrap;flex:0 0 auto}
+.axo-b{border:none;border-radius:999px;padding:6px 13px;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap;font-family:inherit}
+.axo-b.g{background:${K.ok};color:${K.ink}}.axo-b.q{background:#2C2C31;color:${K.sub}}
+.axo-four{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0}
+.axo-four .axo-card{cursor:pointer}.axo-four .axo-card:hover{border-color:#4A4A52}
+.axo-big{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.axo-li{font-size:14px;color:${K.sub};padding:3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.axo-team{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
+.axo-mate{background:#19191C;border:1px solid ${K.line};border-radius:12px;padding:11px 12px;min-width:0}
+.axo-mate.off{opacity:.35}
+.axo-mate.run{border-color:rgba(79,209,107,.55)}.axo-mate.review{border-color:rgba(251,191,36,.55)}
+.axo-mate .n{font-weight:800;font-size:15px;display:flex;align-items:center;gap:6px}
+.axo-mate .d{font-size:13px;color:${K.faint};margin-top:2px}
+.axo-mate .w{font-size:14px;color:${K.sub};margin-top:6px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.axo-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;display:inline-block}
+.axo-dot.run{background:${K.ok};animation:axoBlink 1.2s infinite}.axo-dot.review{background:${K.soon}}.axo-dot.idle{background:#55555C}.axo-dot.off{background:#3A3A40}
+.axo-ai{display:flex;align-items:center;gap:10px;border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:15px;font-weight:700}
+.axo-ai.on{background:${K.okBg};color:${K.ok}}.axo-ai.off{background:${K.lateBg};color:${K.late}}.axo-ai.wait{background:#1C1C20;color:${K.faint}}
+@keyframes axoBlink{50%{opacity:.35}}
+@media (max-width:900px){.axo-status,.axo-four{grid-template-columns:repeat(2,minmax(0,1fr))}.axo-team{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:480px){.axo-team{grid-template-columns:minmax(0,1fr)}.axo-st b{font-size:16px}}
+@media (prefers-reduced-motion:reduce){.axo *{animation:none !important}}
 `;
-// AI 일 종류 → 업무 구분 (기본 업무 표에 그 AI가 처음 나오는 칸). 일정·요약·관문 같은 공통 일은 상품기획(PM) 칸
-const KIND_LANE = {};
-base_1.BASE_TASKS.forEach(t => (t.ai || []).forEach(k => { if (KIND_LANE[k] === undefined)
-    KIND_LANE[k] = t.lane; }));
-const laneOf = (j) => (KIND_LANE[j.kind] !== undefined ? KIND_LANE[j.kind] : 0);
-exports.laneOf = laneOf;
-const AI_NAME = ['기획·일정 AI', '설계 AI', '금형 AI', '구매 AI', '인증 AI', '품질 AI', '생산 AI', '인쇄물 AI'];
-const ICON = ['📄', '📐', '📧', '🖼', '📊'];
+const ST_LABEL = { run: '일하는 중', review: '확인 대기', idle: '대기', off: '해당 없음' };
+const tone = (n) => (n >= 7 ? K.late : n > 0 ? K.soon : K.ok);
 const cut = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
-const firstLine = (t) => (t || '').split('\n').map(x => x.replace(/^\s*(-|\d+\.|제목\s*[:：])\s*/, '').trim()).filter(x => x)[0] || '';
-function desksOf(p) {
+const ago = (iso) => { if (!iso)
+    return ''; const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000); return m < 60 ? `${Math.max(1, m)}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : (0, ax_1.fmt)(iso); };
+function Overview(props) {
+    const { p, act, nav, who } = props;
+    const px = p;
+    const st = (0, work_1.stagesOf)(p);
     const ck = (0, work_1.curIdx)(p);
-    const jobs = (p.aiJobs || []);
-    return sched_1.LANES.map((name, lane) => {
-        const all = base_1.BASE_TASKS.filter(t => t.lane === lane && !t.x);
-        const now = all.filter(t => t.st === ck && t.ai && t.ai.length);
-        const past = all.filter(t => t.st < ck).length;
-        const mine = jobs.filter(j => (0, exports.laneOf)(j) === lane);
-        const review = mine.filter(j => (0, ai_1.jobState)(j) === 'review');
-        const busy = mine.filter(j => ['running', 'queued'].indexOf((0, ai_1.jobState)(j)) >= 0);
-        const later = all.filter(t => t.st > ck).length;
-        const state = review.length ? 'wait' : (now.length || busy.length) ? 'work' : later ? 'later' : 'done';
-        const lines = busy.map(j => (j.input ? `「${cut(j.input, 18)}」 쓰는 중…` : `${(0, ai_1.kindInfo)(j.kind).label.split(' — ')[0]} 하는 중…`))
-            .concat(now.map(t => cut(t.goal.split(/[,.]/)[0], 34)))
-            .concat(review.map(j => `다 했어요! 확인해 주세요 — ${cut((0, Today_1.friendly)(j).title, 22)}`));
-        const logs = [];
-        now.forEach(t => (t.out || []).forEach(o => logs.push(`「${cut(o, 20)}」 읽음`)));
-        mine.filter(j => (0, ai_1.jobState)(j) === 'applied').forEach(j => logs.push(`${cut((0, Today_1.friendly)(j).title, 22)} · 반영됨`));
-        if (now.length || review.length)
-            (0, work_1.stagesOf)(p)[ck].docs.forEach(d => logs.push(`${d.label} ${(0, work_1.docOk)(p.docs[d.key]) ? '확인됨' : '살펴봄'}`));
-        return { lane, name, ai: AI_NAME[lane], state, now, past, total: all.length, review, jobs: mine, lines: lines.length ? lines : [state === 'done' ? '이 업무는 끝났어요' : `${'①②③④⑤⑥⑦'[Math.min(6, (all.filter(t => t.st > ck)[0] || { st: ck }).st)]} 단계에서 시작해요`], logs: logs.length ? logs : [later ? '아직 맡은 일이 없어요' : '이 업무는 끝났어요'] };
-    });
-}
-// 말풍선 — 「…」 생각하다가 한 글자씩
-function Bubble(props) {
-    const [i, setI] = React.useState(props.seed % Math.max(1, props.lines.length));
-    const [n, setN] = React.useState(0);
-    const [think, setThink] = React.useState(true);
-    const line = props.lines[i % props.lines.length] || '';
-    React.useEffect(() => {
-        if (!props.run) {
-            setThink(false);
-            setN(line.length);
-            return undefined;
-        }
-        let t;
-        if (think)
-            t = window.setTimeout(() => setThink(false), 900 + (props.seed % 4) * 250);
-        else if (n < line.length)
-            t = window.setTimeout(() => setN(n + 1), 55);
-        else
-            t = window.setTimeout(() => { setThink(true); setN(0); setI(i + 1); }, 2600);
-        return () => window.clearTimeout(t);
-    }, [think, n, i, props.run, line]);
-    return React.createElement("div", { "data-axf-bub": true, className: "axf-bub" }, think ? React.createElement("span", { className: "axf-dots" },
-        React.createElement("span", null),
-        React.createElement("span", null),
-        React.createElement("span", null)) : line.slice(0, n));
-}
-function DeskCard(props) {
-    const { d } = props;
-    const run = d.state === 'work' || d.state === 'wait';
-    const [log, setLog] = React.useState(() => d.logs.slice(0, 3));
-    const [fly, setFly] = React.useState(0);
-    const [step, setStep] = React.useState(0);
-    React.useEffect(() => {
-        if (d.state !== 'work')
-            return undefined;
-        let c = 3;
-        const t = window.setInterval(() => { setFly(x => x + 1); window.setTimeout(() => { setLog(l => [d.logs[c++ % d.logs.length]].concat(l).slice(0, 3)); }, 1300); }, 3400 + props.k * 230);
-        const s = window.setInterval(() => setStep(x => x + 1), 6500 + props.k * 400);
-        return () => { window.clearInterval(t); window.clearInterval(s); };
-    }, [d.state, d.logs.join('|')]);
-    const items = d.now.length ? d.now : d.jobs.slice(0, 4).map(j => ({ t: (0, Today_1.friendly)(j).title }));
-    const cur = items.length ? step % items.length : -1;
-    const pct = d.total ? Math.round(((d.past + (d.state === 'done' ? 0 : Math.min(cur + 1, items.length) * 0.5)) / d.total) * 100) : 0;
-    const label = { work: '일하는 중', wait: `확인 대기 ${d.review.length}`, done: '끝', later: '대기' }[d.state];
-    return (React.createElement("div", { "data-axf-desk": d.lane, "data-axf-state": d.state, className: `axf-desk ${d.state}`, style: { animationDelay: `${props.k * 60}ms`, cursor: 'pointer' }, onClick: props.onOpen },
-        React.createElement("div", { className: "hd" },
-            React.createElement("span", { className: "n" }, d.ai),
-            React.createElement("span", { className: `axf-state ${d.state}` }, label)),
-        React.createElement("div", { className: "axf-scene" },
-            React.createElement("div", { className: "axf-board", "data-axf-board": true },
-                React.createElement("div", { className: "tt" }, items.length ? (items[cur] || items[0]).t : d.name),
-                items.slice(0, 4).map((x, n) => React.createElement("div", { key: n, className: 'it' + (n < cur ? ' ok' : n === cur && run ? ' now' : '') },
-                    n < cur ? '✓ ' : n === cur && run ? '▶ ' : '· ',
-                    x.t)),
-                !items.length && React.createElement("div", { className: "it" }, d.lines[0])),
-            React.createElement("div", { className: "axf-tbl" }),
-            React.createElement("div", { className: "axf-mon" },
-                React.createElement("div", { className: "axf-code" },
-                    React.createElement("i", null),
-                    React.createElement("i", null),
-                    React.createElement("i", null),
-                    React.createElement("i", null),
-                    React.createElement("i", null),
-                    React.createElement("i", null),
-                    React.createElement("i", null),
-                    React.createElement("i", null),
-                    React.createElement("i", null),
-                    React.createElement("i", null))),
-            React.createElement("div", { className: "axf-bot2" },
-                React.createElement("div", { className: "ant" }),
-                React.createElement("div", { className: "h" }),
-                React.createElement("div", { className: "b" }),
-                React.createElement("div", { className: "arm l" }),
-                React.createElement("div", { className: "arm r" })),
-            run && React.createElement(Bubble, { lines: d.lines, run: run, seed: props.k }),
-            d.state === 'work' && React.createElement("div", { key: fly, className: 'axf-fly' + (fly ? ' go' : '') }, ICON[fly % ICON.length])),
-        React.createElement("div", { className: "axf-log", "data-axf-log": true }, log.map((x, n) => React.createElement("div", { key: x + n },
-            React.createElement("span", null, x),
-            React.createElement("b", null, n === 0 && run ? '방금' : `${n * 2 + 1}분 전`)))),
-        React.createElement("div", { className: "axf-bar" },
-            React.createElement("i", { style: { width: `${Math.min(100, d.state === 'done' ? 100 : pct)}%` } })),
-        React.createElement("div", { className: "axf-foot" },
-            React.createElement("span", null, d.name),
-            React.createElement("span", null, d.state === 'done' ? '100%' : `${pct}%`))));
-}
-function Conveyor(props) {
-    const { desks } = props;
-    const W = 100 / 8;
-    const moving = (props.p.aiJobs || []).filter(j => ['running', 'queued', 'applied'].indexOf((0, ai_1.jobState)(j)) >= 0).slice(0, 3);
-    const cards0 = moving.length ? moving.map(j => ({ lane: (0, exports.laneOf)(j), t: cut(j.input || (0, Today_1.friendly)(j).title, 12) }))
-        : desks.filter(d => d.state === 'work').slice(0, 3).map(d => ({ lane: d.lane, t: cut((d.now[0] || { t: d.name }).t, 12) }));
-    const cards = cards0.filter(c => !desks[c.lane] || desks[c.lane].state !== 'wait');
-    return (React.createElement("div", { className: "axf-conv", "data-axf-conv": true },
-        React.createElement("div", { className: "axf-conv-in" },
-            React.createElement("div", { className: "axf-sts" }, desks.map(d => React.createElement("div", { key: d.lane, "data-axf-st": d.lane, className: `axf-st ${d.state}`, onClick: () => props.onOpen(d.lane) },
-                React.createElement("div", { className: "nm" }, d.name.replace('/', '·')),
-                React.createElement("div", { className: "who" },
-                    React.createElement("span", { className: 'axf-bot' + (d.state === 'wait' ? ' o' : d.state === 'work' ? '' : ' i') }, d.state === 'done' ? '✓' : d.state === 'later' ? '·' : '🤖'),
-                    d.state === 'done' ? '끝' : d.state === 'later' ? '아직' : d.ai),
-                React.createElement("div", { className: "doing" }, d.state === 'wait' ? `사람 확인 대기 ${d.review.length}건` : d.state === 'work' ? (d.now[0] ? d.now[0].t : d.lines[0]) : d.lines[0])))),
-            React.createElement("div", { className: "axf-belt" }),
-            [2, 14, 26, 38, 50, 62, 74, 86, 97].map(x => React.createElement("div", { key: x, className: "axf-roll", style: { left: `${x}%` } })),
-            cards.map((c, n) => React.createElement("div", { key: n, "data-axf-card": true, className: "axf-card a axf-mv", style: { left: `${c.lane * W + W * 0.3}%`, animationDelay: `${-n * 2.3}s`, ['--axf-d']: '110px' } }, c.t)),
-            desks.filter(d => d.state === 'wait').map(d => React.createElement(React.Fragment, { key: d.lane },
-                React.createElement("div", { className: "axf-card h", "data-axf-pile": d.lane, style: { left: `${d.lane * W + 1.5}%` } },
-                    "\uD655\uC778 ",
-                    d.review.length,
-                    "\uAC74"),
-                React.createElement("div", { className: "axf-jam", style: { left: `${Math.max(0, d.lane * W - 1)}%` } },
-                    "\u26A0 ",
-                    d.name.split('/')[0],
-                    "\uC5D0\uC11C ",
-                    d.review.length,
-                    "\uAC74 \uC313\uC784"))))));
-}
-function AiFloor(props) {
-    const { p, act } = props;
-    const desks = React.useMemo(() => desksOf(p), [p]);
-    const ck = (0, work_1.curIdx)(p);
-    const s = (0, work_1.stagesOf)(p)[ck];
-    const working = desks.filter(d => d.state === 'work' || d.state === 'wait').length;
-    const reviews = (p.aiJobs || []).filter(j => (0, ai_1.jobState)(j) === 'review');
-    const human = s.docs.filter(d => { const st = p.docs[d.key] || {}; return !(0, work_1.docOk)(st) && !st.ai; });
+    const s = st[ck];
+    const [ai, setAi] = React.useState('wait');
+    const [open, setOpen] = React.useState(false);
+    React.useEffect(() => { let live = true; (0, ai_1.aiOnline)().then(ok => { if (live)
+        setAi(ok ? 'on' : 'off'); }, () => { if (live)
+        setAi('off'); }); return () => { live = false; }; }, []);
+    const now = (0, ax_1.today)();
     const lt = (0, work_1.projLate)(p);
-    return (React.createElement("div", { "data-axf": true },
-        React.createElement("div", { className: "axf-hero", "data-axf-hero": true },
-            React.createElement("span", { className: "axf-tag" },
-                React.createElement("span", { className: "axf-dot" }),
-                "AI \uD300\uC6D0 ",
-                working,
-                "\uBA85 \uC77C\uD558\uB294 \uC911 \u00B7 \uD655\uC778 \uB300\uAE30 ",
-                reviews.length,
-                "\uAC74"),
-            React.createElement("h1", null,
-                "AI \uD300\uC6D0\uC774 ",
-                React.createElement("em", null,
+    // 다음 관문
+    let gk = -1;
+    for (let i = ck; i < st.length; i++)
+        if (st[i].gate && (0, work_1.gateState)(p, st[i]) !== 'approved') {
+            gk = i;
+            break;
+        }
+    const gs = gk >= 0 ? st[gk] : undefined;
+    const gst = gs ? (0, work_1.gateState)(p, gs) : 'none';
+    const held = gs ? (0, work_1.isHeld)(p, gs.gate) : false;
+    const gWord = !gs ? '모두 승인됨' : held ? '보류' : gst === 'requested' ? '승인 대기' : gst === 'rejected' ? '반려됨' : '아직 요청 전';
+    const gCol = !gs ? K.ok : held || gst === 'rejected' ? K.late : gst === 'requested' ? K.soon : K.faint;
+    // 내가 할 일 (사람 확인 대기)
+    const me = (n) => !n || n.replace(/\s/g, '') === who.replace(/\s/g, '');
+    const reviews = (px.aiJobs || []).filter(j => (0, ai_1.jobState)(j) === 'review');
+    const gatesForMe = st.map((x, k) => ({ x, k })).filter(o => o.x.gate && (0, work_1.gateState)(p, o.x) === 'requested' && !(0, work_1.isHeld)(p, o.x.gate) && me(p.approver));
+    const ecrForMe = (px.ecrs || []).filter(e => e.status === '검토' && me(p.approver));
+    const human = s.docs.filter(d => { const x = p.docs[d.key] || {}; return !(0, work_1.docOk)(x) && !x.ai; });
+    const myCount = reviews.length + gatesForMe.length + ecrForMe.length + human.length;
+    // 요약 카드
+    const dues = [];
+    st.forEach((x, k) => { if (k >= ck) {
+        x.docs.forEach(d => { const v = p.docs[d.key] || {}; if (v.due && !(0, work_1.docOk)(v))
+            dues.push({ date: v.due, label: d.label }); });
+        const pl = (p.plan || {})[x.id];
+        if (pl && !(p.actual || {})[x.id])
+            dues.push({ date: pl, label: `${x.no} ${x.short || x.name} 끝${x.gate ? ` · ${x.gate.split(' ')[0]}` : ''}` });
+    } });
+    dues.sort((a, b) => a.date.localeCompare(b.date));
+    const parts = px.parts || [];
+    const unfixed = parts.filter(x => !x.fixed).length;
+    const ecrs = px.ecrs || [];
+    const ecrOpen = ecrs.filter(e => e.status === '요청' || e.status === '검토' || e.status === '승인');
+    const ecrLast = ecrs.slice(-1)[0];
+    const issues = (p.issues || []).filter(i => !i.done);
+    const team = (0, team_1.teamOf)(p);
+    const b = (0, ai_2.branchOf)((0, devtype_1.typeOf)(p));
+    const cnt = (k) => team.filter(t => t.state === k).length;
+    const active = team.filter(t => t.state === 'run' || t.state === 'review' || t.inbox.length);
+    return (React.createElement("div", { className: "axo", "data-axo": true },
+        React.createElement("div", { "data-axo-ai": ai, className: `axo-ai ${ai}` },
+            React.createElement("span", { className: "axo-dot", style: { background: 'currentColor' } }),
+            ai === 'on' ? 'AI 연결됨 — 버튼으로 맡기는 일이 실제 AI(Claude)로 돌아가요' : ai === 'off' ? 'AI 꺼짐 — 중계 PC가 꺼져 있거나 연결이 끊겼어요. 지금은 AI에게 일을 맡길 수 없어요' : 'AI 연결 확인 중…'),
+        React.createElement("div", { className: "axo-status", "data-axo-status": true },
+            React.createElement("div", { className: "axo-st" },
+                React.createElement("small", null, "\uC9C0\uAE08 \uB2E8\uACC4"),
+                React.createElement("b", null,
                     s.no,
                     " ",
                     s.short || s.name),
-                " \uC77C\uC744 \uD558\uACE0 \uC788\uC5B4\uC694"),
-            React.createElement("div", { style: { color: '#b0b0b6', fontSize: 14, fontWeight: 700 } },
-                "\uC9C0\uAE08 \uB2E8\uACC4",
-                React.createElement("span", { className: "axf-line" }),
-                " ",
-                React.createElement("span", { style: { color: '#4fd16b' } },
-                    "\uB2E4\uC74C ",
-                    (0, work_1.stagesOf)(p)[Math.min(6, ck + 1)].name)),
-            React.createElement("div", { className: "axf-kpis" },
-                React.createElement("div", null,
-                    React.createElement("small", null, "\uCD9C\uC2DC \uBAA9\uD45C"),
-                    React.createElement("b", null, (0, ui_1.md)(p.target)),
+                React.createElement("span", null,
+                    ai_2.BRANCH_LABEL[b],
+                    "\uAD70 \u00B7 ",
+                    s.docs.filter(d => (0, work_1.docOk)(p.docs[d.key])).length,
+                    "/",
+                    s.docs.length,
+                    " \uC0B0\uCD9C\uBB3C")),
+            React.createElement("div", { className: "axo-st", "data-axo-gate": gs ? gs.gate : 'done', style: { cursor: gs ? 'pointer' : 'default' }, onClick: () => gs && nav.work(gk, 'gate') },
+                React.createElement("small", null, "\uB2E4\uC74C \uAD00\uBB38"),
+                React.createElement("b", null, gs ? gs.gate : 'G1~G5 끝'),
+                React.createElement("span", { style: { color: gCol, fontWeight: 800 } },
+                    gWord,
+                    gs && (0, work_1.lastApproval)(p, gs.gate) && (held || gst === 'rejected') ? ` — ${cut(((0, work_1.lastApproval)(p, gs.gate) || { note: '' }).note || '', 18)}` : '')),
+            React.createElement("div", { className: "axo-st" },
+                React.createElement("small", null, "\uCD9C\uC2DC \uBAA9\uD45C"),
+                React.createElement("b", null, p.target ? (0, ui_1.md)(p.target) : '없음'),
+                React.createElement("span", null, (0, ax_1.dday)(p.target))),
+            React.createElement("div", { className: "axo-st", "data-axo-late": lt },
+                React.createElement("small", null, "\uC77C\uC815"),
+                React.createElement("b", { style: { color: tone(lt) } }, lt > 0 ? `${lt}일 늦음` : '제때'),
+                React.createElement("span", { style: { color: tone(lt) } }, lt >= 7 ? '빨강 — 바로 조치' : lt > 0 ? '노랑 — 따라잡기' : '초록'))),
+        React.createElement("div", { className: "axo-card", "data-axo-mine": true },
+            React.createElement("div", { className: "axo-h" },
+                "\uB0B4\uAC00 \uD560 \uC77C ",
+                React.createElement("span", { style: { color: myCount ? K.soon : K.faint } }, myCount),
+                React.createElement("span", { className: "axo-sub", style: { fontWeight: 400 } }, "\uC0AC\uB78C\uC774 \uD655\uC778\uD558\uAC70\uB098 \uACB0\uC815\uD560 \uAC83")),
+            !myCount && React.createElement("div", { className: "axo-sub" }, "\uC9C0\uAE08 \uC0AC\uB78C\uC774 \uD560 \uC77C\uC774 \uC5C6\uC5B4\uC694."),
+            gatesForMe.map(o => React.createElement("div", { key: o.x.id, className: "axo-row", "data-axo-my": "gate" },
+                React.createElement("span", { className: "axo-pill", style: { background: K.soonBg, color: K.soon } }, "\uAD00\uBB38 \uC2B9\uC778"),
+                React.createElement("span", { style: { flex: 1, minWidth: 0 } },
+                    o.x.gate,
+                    " \u2014 \uC2B9\uC778 \uC694\uCCAD \uB4E4\uC5B4\uC634"),
+                React.createElement("button", { className: "axo-b g", onClick: () => nav.work(o.k, 'gate') }, "\uC2B9\uC778\uD558\uB7EC \uAC00\uAE30"))),
+            ecrForMe.map(e => React.createElement("div", { key: e.id, className: "axo-row", "data-axo-my": "ecr" },
+                React.createElement("span", { className: "axo-pill", style: { background: K.soonBg, color: K.soon } }, "\uC124\uACC4 \uBCC0\uACBD"),
+                React.createElement("span", { style: { flex: 1, minWidth: 0 } },
+                    e.no,
                     " ",
-                    React.createElement("span", { style: { color: '#85858c', fontSize: 13 } }, (0, ax_1.dday)(p.target))),
-                React.createElement("div", null,
-                    React.createElement("small", null, "\uC774\uBC88 \uB2E8\uACC4 \uC0B0\uCD9C\uBB3C"),
-                    React.createElement("b", null,
-                        s.docs.filter(d => (0, work_1.docOk)(p.docs[d.key])).length,
-                        "/",
-                        s.docs.length)),
-                React.createElement("div", null,
-                    React.createElement("small", null, "\uC77C\uC815"),
-                    React.createElement("b", { style: { color: lt > 0 ? ui_1.C.late : '#4fd16b' } }, lt > 0 ? `${lt}일 늦음` : '제때')),
-                React.createElement("div", null,
-                    React.createElement("small", null, "PM"),
-                    React.createElement("b", null, p.owner || '없음')))),
-        React.createElement("div", { className: "axf-blk", style: { animationDelay: '80ms' } },
-            React.createElement("div", { className: "axf-eye" }, "WORK FLOW"),
-            React.createElement("div", { className: "axf-h2" }, "\uC5C5\uBB34 \uCEE8\uBCA0\uC774\uC5B4"),
-            React.createElement("div", { className: "axf-sub" }, "\uC5C5\uBB34 \uAD6C\uBD84\uC774 \uCE78, \uC77C\uAC70\uB9AC\uAC00 \uCE74\uB4DC\uC608\uC694. \uCD08\uB85D \uCE78\uC740 AI\uAC00 \uC77C\uD558\uB294 \uC911, \uC8FC\uD669 \uCE78\uC740 \uC0AC\uB78C \uD655\uC778\uC744 \uAE30\uB2E4\uB824\uC694. \uCE78\uC744 \uB204\uB974\uBA74 \uC9C4\uD589 \uD0ED\uC73C\uB85C \uAC00\uC694."),
-            React.createElement(Conveyor, { p: p, desks: desks, onOpen: () => props.onWork() })),
-        React.createElement("div", { className: "axf-blk", style: { animationDelay: '160ms' } },
-            React.createElement("div", { className: "axf-eye" }, "AI TEAM"),
-            React.createElement("div", { className: "axf-h2" },
-                "AI \uD300\uC6D0 ",
-                desks.length,
-                "\uBA85"),
-            React.createElement("div", { className: "axf-sub" }, "\uCE60\uD310\uC5D0 \uC9C0\uAE08 \uD558\uB294 \uC77C, \uB9D0\uD48D\uC120\uC5D0 \uC0DD\uAC01, \uC544\uB798\uC5D0 \uC77D\uACE0 \uC4F4 \uAE30\uB85D\uC774 \uC313\uC5EC\uC694. \uB2E4 \uD558\uBA74 \u300C\uD655\uC778\uD574 \uC8FC\uC138\uC694\u300D\uB85C \uB118\uC5B4\uC640\uC694."),
-            React.createElement("div", { className: "axf-desks" }, desks.map((d, k) => React.createElement(DeskCard, { key: d.lane, d: d, k: k, onOpen: props.onWork })))),
-        React.createElement("div", { className: "axf-two", style: { animation: 'axfRv .8s .24s ease both' } },
-            React.createElement("div", { className: "axf-blk", "data-axf-review": true, style: { marginBottom: 0 } },
-                React.createElement("div", { className: "axf-h2" },
-                    "\uD655\uC778\uD574 \uC8FC\uC138\uC694 ",
-                    React.createElement("span", { style: { color: '#fbbf24' } }, reviews.length)),
-                !reviews.length && React.createElement("div", { style: { color: '#85858c', fontSize: 13, paddingTop: 6 } }, "AI\uAC00 \uB118\uAE34 \uC77C\uC774 \uC5C6\uC5B4\uC694."),
-                reviews.slice(0, 6).map(j => {
-                    const f = (0, Today_1.friendly)(j);
-                    return React.createElement("div", { key: j.id, className: "axf-row", "data-axf-rv": j.id },
-                        React.createElement("span", { className: "axf-pill ai" }, AI_NAME[(0, exports.laneOf)(j)]),
-                        React.createElement("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, title: firstLine(j.result) }, f.title),
-                        React.createElement("button", { className: "axf-b g", "data-axf-ok": true, onClick: () => act.apply(p.id, j) }, f.go),
-                        React.createElement("button", { className: "axf-b q", "data-axf-no": true, onClick: () => act.reject(p.id, j, '안 함') }, "\uC548 \uD568"));
-                })),
-            React.createElement("div", { className: "axf-blk", "data-axf-human": true, style: { marginBottom: 0 } },
-                React.createElement("div", { className: "axf-h2" },
-                    "\uC0AC\uB78C\uC774 \uD560 \uC77C ",
-                    React.createElement("span", { style: { color: '#85858c' } }, human.length)),
-                !human.length && React.createElement("div", { style: { color: '#85858c', fontSize: 13, paddingTop: 6 } }, "\uC774\uBC88 \uB2E8\uACC4\uC5D0 \uC0AC\uB78C \uCC28\uB840\uC778 \uC0B0\uCD9C\uBB3C\uC774 \uC5C6\uC5B4\uC694."),
-                human.slice(0, 6).map(d => {
-                    const st = p.docs[d.key] || {};
-                    const dd = (0, ax_1.dday)(st.due);
-                    return React.createElement("div", { key: d.key, className: "axf-row", style: { cursor: 'pointer' }, onClick: props.onWork },
-                        React.createElement("span", { className: "axf-pill hu" }, st.who || '담당 없음'),
-                        React.createElement("span", { style: { flex: 1, minWidth: 0 } }, d.label),
-                        st.due && React.createElement("span", { style: { fontSize: 12, fontWeight: 800, color: /\+/.test(dd) ? ui_1.C.late : '#85858c' } }, dd));
-                })))));
+                    e.title,
+                    " \u2014 \uC2B9\uC778 \uD310\uB2E8"),
+                React.createElement("button", { className: "axo-b g", onClick: () => nav.parts('ecr') }, "\uBCF4\uB7EC \uAC00\uAE30"))),
+            reviews.slice(0, 6).map(j => {
+                const f = (0, Today_1.friendly)(j);
+                return React.createElement("div", { key: j.id, className: "axo-row", "data-axo-my": "ai", "data-axo-rv": j.id },
+                    React.createElement("span", { className: "axo-pill", style: { background: K.okBg, color: K.ok } }, team_1.TEAM[(0, team_1.mateOf)(j)].name),
+                    React.createElement("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, title: j.result }, f.title),
+                    React.createElement("button", { className: "axo-b g", "data-axo-ok": true, onClick: () => act.apply(p.id, j) }, f.go),
+                    React.createElement("button", { className: "axo-b q", "data-axo-no": true, onClick: () => act.reject(p.id, j, '안 함') }, "\uC548 \uD568"));
+            }),
+            human.slice(0, 6).map(d => {
+                const x = p.docs[d.key] || {};
+                const left = (0, ax_1.daysTo)(x.due, now);
+                return React.createElement("div", { key: d.key, className: "axo-row", "data-axo-my": "doc", style: { cursor: 'pointer' }, onClick: () => nav.work(ck, d.key) },
+                    React.createElement("span", { className: "axo-pill", style: { background: '#2C2C31', color: K.sub } }, x.who || '담당 없음'),
+                    React.createElement("span", { style: { flex: 1, minWidth: 0 } }, d.label),
+                    x.due && React.createElement("span", { style: { fontSize: 14, fontWeight: 800, color: left !== undefined && left < 0 ? K.late : K.faint } }, (0, ax_1.dday)(x.due)));
+            })),
+        React.createElement("div", { className: "axo-four" },
+            React.createElement("div", { className: "axo-card", "data-axo-card": "sched", onClick: nav.lanes },
+                React.createElement("div", { className: "axo-h" }, "\uC77C\uC815"),
+                !dues.length && React.createElement("div", { className: "axo-sub" }, "\uC815\uD55C \uB9C8\uAC10\uC774 \uC5C6\uC5B4\uC694."),
+                dues.slice(0, 3).map((x, i) => { const l = (0, ax_1.daysTo)(x.date, now); return React.createElement("div", { key: i, className: "axo-li" },
+                    React.createElement("b", { style: { color: l !== undefined && l < 0 ? K.late : K.text } }, (0, ui_1.md)(x.date)),
+                    " ",
+                    x.label); })),
+            React.createElement("div", { className: "axo-card", "data-axo-card": "bom", onClick: () => nav.parts('bom') },
+                React.createElement("div", { className: "axo-h" },
+                    "BOM ",
+                    React.createElement("span", { className: "axo-sub" },
+                        "\uD310 ",
+                        px.bomRev || 'A')),
+                React.createElement("div", { className: "axo-big" },
+                    parts.length,
+                    React.createElement("span", { style: { fontSize: 15, color: K.faint, fontWeight: 700 } }, " \uBD80\uD488")),
+                React.createElement("div", { className: "axo-li", style: { color: unfixed ? K.soon : K.ok } },
+                    "\uBBF8\uD655\uC815 ",
+                    unfixed,
+                    "\uAC1C"),
+                React.createElement("div", { className: "axo-li" }, (px.bomLog || []).length ? `최근 판 ${(0, ax_1.fmt)((px.bomLog || []).slice(-1)[0].at)} · ${cut((px.bomLog || []).slice(-1)[0].what, 16)}` : '판 기록 없음')),
+            React.createElement("div", { className: "axo-card", "data-axo-card": "ecr", onClick: () => nav.parts('ecr') },
+                React.createElement("div", { className: "axo-h" }, "\uC124\uACC4 \uBCC0\uACBD"),
+                React.createElement("div", { className: "axo-big", style: { color: ecrOpen.length ? K.soon : K.text } },
+                    ecrOpen.length,
+                    React.createElement("span", { style: { fontSize: 15, color: K.faint, fontWeight: 700 } }, " \uC9C4\uD589 \uC911")),
+                React.createElement("div", { className: "axo-li" }, ecrLast ? `${ecrLast.eco || ecrLast.no} ${ecrLast.title} · ${ecrLast.status}` : '설계 변경 없음')),
+            React.createElement("div", { className: "axo-card", "data-axo-card": "issue", onClick: nav.log },
+                React.createElement("div", { className: "axo-h" }, "\uC774\uC288"),
+                React.createElement("div", { className: "axo-big", style: { color: issues.length ? K.late : K.text } },
+                    issues.length,
+                    React.createElement("span", { style: { fontSize: 15, color: K.faint, fontWeight: 700 } }, " \uC5F4\uB9BC")),
+                issues.slice(0, 2).map(i => React.createElement("div", { key: i.id, className: "axo-li" },
+                    i.kind,
+                    " \u00B7 ",
+                    i.text)))),
+        React.createElement("div", { className: "axo-card", "data-axo-team": open ? 'open' : 'fold' },
+            React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
+                React.createElement("div", { className: "axo-h", style: { margin: 0 } },
+                    "AI \uD300\uC6D0 ",
+                    team_1.TEAM.length,
+                    "\uBA85"),
+                React.createElement("span", { style: { fontSize: 14, color: K.sub } },
+                    "\uC77C\uD558\uB294 \uC911 ",
+                    React.createElement("b", { style: { color: K.ok } }, cnt('run')),
+                    " \u00B7 \uD655\uC778 \uB300\uAE30 ",
+                    React.createElement("b", { style: { color: K.soon } }, cnt('review')),
+                    " \u00B7 \uB300\uAE30 ",
+                    cnt('idle'),
+                    " \u00B7 ",
+                    ai_2.BRANCH_LABEL[b],
+                    "\uAD70\uC774\uB77C \uD574\uB2F9 \uC5C6\uC74C ",
+                    cnt('off')),
+                React.createElement("span", { style: { flex: 1 } }),
+                React.createElement("button", { className: "axo-b q", "data-axo-team-toggle": true, onClick: () => setOpen(!open) }, open ? '접기' : '16명 다 보기')),
+            !open && React.createElement("div", { style: { marginTop: 10 } },
+                !active.length && React.createElement("div", { className: "axo-sub" }, "\uC9C0\uAE08 \uC2E4\uC81C\uB85C \uC77C\uD558\uB294 AI\uAC00 \uC5C6\uC5B4\uC694. \u300CAI\uC5D0\uAC8C \uB9E1\uAE30\uAE30\u300D\uB85C \uC77C\uC744 \uC8FC\uBA74 \uC5EC\uAE30\uC5D0 \uB5A0\uC694."),
+                active.map(t => React.createElement("div", { key: t.m.id, className: "axo-row", "data-axo-active": t.m.id },
+                    React.createElement("span", { className: `axo-dot ${t.state}` }),
+                    React.createElement("b", { style: { width: 130, flex: '0 0 auto' } }, t.m.name),
+                    React.createElement("span", { style: { flex: 1, minWidth: 0, color: K.sub, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, line(t)),
+                    React.createElement("span", { style: { fontSize: 13, color: K.faint } }, stWord(t))))),
+            open && React.createElement("div", { className: "axo-team" }, team.map(t => (React.createElement("div", { key: t.m.id, className: `axo-mate ${t.state}`, "data-axo-mate": t.m.id, "data-axo-mate-state": t.state, title: t.state === 'off' ? `${ai_2.BRANCH_LABEL[b]}군에는 해당 없어요` : t.m.does },
+                React.createElement("div", { className: "n" },
+                    React.createElement("span", { className: `axo-dot ${t.state}` }),
+                    t.m.name,
+                    React.createElement("span", { style: { marginLeft: 'auto', fontSize: 12.5, color: t.state === 'run' ? K.ok : t.state === 'review' ? K.soon : K.faint, fontWeight: 700 } }, stWord(t))),
+                React.createElement("div", { className: "d" }, t.m.does),
+                React.createElement("div", { className: "w" }, t.state === 'off' ? `${ai_2.BRANCH_LABEL[b]}군에는 해당 없음` : line(t)),
+                t.done > 0 && React.createElement("div", { className: "d" },
+                    "\uBC18\uC601\uB41C \uC77C ",
+                    t.done,
+                    "\uAC74"))))))));
+}
+const stWord = (t) => (t.state === 'idle' && t.inbox.length ? '들어온 일' : ST_LABEL[t.state]);
+// 팀원 한 줄 — 실제로 하는 일·한 일·들어온 일만
+function line(t) {
+    if (t.running.length) {
+        const j = t.running[0];
+        return `${j.input ? `「${cut(j.input, 20)}」 ` : ''}${(0, ai_1.kindInfo)(j.kind).label.split(' — ')[0]} 하는 중`;
+    }
+    if (t.review.length)
+        return `다 했어요, 확인해 주세요 — ${(0, Today_1.friendly)(t.review[0]).title}${t.review.length > 1 ? ` 외 ${t.review.length - 1}건` : ''}`;
+    if (t.inbox.length)
+        return `들어온 일: ${t.inbox[0]}${t.inbox.length > 1 ? ` 외 ${t.inbox.length - 1}건` : ''}`;
+    if (t.last)
+        return `마지막: ${(0, Today_1.friendly)(t.last).title} · ${ago(t.last.doneAt || t.last.at)}`;
+    return '아직 맡은 일 없음';
+}
+
+};
+__m["src/webparts/huromAxPlm/model/team.js"]=function(module,exports,require){"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.mateOf = exports.TEAM = void 0;
+exports.inboxOf = inboxOf;
+exports.teamOf = teamOf;
+const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
+exports.TEAM = [
+    { id: 'plan', name: '상품기획 AI', does: 'VOC·시장·경쟁 조사, 기획서·사양서 초안', kinds: ['j_voc', 'j_comp', 'j_plan', 'j_dup', 'j_req', 'g_market', 'g_def', 'g_req', 'j_launch', 'j_next', 'g_review', 'draft', 'docchk', 'ask', 'do', 'minutes', 'similar'] },
+    { id: 'sched', name: '일정관리 AI', does: '일정 거꾸로 짜기·지연 예측·주간 보고·관문 준비', kinds: ['j_back', 'delay', 'replan', 'weekly', 'gate', 'j_risk'] },
+    { id: 'mech', name: '기구설계 AI', does: 'DR 체크리스트·BOM 초안·설계 변경 영향', kinds: ['j_dr', 'j_bom', 'ecr', 'bomdiff'] },
+    { id: 'elec', name: '전기·회로 AI', does: '회로·전원·모터 사양 검토', kinds: [] },
+    { id: 'sw', name: '소프트웨어 AI', does: '펌웨어·디스플레이·앱 사양 검토', kinds: [] },
+    { id: 'cmf', name: '디자인·CMF AI', does: '형태·색상·재질·마감 검토', kinds: [] },
+    { id: 'mold', name: '금형 AI', does: '시사출 결과 요약·T1 합격 점검', kinds: ['j_trial', 'j_t1'], only: 'juicer' },
+    { id: 'src', name: '소싱·제조처 AI', does: '후보 비교·RFP·제조처 선정·재평가', kinds: ['g_vendor', 'g_rescore', 'vendor', 'chase'], only: 'goods' },
+    { id: 'buy', name: '구매 AI', does: '발주·납기·입고 지연 챙기기', kinds: ['j_late', 'g_late'] },
+    { id: 'cost', name: '원가·견적 AI', does: '가견적·견적 비교·도입단가 품의', kinds: ['g_cost', 'g_quote'] },
+    { id: 'test', name: '시험·신뢰성 AI', does: '착즙 성능·식품 접촉 재질·샘플 평가', kinds: ['j_juice', 'j_food', 'g_sample'] },
+    { id: 'qa', name: '품질 AI', does: '승인원 대조·수입검사·불량 경향', kinds: ['j_aprv', 'g_aprv', 'oldrev', 'g_fai', 'j_iqc', 'g_iqc', 'j_as'] },
+    { id: 'cert', name: '인증 AI', does: '나라별 인증·규제·리콜 점검', kinds: ['certlist', 'regchk'] },
+    { id: 'ip', name: '특허·상표 AI', does: '선행 특허·상표 검토', kinds: [] },
+    { id: 'prod', name: '생산 AI', does: '생산 계획·초도 생산·출하 확인', kinds: [] },
+    { id: 'print', name: '인쇄물·포장 AI', does: '매뉴얼·라벨·포장재 문구', kinds: ['j_manual', 'g_pack'] },
+];
+const BY_KIND = {};
+exports.TEAM.forEach((m, i) => m.kinds.forEach(k => { BY_KIND[k] = i; }));
+const mateOf = (j) => (BY_KIND[j.kind] !== undefined ? BY_KIND[j.kind] : 0);
+exports.mateOf = mateOf;
+// 실제 데이터에서 들어온 일 — 설계 변경 요청·검토는 기구설계 AI, 관문 승인 대기는 일정관리 AI
+function inboxOf(p) {
+    const o = {};
+    const add = (id, t) => { (o[id] = o[id] || []).push(t); };
+    (p.ecrs || []).filter(e => e.status === '요청' || e.status === '검토').forEach(e => add('mech', `${e.no} ${e.title} — 설계 변경 ${e.status} (영향 부품 ${e.parts.length}개)`));
+    (0, work_1.stagesOf)(p).forEach(s => { if (s.gate && (0, work_1.gateState)(p, s) === 'requested')
+        add('sched', `${s.gate} 승인 대기`); });
+    return o;
+}
+function teamOf(p) {
+    const b = (0, ai_1.branchOf)((0, devtype_1.typeOf)(p));
+    const jobs = p.aiJobs || [];
+    const inbox = inboxOf(p);
+    return exports.TEAM.map((m, i) => {
+        const mine = jobs.filter(j => (0, exports.mateOf)(j) === i);
+        const review = mine.filter(j => (0, ai_1.jobState)(j) === 'review');
+        const running = mine.filter(j => ['running', 'queued'].indexOf((0, ai_1.jobState)(j)) >= 0);
+        const off = !!m.only && m.only !== b;
+        const state = off ? 'off' : running.length ? 'run' : review.length ? 'review' : 'idle';
+        return { m, i, state, jobs: mine, review, running, done: mine.filter(j => (0, ai_1.jobState)(j) === 'applied').length, inbox: off ? [] : inbox[m.id] || [], last: mine.slice().sort((a, c) => (c.doneAt || c.at).localeCompare(a.doneAt || a.at))[0] };
+    });
 }
 
 };
@@ -6695,6 +6687,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ItemsList = ItemsList;
 exports.ItemDetail = ItemDetail;
+exports.parsePaste = parsePaste;
 const React = __importStar(require("react"));
 const Dash_1 = require("src/webparts/huromAxPlm/components/Dash.js");
 const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
@@ -6772,7 +6765,9 @@ function ItemDetail(props) {
     let panel;
     if (pick) {
         const close = () => setPick(undefined);
-        if (tab === 'bom')
+        if (tab === 'bom' && pick === 'paste')
+            panel = React.createElement(BomPaste, { key: "paste", p: p, who: who, update: update, onClose: close });
+        else if (tab === 'bom')
             panel = React.createElement(PartPanel, { key: pick, p: p, no: pick === 'new' ? undefined : pick, who: who, update: update, onClose: close });
         if (tab === 'doc')
             panel = React.createElement(DocPanel, { key: pick, p: p, id: pick === 'new' ? undefined : pick, who: who, update: update, onClose: close });
@@ -6848,13 +6843,16 @@ function Bom(props) {
     return (React.createElement("div", { "data-ax-bom": true, style: ui_1.card },
         React.createElement("div", { "data-ax-bom-scope": true, style: { padding: '7px 14px', fontSize: 12, color: ui_1.C.sub, background: ui_1.C.bg, borderBottom: `1px solid ${ui_1.C.line}`, borderRadius: '10px 10px 0 0' } },
             "BOM \uBC94\uC704 \u2014 ",
-            (0, item_1.bomNote)(props.p)),
-        React.createElement(ListHead, { title: "BOM", sub: `부품 ${rows.length}개${mark ? ` · 재질 표기 대상 ${mark}개` : ''}${derive ? ` · 바뀐 부품 ${chg.length}개` : ''}${food ? ` · 식품(물) 접촉 ${(props.p.parts || []).filter(x => x.food).length}개` : ''}`, add: "+ \uBD80\uD488 \uCD94\uAC00", onAdd: () => props.setPick('new'), cols: React.createElement(React.Fragment, null,
+            (0, item_1.bomNote)(props.p),
+            React.createElement("button", { "data-ax-bom-paste": true, onClick: e => { e.stopPropagation(); props.setPick('paste'); }, style: Object.assign(Object.assign({}, ui_1.btn), { marginLeft: 10, padding: '3px 10px', fontSize: 12.5 }) }, "\uC5D1\uC140 \uBD99\uC5EC\uB123\uAE30")),
+        React.createElement(ListHead, { title: `BOM · 판 ${props.p.bomRev || 'A'}`, sub: `부품 ${rows.length}개 · 미확정 ${(props.p.parts || []).filter(x => !x.fixed).length}개${mark ? ` · 재질 표기 대상 ${mark}개` : ''}${derive ? ` · 바뀐 부품 ${chg.length}개` : ''}${food ? ` · 식품(물) 접촉 ${(props.p.parts || []).filter(x => x.food).length}개` : ''}`, add: "+ \uBD80\uD488 \uCD94\uAC00", onAdd: () => props.setPick('new'), cols: React.createElement(React.Fragment, null,
                 React.createElement("span", { style: { width: 92 } }, "\uD488\uBC88"),
                 React.createElement("span", { style: { flex: 1 } }, "\uD488\uBA85"),
                 React.createElement("span", { style: { width: 120 } }, "\uC7AC\uC9C8"),
                 React.createElement("span", { style: { width: 56, textAlign: 'right' } }, "\uBB34\uAC8C"),
                 React.createElement("span", { style: { width: 110 } }, "\uD611\uB825\uC0AC"),
+                React.createElement("span", { style: { width: 80, textAlign: 'right' } }, "\uB2E8\uAC00"),
+                React.createElement("span", { style: { width: 44 } }, "\uD655\uC815"),
                 React.createElement("span", { style: { width: 34 } }, "Rev")) }),
         !rows.length && React.createElement(Empty, { t: "\uBD80\uD488\uC774 \uC5C6\uC5B4\uC694. + \uBD80\uD488 \uCD94\uAC00\uB85C \uC2DC\uC791\uD558\uC138\uC694." }),
         rows.map(r => {
@@ -6883,6 +6881,8 @@ function Bom(props) {
                     (0, item_1.needMark)(x) && React.createElement(MarkTag, null)),
                 React.createElement("span", { className: "axw-hide-sm", style: { width: 56, fontSize: 13, color: ui_1.C.sub, textAlign: 'right', fontVariantNumeric: 'tabular-nums' } }, x.weight ? `${x.weight} g` : '—'),
                 React.createElement("span", { className: "axw-hide-sm", style: { width: 110, fontSize: 13, color: ui_1.C.sub, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, x.supplier || '—'),
+                React.createElement("span", { className: "axw-hide-sm", style: { width: 80, fontSize: 13, color: ui_1.C.sub, textAlign: 'right', fontVariantNumeric: 'tabular-nums' } }, x.price ? x.price.toLocaleString() : '—'),
+                React.createElement("span", { "data-ax-part-fixed": x.fixed ? '1' : '0', style: { width: 44, fontSize: 12.5, fontWeight: 700, color: x.fixed ? ui_1.C.ok : ui_1.C.soon } }, x.fixed ? '확정' : '미확정'),
                 React.createElement("span", { style: { width: 34, fontSize: 13, fontWeight: 700 } }, x.rev)));
         })));
 }
@@ -6910,11 +6910,11 @@ function Docs(props) {
                 (0, ui_1.md)(d.at.slice(0, 10))),
             React.createElement(ui_1.FileIcon, { on: !!d.link }))))));
 }
-const ECR_DOT = { 요청: 'open', 검토: 'wait', 승인: 'done', 반려: 'late' };
+const ECR_DOT = { 요청: 'open', 검토: 'wait', 승인: 'done', 반영: 'done', 반려: 'late' };
 function Ecrs(props) {
     const es = (props.p.ecrs || []).slice().reverse();
     return (React.createElement("div", { "data-ax-ecrs": true, style: ui_1.card },
-        React.createElement(ListHead, { title: "\uC124\uACC4 \uBCC0\uACBD", sub: "\uC694\uCCAD \u2192 \uAC80\uD1A0 \u2192 \uC2B9\uC778\uB418\uBA74 ECO \uBC88\uD638\uAC00 \uBD99\uACE0 \uBD80\uD488 Rev\uAC00 \uC62C\uB77C\uAC00\uC694", add: "+ \uBCC0\uACBD \uC694\uCCAD", onAdd: () => props.setPick('new'), cols: React.createElement(React.Fragment, null,
+        React.createElement(ListHead, { title: "\uC124\uACC4 \uBCC0\uACBD", sub: "\uC694\uCCAD \u2192 \uAC80\uD1A0 \u2192 \uC2B9\uC778(ECO \uBC88\uD638\u00B7\uBD80\uD488 Rev\u00B7BOM \uD310 \uC62C\uB77C\uAC10) \u2192 \uBC18\uC601", add: "+ \uBCC0\uACBD \uC694\uCCAD", onAdd: () => props.setPick('new'), cols: React.createElement(React.Fragment, null,
                 React.createElement("span", { style: { width: 8 } }),
                 React.createElement("span", { style: { width: 70 } }, "\uBC88\uD638"),
                 React.createElement("span", { style: { flex: 1 } }, "\uB0B4\uC6A9"),
@@ -6926,7 +6926,7 @@ function Ecrs(props) {
             React.createElement("span", { style: { width: 70, fontSize: 13, color: ui_1.C.sub, fontVariantNumeric: 'tabular-nums' } }, e.eco || e.no),
             React.createElement("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 } }, e.title),
             React.createElement("span", { className: "axw-hide-sm", style: { width: 120, fontSize: 12.5, color: ui_1.C.faint, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, e.parts.join(', ')),
-            React.createElement("span", { style: { width: 70, fontSize: 12.5, fontWeight: 700, color: e.status === '승인' ? ui_1.C.ok : e.status === '반려' ? ui_1.C.late : e.status === '검토' ? ui_1.C.soon : ui_1.C.sub } }, e.status))))));
+            React.createElement("span", { style: { width: 70, fontSize: 12.5, fontWeight: 700, color: e.status === '승인' || e.status === '반영' ? ui_1.C.ok : e.status === '반려' ? ui_1.C.late : e.status === '검토' ? ui_1.C.soon : ui_1.C.sub } }, e.status))))));
 }
 const CERT_LABEL = { ok: '유효', soon: '만료 임박', late: '만료', open: '' };
 function Certs(props) {
@@ -6985,7 +6985,7 @@ function PartPanel(props) {
     const { p, who, update } = props;
     const cur = (p.parts || []).filter(x => x.no === props.no)[0];
     const ti = (0, devtype_1.typeInfo)((0, devtype_1.typeOf)(p));
-    const [v, setV] = React.useState({ no: cur ? cur.no : '', name: cur ? cur.name : '', material: (cur && cur.material) || '', weight: cur && cur.weight ? String(cur.weight) : '', supplier: (cur && cur.supplier) || '', parent: (cur && cur.parent) || ((p.parts || []).filter(x => !x.parent)[0] || { no: '' }).no, qty: cur && cur.qty ? String(cur.qty) : '1',
+    const [v, setV] = React.useState({ no: cur ? cur.no : '', name: cur ? cur.name : '', material: (cur && cur.material) || '', weight: cur && cur.weight ? String(cur.weight) : '', supplier: (cur && cur.supplier) || '', parent: (cur && cur.parent) || ((p.parts || []).filter(x => !x.parent)[0] || { no: '' }).no, qty: cur && cur.qty ? String(cur.qty) : '1', price: cur && cur.price ? String(cur.price) : '', fixed: !!(cur && cur.fixed),
         food: !!(cur && cur.food), kind: (cur && cur.kind) || (ti.id === 'sourcing' ? '포장' : ''), mold: (cur && cur.mold) || '' });
     // BOM 범위 — ODM·소싱은 완제품 아래 한 층만 (상위 부품으로 고를 수 있는 건 깊이가 한도보다 얕은 줄)
     const depthOf = (no) => { let n = 0; let x = (p.parts || []).filter(y => y.no === no)[0]; while (x && x.parent && n < 20) {
@@ -6999,7 +6999,7 @@ function PartPanel(props) {
     const dup = !cur && (p.parts || []).some(x => x.no === v.no.trim());
     const ok = !!v.no.trim() && !!v.name.trim() && !dup;
     const save = () => {
-        const part = Object.assign(Object.assign({}, (cur || {})), { no: v.no.trim(), name: v.name.trim(), material: v.material.trim() || undefined, weight: Number(v.weight) || undefined, supplier: v.supplier.trim() || undefined, parent: v.parent && v.parent !== v.no.trim() ? v.parent : undefined, qty: Number(v.qty) || 1, rev: cur ? cur.rev : 'A', food: ti.food ? v.food || undefined : cur && cur.food, kind: ti.id === 'sourcing' ? v.kind || undefined : cur && cur.kind, mold: v.mold.trim() || undefined });
+        const part = Object.assign(Object.assign({}, (cur || {})), { no: v.no.trim(), name: v.name.trim(), material: v.material.trim() || undefined, weight: Number(v.weight) || undefined, supplier: v.supplier.trim() || undefined, parent: v.parent && v.parent !== v.no.trim() ? v.parent : undefined, qty: Number(v.qty) || 1, rev: cur ? cur.rev : 'A', food: ti.food ? v.food || undefined : cur && cur.food, kind: ti.id === 'sourcing' ? v.kind || undefined : cur && cur.kind, mold: v.mold.trim() || undefined, price: Number(String(v.price).replace(/,/g, '')) || undefined, fixed: v.fixed || undefined });
         update(x0 => {
             const x = asP(x0);
             const parts = x.parts || [];
@@ -7021,7 +7021,12 @@ function PartPanel(props) {
             React.createElement("div", { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 } },
                 f('material', '재질', 'PP, ABS …'),
                 f('weight', '무게 (g)')),
-            f('supplier', '협력사'),
+            React.createElement("div", { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 } },
+                f('supplier', '협력사'),
+                f('price', '단가 (원)')),
+            React.createElement("label", { style: { display: 'flex', gap: 8, alignItems: 'center', fontSize: 13.5 } },
+                React.createElement("input", { type: "checkbox", "data-ax-part-f": "fixed", checked: v.fixed, onChange: e => setV(Object.assign(Object.assign({}, v), { fixed: e.target.checked })) }),
+                "\uD655\uC815 \uBD80\uD488 (G5 \uC591\uC0B0 \uC804\uD658 \uC804\uC5D0 \uBAA8\uB450 \uD655\uC815)"),
             React.createElement(ui_1.Field, { l: "\uC0C1\uC704 \uBD80\uD488" },
                 React.createElement("select", { "data-ax-part-f": "parent", value: v.parent, onChange: e => setV(Object.assign(Object.assign({}, v), { parent: e.target.value })), style: ui_1.inp },
                     React.createElement("option", { value: "" }, "(\uCD5C\uC0C1\uC704)"),
@@ -7172,7 +7177,7 @@ function EcrPanel(props) {
             React.createElement("div", { style: { fontSize: 13, color: ui_1.C.sub } },
                 "\uC774\uC720: ",
                 e.why),
-            React.createElement("div", { style: { display: 'flex', gap: 4 } }, ['요청', '검토', '승인'].map((s, i) => { const at = ['요청', '검토', '승인'].indexOf(e.status); const done = e.status !== '반려' && i <= at; return React.createElement("span", { key: s, style: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: 600, padding: '5px 0', borderRadius: 5, border: `1px solid ${done ? ui_1.C.text : ui_1.C.line2}`, background: done ? ui_1.C.text : 'transparent', color: done ? ui_1.C.inv : ui_1.C.faint } }, s); })),
+            React.createElement("div", { style: { display: 'flex', gap: 4 } }, ['요청', '검토', '승인', '반영'].map((s, i) => { const at = ['요청', '검토', '승인', '반영'].indexOf(e.status); const done = e.status !== '반려' && i <= at; return React.createElement("span", { key: s, style: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: 600, padding: '5px 0', borderRadius: 5, border: `1px solid ${done ? ui_1.C.text : ui_1.C.line2}`, background: done ? ui_1.C.text : 'transparent', color: done ? ui_1.C.inv : ui_1.C.faint } }, s); })),
             e.status === '반려' && React.createElement("div", { style: { fontSize: 13, color: ui_1.C.late, fontWeight: 600 } }, "\uBC18\uB824\uB428"),
             React.createElement("div", null,
                 React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { marginBottom: 4 }) }, "\uC601\uD5A5 \uBD80\uD488"),
@@ -7186,6 +7191,10 @@ function EcrPanel(props) {
                     e.status === '요청' && React.createElement("button", { "data-ax-ecr-review": true, onClick: () => act('검토'), style: Object.assign(Object.assign({}, ui_1.primary), { flex: 1 }) }, "\uAC80\uD1A0 \uC2DC\uC791"),
                     e.status === '검토' && React.createElement("button", { "data-ax-ecr-approve": true, disabled: !props.isApprover, title: props.isApprover ? '' : `승인자(${p.approver})만 승인할 수 있어요`, onClick: () => act('승인'), style: Object.assign(Object.assign({}, ui_1.primary), { flex: 1, opacity: props.isApprover ? 1 : 0.4 }) }, "\uC2B9\uC778 \u2192 ECO \uBC1C\uD589"),
                     React.createElement("button", { "data-ax-ecr-reject": true, disabled: !note.trim() || (e.status === '검토' && !props.isApprover), onClick: () => act('반려'), style: Object.assign(Object.assign({}, ui_1.btn), { color: ui_1.C.late, opacity: note.trim() && (e.status !== '검토' || props.isApprover) ? 1 : 0.4 }) }, "\uBC18\uB824"))),
+            e.status === '승인' && React.createElement("div", { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
+                React.createElement("div", { style: { fontSize: 13, color: ui_1.C.sub } }, "\uC2B9\uC778\uB428 \u2014 \uB3C4\uBA74\u00B7\uC0DD\uC0B0\uC5D0 \uC2E4\uC81C\uB85C \uC801\uC6A9\uD558\uBA74 \u300C\uBC18\uC601 \uC644\uB8CC\u300D\uB97C \uB20C\uB7EC \uC8FC\uC138\uC694."),
+                React.createElement("input", { "data-ax-ecr-note": true, placeholder: "\uBC18\uC601 \uBA54\uBAA8 (\uC608: \uAE08\uD615 \uC218\uC815 \uC644\uB8CC, 3\uC6D4 \uC0DD\uC0B0\uBD84\uBD80\uD130)", value: note, onChange: x => setNote(x.target.value), style: ui_1.inp }),
+                React.createElement("button", { "data-ax-ecr-apply": true, onClick: () => act('반영'), style: ui_1.primary }, "\uBC18\uC601 \uC644\uB8CC")),
             React.createElement("div", null,
                 React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { marginBottom: 4 }) }, "\uAE30\uB85D"),
                 e.log.slice().reverse().map((l, i) => React.createElement("div", { key: i, style: { fontSize: 12.5, color: ui_1.C.sub, padding: '3px 0' } },
@@ -7257,7 +7266,7 @@ function Release(props) {
                 d.rev,
                 " \uBCF4\uB0C4 \uAE30\uB85D")) : React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint, marginTop: 4 } }, "\uD611\uB825\uC0AC \uD0ED\uC5D0 \uC0DD\uC0B0 \uC5C5\uCCB4\uB97C \uBA3C\uC800 \uB123\uC73C\uC138\uC694.")));
 }
-// 금형·시사출 — 금형 번호·업체·차수(T0/T1/T2…)별 결과 (자체 개발 G2 = 모든 금형 T1 이상 합격)
+// 금형·시사출 — 금형 번호·업체·차수(T0/T1/T2…)별 결과 (자체 개발 G3 = 모든 금형 T1 이상 합격)
 const TRIAL_COL = { 합격: ui_1.C.ok, 수정: ui_1.C.soon, 불합격: ui_1.C.late };
 function Molds(props) {
     const ms = props.p.molds || [];
@@ -7341,7 +7350,39 @@ function MoldPanel(props) {
             React.createElement("button", { "data-ax-trial-add": true, onClick: () => { update(y0 => { const y = asP(y0); return Object.assign(Object.assign({}, y), { molds: (y.molds || []).map(z => (z.id === m.id ? Object.assign(Object.assign({}, z), { trials: z.trials.concat([{ round: nextRound, at: (0, ui_1.nowIso)(), result: tr.result, note: tr.note.trim() || undefined, who }]) }) : z)), log: y.log.concat([{ at: (0, ui_1.nowIso)(), who, kind: 'edit', what: `금형 ${m.no} ${nextRound} 시사출 ${tr.result}${tr.note.trim() ? ` — ${tr.note.trim()}` : ''}` }]) }); }); setTr({ result: '수정', note: '' }); }, style: ui_1.primary },
                 nextRound,
                 " \uAE30\uB85D"),
-            React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint } }, "T1 \uC774\uC0C1 \uD569\uACA9\uC774 \uBAA8\uB4E0 \uAE08\uD615\uC5D0 \uC788\uC5B4\uC57C G2 \uAE08\uD615 T1 \uD569\uACA9\uC744 \uC694\uCCAD\uD560 \uC218 \uC788\uC5B4\uC694."))));
+            React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint } }, "T1 \uC774\uC0C1 \uD569\uACA9\uC774 \uBAA8\uB4E0 \uAE08\uD615\uC5D0 \uC788\uC5B4\uC57C G3 \uAE08\uD615 T1 \uD569\uACA9\uC744 \uC694\uCCAD\uD560 \uC218 \uC788\uC5B4\uC694."))));
+}
+// 1.0.144 엑셀 붙여넣기 — 품번·품명·수량·재질·협력사·단가 (곽두팔 msg 11182987). 같은 품번은 고치고 새 품번은 추가, BOM 판 한 단계 올림
+const PASTE_COLS = ['품번', '품명', '수량', '재질', '협력사', '단가'];
+function parsePaste(t) {
+    return t.split(String.fromCharCode(10)).map(l => l.split(String.fromCharCode(9)).map(x => x.trim())).filter(c => c.length >= 2 && c[0] && c[1] && c[0] !== '품번')
+        .map(c => ({ no: c[0], name: c[1], qty: Number(c[2]) || 1, material: c[3] || undefined, supplier: c[4] || undefined, price: Number((c[5] || '').replace(/[,원\s]/g, '')) || undefined, rev: 'A' }));
+}
+function BomPaste(props) {
+    const [t, setT] = React.useState('');
+    const rows = parsePaste(t);
+    const old = props.p.parts || [];
+    const upd = rows.filter(r => old.some(x => x.no === r.no)).length;
+    const save = () => {
+        const at = (0, ui_1.nowIso)();
+        props.update(x0 => {
+            const x = asP(x0);
+            let parts = (x.parts || []).slice();
+            rows.forEach(r => {
+                const o = parts.filter(y => y.no === r.no)[0];
+                parts = o ? parts.map(y => (y.no === r.no ? Object.assign(Object.assign({}, y), { name: r.name, qty: r.qty, material: r.material || y.material, supplier: r.supplier || y.supplier, price: r.price || y.price }) : y)) : parts.concat([r]);
+            });
+            const rev = (0, item_1.nextRev)(x.bomRev || 'A');
+            return Object.assign(Object.assign({}, x), { parts, bomRev: rev, bomLog: (x.bomLog || []).concat([{ rev, at, who: props.who, what: `엑셀 붙여넣기 ${rows.length}줄 (새 ${rows.length - upd} · 고침 ${upd})` }]), log: x.log.concat([{ at, who: props.who, kind: 'edit', what: `BOM 엑셀 붙여넣기 ${rows.length}줄 → BOM 판 ${rev}` }]) });
+        });
+        props.onClose();
+    };
+    return (React.createElement("div", { "data-ax-bom-paste-panel": true },
+        React.createElement(ui_1.PanelHead, { title: "BOM \uC5D1\uC140 \uBD99\uC5EC\uB123\uAE30", sub: `엑셀에서 ${PASTE_COLS.join(' · ')} 순서로 복사해 붙여 넣으세요`, onClose: props.onClose }),
+        React.createElement("div", { style: { padding: 16, display: 'flex', flexDirection: 'column', gap: 12 } },
+            React.createElement("textarea", { "data-ax-bom-paste-text": true, value: t, onChange: e => setT(e.target.value), rows: 9, placeholder: 'HFD-111 / 본체 케이스 / 1 / PP / 대성정밀 / 3200 (엑셀 칸 그대로)', style: Object.assign(Object.assign({}, ui_1.inp), { fontFamily: 'Consolas, monospace', fontSize: 13, resize: 'vertical' }) }),
+            React.createElement("div", { "data-ax-bom-paste-count": true, style: { fontSize: 13.5, color: ui_1.C.sub } }, rows.length ? `${rows.length}줄 읽음 — 새 부품 ${rows.length - upd}개, 고칠 부품 ${upd}개 · BOM 판 ${props.p.bomRev || 'A'} → ${(0, item_1.nextRev)(props.p.bomRev || 'A')}` : '아직 읽은 줄이 없어요.'),
+            React.createElement("button", { "data-ax-bom-paste-save": true, disabled: !rows.length, onClick: save, style: Object.assign(Object.assign({}, ui_1.primary), { opacity: rows.length ? 1 : 0.4 }) }, "BOM\uC5D0 \uB123\uAE30"))));
 }
 
 };
@@ -7381,7 +7422,7 @@ function aiSamples0(id, owner) {
     if (id === 'ax-sample-derive')
         return [
             J('bomdiff', 3, 2.5, '기반 모델 HZA-100 대비 바뀌는 부품 3개\n- 하우징 상부: 색상만 (세이지 그린), 금형 그대로\n- 드럼 커버: 색상 + 투명도 변경 — 시사출 1회 필요\n- 포장 상자: 인쇄 새로\n안 바뀌는 것: 스크류·모터·전원부 → 인증은 변경 신고로 충분할 가능성 (확인 필요)', Object.assign({ auto: 'BOM 바뀜' }, o)),
-            J('gate', 3, 6, `G2 승인 요청 글 초안\n「원액기 H-AI 세이지 그린」 G2 승인 부탁드립니다.\n- 산출물: 5/6 완료 (남은 것: 색상 시사출 결과)\n- 기준: 모든 금형 T1 합격 — 드럼 커버 T1 결과 ${d(3)} 예정\n- 리스크: 없음\n결과 나오면 바로 요청 드리겠습니다.`, Object.assign({ auto: 'G2 기준 거의 채워짐' }, o)),
+            J('gate', 3, 6, `G3 승인 요청 글 초안\n「원액기 H-AI 세이지 그린」 G3 승인 부탁드립니다.\n- 산출물: 5/6 완료 (남은 것: 색상 시사출 결과)\n- 기준: 모든 금형 T1 합격 — 드럼 커버 T1 결과 ${d(3)} 예정\n- 리스크: 없음\n결과 나오면 바로 요청 드리겠습니다.`, Object.assign({ auto: 'G2 기준 거의 채워짐' }, o)),
         ];
     if (id === 'ax-sample-oem')
         return [
