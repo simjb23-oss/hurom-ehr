@@ -7054,12 +7054,6 @@ function moodOf(t, off, now = Date.now()) {
         return 'cool';
     return 'idle';
 }
-// 아이소메트릭 — 구역 4열 × 3행, 구역 안 책상 3 × 2
-const TW = 58, TH = 29;
-const iso = (x, y) => [(x - y) * TW / 2, (x + y) * TH / 2];
-const pts = (xs) => xs.map(p => p.join(',')).join(' ');
-const ZW = 3.7, ZH = 2.7;
-const zoneXY = (z) => [(z % 4) * 4.1, Math.floor(z / 4) * 3.1];
 exports.OFFICE_CSS = `
 .axf2{position:relative;border-radius:14px;overflow:hidden;background:radial-gradient(ellipse at 50% 30%,#17201A 0%,#0B0D0C 70%);border:1px solid ${ui_1.C.line};margin-bottom:14px}
 .axf2 svg{display:block;width:100%;height:auto;max-height:430px}
@@ -7081,6 +7075,28 @@ exports.OFFICE_CSS = `
 @keyframes axfPop{0%{opacity:0;transform:translateY(6px) scale(.6)}12%{opacity:1;transform:translateY(0) scale(1.15)}20%{transform:scale(1)}85%{opacity:1}100%{opacity:0;transform:translateY(-6px)}}
 @keyframes axfFly{0%{offset-distance:0%;opacity:0}10%{opacity:1}90%{opacity:1}100%{offset-distance:100%;opacity:0}}
 @media (prefers-reduced-motion:reduce){.axf2 *{animation:none !important}}
+.axf2d{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px;padding:8px 12px 14px}
+.axf2d-zone{background:#121614;border:1px solid #26302A;border-radius:10px;padding:8px 8px 10px;min-width:0}
+.axf2d-zn{font-size:12px;font-weight:800;color:#9AA69E;margin-bottom:4px}
+.axf2d-desks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 6px}
+.axf2d-m{display:flex;flex-direction:column;align-items:center;min-width:0;cursor:pointer;border-radius:8px;padding:2px 2px 4px}
+.axf2d-m:hover{background:rgba(255,255,255,.04)}
+.axf2d-bub-slot{height:36px;width:100%;display:flex;align-items:flex-end;justify-content:center;min-width:0}
+.axf2d-bub{position:relative;max-width:100%;font-size:11px;font-weight:700;line-height:14px;padding:2px 6px;border-radius:7px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:keep-all;overflow-wrap:anywhere;text-align:center;color:#0B0D0C}
+.axf2d-bub-run{background:${ui_1.C.accent};border-color:${ui_1.C.accent}}
+.axf2d-bub-review{background:${ui_1.C.soon};border-color:${ui_1.C.soon}}
+.axf2d-bub-err{background:${ui_1.C.late};border-color:${ui_1.C.late}}
+.axf2d-desk{position:relative;margin-top:4px;width:46px;height:34px;border-radius:8px;background:#2A2F2C;border:1px solid #1E2220;display:flex;align-items:center;justify-content:center}
+.axf2-run .axf2d-desk{box-shadow:0 0 0 1px ${ui_1.C.accent},0 0 10px rgba(79,209,107,.45)}
+.axf2-review .axf2d-desk{box-shadow:0 0 0 1px ${ui_1.C.soon}}
+.axf2-err .axf2d-desk{box-shadow:0 0 0 1px ${ui_1.C.late}}
+.axf2d-face{font-size:20px;display:inline-block}
+.axf2d-n{position:absolute;top:-6px;right:-6px;min-width:15px;height:15px;border-radius:8px;font-size:10px;font-weight:800;color:#0B0D0C;display:flex;align-items:center;justify-content:center;padding:0 3px}
+.axf2d-pop{position:absolute;top:-18px;left:50%;margin-left:-9px;font-size:15px}
+.axf2d-name{margin-top:3px;font-size:11.5px;color:${ui_1.C.sub};max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.axf2d-fly{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible;max-height:none !important}
+.axf2-m:hover .axf2d-desk{outline:2px solid ${ui_1.C.accent}}
+@media (max-width:520px){.axf2d{grid-template-columns:minmax(0,1fr);padding:6px 8px 10px}}
 `;
 function Office(props) {
     const set = React.useContext(Shell_1.SetCtx);
@@ -7113,10 +7129,20 @@ function Office(props) {
     }, [key]);
     const [sel, setSel] = React.useState(undefined);
     const [fold, setFold] = React.useState(false); // 1.0.150 폰에서도 기본 펼침 (준보님 'ai사무실안보임')
-    // 자리
-    const seat = {};
-    team_1.DEPTS.forEach((d, z) => { const [zx, zy] = zoneXY(z); team_1.TEAM.filter(m => m.dept === d).forEach((m, i) => { seat[m.id] = [zx + 0.55 + (i % 3) * 1.15, zy + 0.6 + Math.floor(i / 3) * 1.2]; }); });
-    // 일 넘겨주기 — 이어진 일(job.from)이 대기·진행 중일 때만
+    // 1.0.152 2D 평면 (심준보 2026-11-22 #ax-plm msg 11206881 '2디로' · 11206920 '말풍선 보여도 좋다'; 곽두팔 brief 11206996)
+    //   위에서 내려다본 부서 구역 × 책상 칸, 머리 위 말풍선 = 지금 하는 일 한 줄 (일하는 중 초록 · 확인 대기 노랑 · 막힘 빨강), 마우스 올리면 전체 문장
+    const say = (t, md) => {
+        const j = md === 'run' ? t.running[0] : md === 'review' ? t.review[0] : md === 'err' ? t.last : undefined;
+        if (!j)
+            return undefined;
+        const f0 = (0, Today_1.friendly)(j).title;
+        // 일하는 중이면 '했어요' 대신 '하는 중'
+        const f = md !== 'run' ? f0 : f0.replace(/\s*—\s*해 놨어요$/, ' 하는 중').replace(/써 놨어요$/, '쓰는 중').replace(/해 놨어요$/, '하는 중').replace(/했어요$/, '하는 중').replace(/짰어요$/, '짜는 중');
+        const n = md === 'run' ? t.running.length : md === 'review' ? t.review.length : 1;
+        const head = md === 'run' ? '' : md === 'review' ? '확인 기다림 · ' : '막힘 · ';
+        return { text: head + f, full: `${t.m.name} — ${WORD[md]}${n > 1 ? ` (${n}건)` : ''}: ${f}` };
+    };
+    // 일 넘겨주기 — 이어진 일(job.from)이 대기·진행 중일 때만, 책상 사이 서류
     const jobs = [].concat(...(props.items || (props.p ? [props.p] : [])).map(x => x.aiJobs || []));
     const flies = [];
     jobs.forEach(j => {
@@ -7131,9 +7157,34 @@ function Office(props) {
     });
     const busy = team.filter(t => moods[t.m.id] === 'run').length, wait = team.filter(t => moods[t.m.id] === 'review').length;
     const mate = sel ? team.filter(t => t.m.id === sel)[0] : undefined;
-    const vb = '-280 -62 760 432';
-    return (React.createElement("div", { "data-axf2": true, "data-axf2-ai": props.online, className: 'axf2' + (dark ? ' axf2-dark' : '') },
-        React.createElement("div", { style: { position: 'absolute', left: 14, top: 10, zIndex: 2, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', right: 14 } },
+    // 서류 선 — 화면에 그린 뒤 자리 재서 이음
+    const box = React.useRef(null);
+    const [lines, setLines] = React.useState([]);
+    const flyKey = flies.map(f => f.id).join('|') + (fold ? 'f' : '');
+    React.useLayoutEffect(() => {
+        const el = box.current;
+        if (!el || fold || !flies.length) {
+            setLines([]);
+            return;
+        }
+        const calc = () => {
+            const r0 = el.getBoundingClientRect();
+            const at = (id) => { const m = el.querySelector(`[data-axf2-mate="${id}"] .axf2d-face`); if (!m)
+                return undefined; const r = m.getBoundingClientRect(); return [r.left - r0.left + r.width / 2, r.top - r0.top + r.height / 2]; };
+            setLines(flies.map(f => {
+                const a = at(f.a), b = at(f.b);
+                if (!a || !b)
+                    return undefined;
+                const mx = (a[0] + b[0]) / 2, my = Math.min(a[1], b[1]) - 50;
+                return { id: f.id, k: f.a + '>' + f.b, d: `M${a[0]},${a[1]} Q${mx},${my} ${b[0]},${b[1]}` };
+            }).filter(Boolean));
+        };
+        calc();
+        window.addEventListener('resize', calc);
+        return () => window.removeEventListener('resize', calc);
+    }, [flyKey]);
+    return (React.createElement("div", { "data-axf2": true, "data-axf2-2d": true, "data-axf2-ai": props.online, className: 'axf2' + (dark ? ' axf2-dark' : '') },
+        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 14px 4px' } },
             React.createElement("b", { style: { fontSize: 15 } }, "AI \uC0AC\uBB34\uC2E4"),
             props.title && React.createElement("span", { "data-axf2-scope": true, style: { fontSize: 12.5, color: ui_1.C.faint } }, props.title),
             React.createElement("span", { style: { fontSize: 13, color: ui_1.C.sub } },
@@ -7144,52 +7195,29 @@ function Office(props) {
                 " \u00B7 ",
                 team_1.TEAM.length,
                 "\uBA85"),
-            React.createElement(ui_1.Tip, { t: "\uC2E4\uC81C AI \uC77C \uC0C1\uD0DC\uB9CC \uBCF4\uC5EC\uC694. \uD83D\uDE24\uD83D\uDD25 \uC77C\uD558\uB294 \uC911 \u00B7 \uD83D\uDE0F \uD655\uC778 \uB300\uAE30 \u00B7 \uD83D\uDE0E \uBC29\uAE08 \uB05D\uB0C4 \u00B7 \uD83D\uDE35\u200D\uD83D\uDCAB \uB9C9\uD798 \u00B7 \uD83D\uDE2A \uC26C\uB294 \uC911. \uC774\uBAA8\uD2F0\uCF58\uC740 \uC0C1\uD0DC\uAC00 \uBC14\uB014 \uB54C\uB9CC 3\uCD08 \uB5A0\uC694. \uB0A0\uC544\uAC00\uB294 \uC11C\uB958\uB294 \uC55E AI \uACB0\uACFC\uB97C \uBC18\uC601\uD574 \uC774\uC5B4\uC9C4 \uC77C\uC774\uC5D0\uC694. \uBBF8\uB2C8\uBBF8\uB97C \uB204\uB974\uBA74 \uADF8 AI \uC77C\uC774 \uC606\uC5D0 \uC5F4\uB824\uC694." }),
+            React.createElement(ui_1.Tip, { t: "\uC2E4\uC81C AI \uC77C \uC0C1\uD0DC\uB9CC \uBCF4\uC5EC\uC694. \uB9D0\uD48D\uC120 = \uC9C0\uAE08 \uD558\uB294 \uC77C (\uCD08\uB85D \uC77C\uD558\uB294 \uC911 \u00B7 \uB178\uB791 \uC0AC\uB78C \uD655\uC778 \uAE30\uB2E4\uB9BC \u00B7 \uBE68\uAC15 \uB9C9\uD798), \uB9C8\uC6B0\uC2A4\uB97C \uC62C\uB9AC\uBA74 \uC804\uCCB4 \uBB38\uC7A5. \uD83D\uDE0E \uBC29\uAE08 \uB05D\uB0C4 \u00B7 \uD83D\uDE2A \uC26C\uB294 \uC911. \uB0A0\uC544\uAC00\uB294 \uC11C\uB958\uB294 \uC55E AI \uACB0\uACFC\uB97C \uBC18\uC601\uD574 \uC774\uC5B4\uC9C4 \uC77C\uC774\uC5D0\uC694. \uBBF8\uB2C8\uBBF8\uB97C \uB204\uB974\uBA74 \uADF8 AI \uC77C\uC774 \uC606\uC5D0 \uC5F4\uB824\uC694." }),
             dark && React.createElement("span", { "data-axf2-off": true, style: { fontSize: 13, fontWeight: 800, color: ui_1.C.late } }, "\uD83D\uDCA4 AI \uAEBC\uC9D0"),
             React.createElement("span", { style: { flex: 1 } }),
             React.createElement("button", { "data-axf2-fold": true, onClick: () => setFold(!fold), style: Object.assign(Object.assign({}, ui_1.btn), { padding: '3px 10px', fontSize: 12 }) }, fold ? '사무실 보기' : '접기')),
-        fold ? React.createElement("div", { style: { height: 44 } }) : React.createElement("svg", { viewBox: vb, role: "img", "aria-label": "AI \uC0AC\uBB34\uC2E4", style: { marginTop: 26 } },
-            React.createElement("g", { className: "axf2-room" },
-                team_1.DEPTS.map((d, z) => {
-                    const [zx, zy] = zoneXY(z);
-                    const c = [iso(zx, zy), iso(zx + ZW, zy), iso(zx + ZW, zy + ZH), iso(zx, zy + ZH)];
-                    const lb = iso(zx + 0.1, zy + 0.05);
-                    return React.createElement("g", { key: d, "data-axf2-zone": d },
-                        React.createElement("polygon", { points: pts(c), fill: z % 2 ? '#141A16' : '#121614', stroke: "#26302A", strokeWidth: 1 }),
-                        React.createElement("text", { x: lb[0] - 4, y: lb[1] - 4, fill: "#9AA69E", fontSize: 12, fontWeight: 700, textAnchor: "middle" }, d));
-                }),
-                team_1.TEAM.map(m => {
+        !fold && React.createElement("div", { ref: box, className: "axf2d axf2-room", style: { position: 'relative' } },
+            team_1.DEPTS.map(d => (React.createElement("div", { key: d, "data-axf2-zone": d, className: "axf2d-zone" },
+                React.createElement("div", { className: "axf2d-zn" }, d),
+                React.createElement("div", { className: "axf2d-desks" }, team_1.TEAM.filter(m => m.dept === d).map(m => {
                     const t = team.filter(x => x.m.id === m.id)[0];
                     const md = moods[m.id];
-                    const [x, y] = seat[m.id];
-                    const [sx, sy] = iso(x, y);
+                    const b = dark && md === 'run' ? undefined : say(t, md); // AI 꺼져도 확인 대기·막힘은 사람 몫이라 보임
                     const n = t.running.length + t.review.length;
-                    return (React.createElement("g", { key: m.id, "data-axf2-mate": m.id, "data-axf2-mood": md, className: `axf2-m axf2-${md}`, transform: `translate(${sx},${sy})`, onClick: () => setSel(m.id) },
-                        React.createElement("title", null, `${m.name} — ${WORD[md]}`),
-                        React.createElement("polygon", { points: "0,-6 20,4 0,14 -20,4", fill: "#2A2F2C" }),
-                        React.createElement("polygon", { points: "-20,4 0,14 0,20 -20,10", fill: "#1E2220" }),
-                        React.createElement("polygon", { points: "0,14 20,4 20,10 0,20", fill: "#252A27" }),
-                        React.createElement("polygon", { className: "axf2-scr", points: "-10,-20 4,-13 4,-3 -10,-10", fill: md === 'off' ? '#1A1C1B' : '#33413A', stroke: "#0C0E0D", strokeWidth: 1 }),
-                        React.createElement("g", { className: "axf2-body" },
-                            React.createElement("rect", { x: 4, y: -6, width: 13, height: 15, rx: 5, fill: md === 'run' ? '#3E7F52' : md === 'review' ? '#8A6A24' : '#3A3F3C' }),
-                            React.createElement("circle", { className: "axf2-head", cx: 10.5, cy: -14, r: 9, fill: "#E9DCC8", stroke: "#0C0E0D", strokeWidth: 1 }),
-                            React.createElement("text", { x: 10.5, y: -10, fontSize: 13, textAnchor: "middle" }, dark ? '😴' : exports.FACE[md]),
-                            md === 'review' && !dark && React.createElement("text", { className: "axf2-hand", x: 22, y: -14, fontSize: 11 }, "\u270B"),
-                            md === 'idle' && !dark && React.createElement("text", { className: "axf2-z", x: 18, y: -22, fontSize: 9, fill: "#9C9CA3" }, "z")),
-                        n > 0 && React.createElement("g", { "data-axf2-n": n },
-                            React.createElement("circle", { cx: -16, cy: -12, r: 7, fill: md === 'run' ? ui_1.C.accent : ui_1.C.soon }),
-                            React.createElement("text", { x: -16, y: -8.5, fontSize: 9.5, fontWeight: 800, textAnchor: "middle", fill: "#0B0D0C" }, n)),
-                        pops[m.id] && React.createElement("text", { key: pops[m.id].k, "data-axf2-pop": true, className: "axf2-pop", x: 10, y: -30, fontSize: 15, textAnchor: "middle" }, pops[m.id].e)));
-                }),
-                flies.map(f => {
-                    const [ax, ay] = iso(seat[f.a][0], seat[f.a][1]);
-                    const [bx, by] = iso(seat[f.b][0], seat[f.b][1]);
-                    const mx = (ax + bx) / 2, my = Math.min(ay, by) - 60;
-                    const path = `M${ax},${ay - 20} Q${mx},${my} ${bx},${by - 20}`;
-                    return React.createElement("g", { key: f.id, "data-axf2-fly": f.a + '>' + f.b },
-                        React.createElement("path", { d: path, fill: "none", stroke: "rgba(79,209,107,.35)", strokeDasharray: "3 4" }),
-                        React.createElement("text", { className: "axf2-fly", fontSize: 13, style: { offsetPath: `path('${path}')` } }, "\uD83D\uDCC4"));
-                }))),
+                    return (React.createElement("div", { key: m.id, "data-axf2-mate": m.id, "data-axf2-mood": md, className: `axf2-m axf2d-m axf2-${md}`, onClick: () => setSel(m.id), title: b ? b.full : `${m.name} — ${WORD[md]}` },
+                        React.createElement("div", { className: "axf2d-bub-slot" }, b && React.createElement("div", { "data-axf2-say": md, className: `axf2d-bub axf2d-bub-${md}` }, b.text)),
+                        React.createElement("div", { className: "axf2d-desk" },
+                            React.createElement("span", { className: "axf2d-face axf2-body" }, dark ? '😴' : exports.FACE[md]),
+                            n > 0 && React.createElement("span", { "data-axf2-n": n, className: "axf2d-n", style: { background: md === 'run' ? ui_1.C.accent : ui_1.C.soon } }, n),
+                            pops[m.id] && React.createElement("span", { key: pops[m.id].k, "data-axf2-pop": true, className: "axf2-pop axf2d-pop" }, pops[m.id].e)),
+                        React.createElement("div", { className: "axf2d-name" }, m.name.replace(/ AI$/, ''))));
+                }))))),
+            lines.length > 0 && React.createElement("svg", { className: "axf2d-fly", "aria-hidden": "true" }, lines.map(l => React.createElement("g", { key: l.id, "data-axf2-fly": l.k },
+                React.createElement("path", { d: l.d, fill: "none", stroke: "rgba(79,209,107,.45)", strokeDasharray: "3 4" }),
+                React.createElement("text", { className: "axf2-fly", fontSize: 13, style: { offsetPath: `path('${l.d}')` } }, "\uD83D\uDCC4"))))),
         mate && React.createElement(MatePanel, { t: mate, mood: moods[mate.m.id], p: props.p, pidOf: pidOf, act: props.act, onClose: () => setSel(undefined) })));
 }
 function MatePanel(props) {
