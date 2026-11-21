@@ -44,6 +44,7 @@ const ReactDom = __importStar(require("react-dom"));
 const AxWork_1 = __importDefault(require("src/webparts/huromAxPlm/components/AxWork.js"));
 const store_1 = require("src/webparts/huromDevHub/model/store.js");
 const notes_1 = require("src/webparts/huromPlm/model/notes.js");
+const history_1 = require("src/webparts/huromAxPlm/model/history.js");
 const work_1 = require("src/webparts/huromAxPlm/model/work.js");
 const aiSamples_1 = require("src/webparts/huromAxPlm/model/aiSamples.js");
 // 1.0.139 예시마다 AI가 해 놓은 일까지 (저장소 v5 — 옛 미리보기 데이터는 새로)
@@ -54,7 +55,7 @@ if (params.get('reset'))
     window.localStorage.clear();
 store.list()
     .then(ps => (ps.length || params.get('empty') ? undefined : axSamples().reduce((acc, p) => acc.then(() => store.save(p)), Promise.resolve(undefined))))
-    .then(() => ReactDom.render(React.createElement(AxWork_1.default, { store, settings: new store_1.LocalStore('hurom-axplm.settings.v1'), notes: new notes_1.FakeNoteStore(), ver: '미리보기', userDisplayName: params.get('user') || '심준보' }), document.getElementById('root')));
+    .then(() => ReactDom.render(React.createElement(AxWork_1.default, { store, settings: new store_1.LocalStore('hurom-axplm.settings.v1'), notes: new notes_1.FakeNoteStore(), ver: '미리보기', loadHistory: () => Promise.resolve(history_1.SAMPLE_HISTORY), userDisplayName: params.get('user') || '심준보' }), document.getElementById('root')));
 
 };
 __m["src/webparts/huromAxPlm/components/AxWork.js"]=function(module,exports,require){"use strict";
@@ -118,6 +119,9 @@ const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
 const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
 const Shell_1 = require("src/webparts/huromAxPlm/components/Shell.js"); // 1.0.147
 const team_1 = require("src/webparts/huromAxPlm/model/team.js");
+const history_1 = require("src/webparts/huromAxPlm/model/history.js"); // 1.0.148 경험 창고
+const Mates_1 = require("src/webparts/huromAxPlm/components/Mates.js");
+const Gate_1 = require("src/webparts/huromAxPlm/components/Gate.js");
 const Sticky_1 = __importDefault(require("src/webparts/huromPlm/components/Sticky.js"));
 const LAST = 'axplm-last-item';
 function AxWork(props) {
@@ -140,6 +144,8 @@ function AxWork(props) {
     catch (e) { /* 안 돼도 됨 */ } };
     const [sideOpen, setSideOpen] = React.useState(false);
     const [noteList, setNoteList] = React.useState(0);
+    const [dock, setDock] = React.useState(false); // 1.0.148 옆창 AI 도우미
+    const [hist, setHist] = React.useState(0);
     const [sel, setSel0] = React.useState(() => { try {
         return window.localStorage.getItem(LAST) || undefined;
     }
@@ -175,12 +181,17 @@ function AxWork(props) {
         setMenu('home');
     } }, [sets.me.spId]);
     React.useEffect(() => {
-        props.store.list().then(xs => { const open = xs.filter(x => !x.closed); if (!xs.length) {
-            setDemo(true);
-            setItems((0, work_1.workSamples)().map(aiSamples_1.withAi)); /* 1.0.139 예시마다 AI가 해 놓은 일 */
-        }
-        else
-            setItems(open); }, e => setErr(String((e && e.message) || e)));
+        props.store.list().then(xs => {
+            const open = xs.filter(x => !x.closed);
+            const done = xs.filter(x => x.closed).map(history_1.fromItem).filter(Boolean);
+            (props.loadHistory ? props.loadHistory() : Promise.resolve([])).then(h => { (0, history_1.setHistory)(h.concat(done)); setHist(h.length + done.length); }, () => { (0, history_1.setHistory)(done); setHist(done.length); });
+            if (!xs.length) {
+                setDemo(true);
+                setItems((0, work_1.workSamples)().map(aiSamples_1.withAi)); /* 1.0.139 예시마다 AI가 해 놓은 일 */
+            }
+            else
+                setItems(open);
+        }, e => setErr(String((e && e.message) || e)));
     }, [props.store]);
     React.useEffect(() => (0, store_1.guardLeave)(() => queue.busy()), [queue]);
     const update = (id, fn) => {
@@ -264,6 +275,8 @@ function AxWork(props) {
             return;
         autoDone.current[p.id] = true;
         const r = (0, auto_1.dailyTasks)(p, (0, Dash_2.vendorWaits)([p], '*').length > 0);
+        if ((0, work_1.projLate)(p) > 0 && !(p.aiJobs || []).some(j => j.kind === 's_catchup' && Date.now() - new Date(j.at).getTime() < 7 * 86400000))
+            r.tasks.push({ kind: 's_catchup', why: `${(0, work_1.projLate)(p)}일 늦어짐 — 만회안` }); // 1.0.148
         if (r.tasks.length)
             update(p.id, x => (0, auto_1.addJobs)(Object.assign(Object.assign({}, x), { aiAuto: r.mark }), r.tasks, who, onlineRef.current));
     };
@@ -290,7 +303,7 @@ function AxWork(props) {
     const goItem = (id) => { setSel(id); setFocus(undefined); setPick(undefined); setPtab('over'); setView('project'); window.scrollTo(0, 0); };
     void mine;
     const aiAct = {
-        apply: (pid, j) => update(pid, x => (0, ai_1.applyJob)(x, j, who)),
+        apply: (pid, j) => update(pid, x => { const y = (0, ai_1.applyJob)(x, j, who); const ch = (0, auto_1.chainTasks)(j); return ch.length && setsRef.current.org.auto !== 'confirm' ? (0, auto_1.addJobs)(y, ch, who, onlineRef.current) : y; }),
         reject: (pid, j, why) => setJob(pid, j.id, { state: 'dismissed', by: who, note: why }),
         edit: (pid, j, text) => setJob(pid, j.id, { result: text, edited: who }),
         retry: (pid, j) => runAi(pid, j.kind, j.input, j.id)
@@ -343,8 +356,20 @@ function AxWork(props) {
                                 React.createElement("button", { className: "axs-burger", "data-ax-burger": true, onClick: () => setSideOpen(true), style: Object.assign(Object.assign({}, ui_1.btn), { padding: '5px 9px' }), "aria-label": "\uBA54\uB274" }, "\u2630"),
                                 React.createElement(Shell_1.ItemSelect, { items: items, cur: view === 'project' ? cur : undefined, onPick: toItem }),
                                 React.createElement("div", { className: "axs-recent", "data-ax-recent-row": true, style: { display: 'flex', gap: 5, minWidth: 0 } }, recent.map(x => React.createElement("button", { key: x.id, "data-ax-recent": x.id, className: "axs-chip", title: x.name, onClick: () => toItem(x.id) }, x.name))),
-                                React.createElement(Shell_1.SearchBox, { items: items, onItem: toItem, onPart: toPart, onMenu: go }),
+                                React.createElement(Shell_1.SearchBox, { items: items, onItem: toItem, onPart: toPart, onMenu: go, cur: cur, onCmd: (k, key) => { if (!cur)
+                                        return; if (key === 'lanes' || key === 'log') {
+                                        goItem(cur.id);
+                                        setPtab(key);
+                                        setMenu('item');
+                                    }
+                                    else {
+                                        open(cur.id, k, key);
+                                        setMenu(key === 'gate' ? 'gate' : 'item');
+                                    } } }),
                                 React.createElement("span", { style: { flex: 1 } }),
+                                React.createElement("button", { "data-ax-dock-btn": true, onClick: () => setDock(!dock), style: Object.assign(Object.assign({}, ui_1.btn), { borderColor: ui_1.C.accent, color: ui_1.C.accent, padding: '5px 11px' }) },
+                                    "\u2726",
+                                    React.createElement("span", { className: "axw-cnt" }, " AI \uB3C4\uC6B0\uBBF8")),
                                 React.createElement("button", { "data-ax-bell": true, onClick: () => go('home'), title: "\uD655\uC778\uD560 \uAC83", style: Object.assign(Object.assign({}, ui_1.btn), { position: 'relative', padding: '5px 9px', border: 'none', background: 'transparent' }) },
                                     React.createElement("svg", { width: "18", height: "18", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round" },
                                         React.createElement("path", { d: "M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0" })),
@@ -363,6 +388,7 @@ function AxWork(props) {
                                     "\uC608\uC2DC 5\uAC1C",
                                     React.createElement(ui_1.Tip, { t: "\uB4F1\uB85D\uB41C \uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4 \uAC1C\uBC1C \uC720\uD615\uB9C8\uB2E4 \uC608\uC2DC \uD558\uB098\uC529 \uBCF4\uC5EC \uB4DC\uB824\uC694. \uC608\uC2DC\uB294 \uC800\uC7A5\uB418\uC9C0 \uC54A\uACE0, \uC0C8 \uD504\uB85C\uC81D\uD2B8\uB97C \uB9CC\uB4E4\uBA74 \uC0AC\uB77C\uC838\uC694." })),
                                 adding && React.createElement(NewForm, { who: who, items: items, onCancel: () => setAdding(false), onAdd: add }),
+                                view === 'today' && React.createElement(Mates_1.Brief, { items: items, onItem: toItem, onGates: () => go('gate') }),
                                 view === 'today' && React.createElement(Today_1.Today, { items: items, who: who, act: aiAct, onItem: toItem }),
                                 view === 'gates' && React.createElement(Shell_1.GatesView, { items: items, who: who, onOpen: (id, k) => { open(id, k, 'gate'); setMenu('gate'); } }),
                                 view === 'team' && React.createElement(Shell_1.TeamView, { p: cur, items: items }),
@@ -380,6 +406,8 @@ function AxWork(props) {
                                 view === 'item' && items.filter(x => x.id === itemSel).map(x => React.createElement(Items_1.ItemDetail, { key: x.id, p: x, items: items, who: who, update: fn => update(x.id, fn), onPick: setItemSel, onProject: () => open(x.id) })),
                                 view === 'project' && cur && React.createElement(ProjectView, { key: cur.id + (sub0 ? sub0.n : ''), initSub: sub0 && sub0.s, p: cur, items: items, who: who, tab: ptab, setTab: setPtab, act: aiAct, focus: focus, setFocus: k => { setFocus(k); setPick(undefined); }, pick: pick, setPick: setPick, onPick: id => { setSel(id); setFocus(undefined); setPick(undefined); }, update: fn => update(cur.id, fn), onItem: () => { setItemSel(cur.id); setView('item'); } }),
                                 view === 'project' && !cur && React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { padding: 32, color: ui_1.C.faint, textAlign: 'center' }) }, "\uD504\uB85C\uC81D\uD2B8\uAC00 \uC5C6\uC5B4\uC694. \uC0C8 \uD504\uB85C\uC81D\uD2B8\uB85C \uC2DC\uC791\uD558\uC138\uC694.")),
+                            dock && React.createElement(Mates_1.Dock, { p: cur, where: `${cur ? cur.name : ''} · ${{ over: '개요', work: '진행', parts: '부품·협력사', lanes: '일정', log: '기록' }[ptab] || String(view)}${pick ? ` · 고른 줄 ${pick}` : ''}`, onClose: () => setDock(false) }),
+                            React.createElement("span", { "data-ax-hist": hist, style: { display: 'none' } }),
                             aiP && aiJ && React.createElement(Dash_1.AiResult, { p: aiP, job: aiJ, onClose: () => setAiOpen(undefined), onApply: () => { update(aiP.id, x => (0, ai_1.applyJob)(x, aiJ, who)); setAiOpen(undefined); }, onDismiss: () => { setJob(aiP.id, aiJ.id, { state: 'dismissed', by: who }); setAiOpen(undefined); }, onRetry: () => runAi(aiP.id, aiJ.kind, aiJ.input, aiJ.id) }))))))));
 }
 // 내 할 일 — 결론 한 줄 → 숫자 4칸 → 목록, 오른쪽은 프로젝트별 진행 막대
@@ -563,7 +591,8 @@ function ProjectView(props) {
             t[1],
             t[2] ? React.createElement("span", { style: { marginLeft: 5, fontSize: 12, color: t[0] === 'ai' ? ui_1.C.soon : ui_1.C.faint } }, t[2]) : null))),
         React.createElement("div", { style: { marginTop: 16 } },
-            tab === 'over' && React.createElement(Overview_1.Overview, { p: p, who: who, act: props.act, nav: { work: (k2, key) => toWork(k2 === undefined ? ck : k2, key), parts: sb => { setSub(sb); go('parts'); }, lanes: () => go('lanes'), log: () => go('log') } }),
+            tab === 'over' && React.createElement(Overview_1.Overview, { p: p, who: who, act: props.act, nav: { work: (k2, key) => toWork(k2 === undefined ? ck : k2, key), parts: sb => { setSub(sb); go('parts'); }, lanes: () => go('lanes'), log: () => go('log'), pull: (t, pl) => update(p => (Object.assign(Object.assign({}, p), { target: t, plan: Object.assign(Object.assign({}, (p.plan || {})), pl) }))) } }),
+            tab !== 'over' && React.createElement(Mates_1.MateStrip, { p: p, tab: tab === 'parts' ? sub : props.pick === 'gate' ? 'gate' : tab, act: props.act }),
             tab === 'work' && React.createElement("div", { className: "axw-main" },
                 React.createElement("div", { style: { minWidth: 0 } },
                     React.createElement(StageList, { p: p, k: k, pick: props.pick, setPick: props.setPick })),
@@ -675,6 +704,7 @@ function StageList(props) {
                     React.createElement("span", { style: { flex: 1, minWidth: 0, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
                         s.gate,
                         s.gateRule && React.createElement(ui_1.Tip, { t: s.gateRule })),
+                    React.createElement(Gate_1.GatePill, { p: p, s: s }),
                     React.createElement("span", { style: { fontSize: 12.5, color: g === 'approved' ? ui_1.C.ok : g === 'requested' ? ui_1.C.soon : g === 'rejected' ? ui_1.C.late : ui_1.C.faint, fontWeight: 600 } }, g === 'approved' ? '승인됨' : g === 'requested' ? '승인 대기' : g === 'rejected' ? '반려됨' : n < s.docs.length ? `산출물 ${s.docs.length - n}개 남음` : (0, item_1.gateChecks)(p, s).every(c => c.ok) ? '승인 요청 가능' : `기준 ${(0, item_1.gateChecks)(p, s).filter(c => !c.ok).length}개 남음`)));
             })())));
 }
@@ -1733,6 +1763,7 @@ const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
 const item_1 = require("src/webparts/huromAxPlm/model/item.js");
 const work_1 = require("src/webparts/huromAxPlm/model/work.js");
 const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
+const history_1 = require("src/webparts/huromAxPlm/model/history.js");
 const K = (id, label, branch, stage, x = {}) => (Object.assign({ id, label, branch, stage, group: stage ? `${'①②③④⑤⑥⑦'[stage - 1]} 단계` : '공통' }, x));
 exports.AI_KINDS = [
     // ── 원액기 (23)
@@ -1789,6 +1820,9 @@ exports.AI_KINDS = [
     K('regchk', '규제·리콜 사전 점검 — 이 제품에 걸리는 것', 'common', 0, { item: true, do: '이 제품(유형·재질·전원·식품 접촉·판매 나라)에 걸릴 수 있는 국내외 규제와 비슷한 제품의 최근 리콜 사례 유형을 짚고, 지금 단계에서 미리 할 일을 3~6줄로 적어라. 확실하지 않은 것은 「확인 필요」.' }),
     K('do', '맡긴 일 — 말로 맡긴 요청 처리', 'common', 0, { ask: '무엇을 맡길까요?', item: true, others: true, do: '아래 요청을 이 프로젝트 데이터로 처리해 바로 쓸 수 있는 결과물(초안·메일·표·목록)을 만들어라. 메일이면 첫 줄은 "제목: ...". 데이터에 없는 값은 「확인 필요」.' }),
     K('docchk', '산출물 점검·요약 (올라오면 자동)', 'common', 0, { ask: '어떤 산출물?', item: true, do: '방금 완료된 아래 산출물을 이 단계 목표·관문 기준·남은 산출물과 대조해 ① 요약 3줄 ② 빠졌거나 확인할 것 ③ 다음 할 일을 써라. 파일 내용은 볼 수 없으니 이름·링크·기록만 근거로.' }),
+    // ── 1.0.148 출시일 당기기·만회안 (원칙: 출시일은 당기는 쪽만, 늦추는 안은 맨 마지막)
+    K('s_pull', '출시일 당기기 방법 — 줄어드는 일수', 'common', 0, { item: true, ask: '얼마나 당기고 싶어요? (예: 30일 당기기)', do: '출시일을 요청만큼 당기는 방법 3가지(병행 진행·금형 동시 발주·인증 선행 등)를 이 프로젝트 데이터와 과거 경험 근거로 쓰고, 방법마다 줄어드는 일수·필요한 결정·위험을 적어라. 출시일을 늦추는 안은 쓰지 마라.' }),
+    K('s_catchup', '지연 만회안 — 출시일 지키기', 'common', 0, { item: true, do: '지금 늦어진 단계·산출물을 짚고, 출시일을 지키는 만회안 3가지(누가·무엇을·언제까지, 줄어드는 일수)를 써라. 늦추는 안은 맨 마지막에 한 줄만.' }),
     // ── 1.0.147 직무 스킬 (곽두팔 스킬표 v3 msg 11192860) — 결과는 모두 초안, 사람 확인 뒤에만 반영
     K('s_price', '출시 가격 시뮬레이션 — 판매가 3안', 'both', 1, { do: '원가·채널 마진을 근거로 판매가 3안(공격·기준·프리미엄)과 채널별 마진을 계산해라. 없는 값은 「확인 필요」와 계산식만.', item: true }),
     K('s_holiday', '나라별 휴일 반영 — 제조국 달력', 'common', 0, { do: '제조국(중국 춘절·국경절·调休 근무일, 한국 명절) 휴일이 단계 계획·마감과 겹치는지 보고, 겹치는 단계와 밀어야 할 날짜를 적어라.', item: true }),
@@ -1996,6 +2030,9 @@ function buildAsk(kind, p, items, input, now = (0, ax_1.today)()) {
         parts.push('다른 프로젝트 이슈·변경: ' + items.filter(x => x.id !== p.id).map(x => `${x.name}: ` + (x.issues || []).map(i => `${i.kind} ${i.text}${i.done ? '(해결)' : ''}`).concat((x.changes || []).map(c => `변경 ${c.what}(${c.why})`)).concat((x.ecrs || []).map(e => `${e.no} ${e.title}`)).join(' / ')).join('\n'));
     if (kind === 'bomdiff' && p.baseItem)
         parts.push('기반 모델: ' + p.baseItem);
+    const past = (0, history_1.pastFacts)(p);
+    if (past)
+        parts.push(past); // 1.0.148 경험 창고
     parts.push('', '할 일: ' + (info.do || ASK[kind] || info.label));
     if (input)
         parts.push('', '요청 내용:', input);
@@ -2034,7 +2071,7 @@ function applyJob(p, j, who) {
     }
     if (j.doc)
         next.docs = Object.assign(Object.assign({}, p.docs), { [j.doc]: Object.assign(Object.assign({}, (p.docs[j.doc] || {})), { done: true, by: `${who} (AI 초안 확인)`, at }) }); // 1.0.140
-    next.aiJobs = (p.aiJobs || []).map(x => (x.id === j.id ? Object.assign(Object.assign({}, x), { state: 'applied', by: who, doneAt: x.doneAt || at }) : x));
+    next.aiJobs = (p.aiJobs || []).map(x => (x.id === j.id ? Object.assign(Object.assign({}, x), { state: 'applied', by: who, doneAt: x.doneAt || at, appliedAt: at }) : x));
     next.log = (p.log || []).concat([{ at, who, kind: 'note', ai: true, what: `AI 결과 반영 — ${j.label}: ${text.split('\n')[0].slice(0, 120)}` }]);
     return next;
 }
@@ -2799,6 +2836,84 @@ const lateDays = (p, now = (0, ax_1.today)()) => (0, work_1.projLate)(p, now);
 exports.lateDays = lateDays;
 const typeDays = (p) => (0, exports.stdTotal)((0, devtype_1.typeOf)(p));
 exports.typeDays = typeDays;
+
+};
+__m["src/webparts/huromAxPlm/model/history.js"]=function(module,exports,require){"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SAMPLE_HISTORY = exports.avgMonths = exports.catOf = exports.history = exports.setHistory = void 0;
+exports.fromItem = fromItem;
+exports.similar = similar;
+exports.causes = causes;
+exports.pastFacts = pastFacts;
+exports.pastRatio = pastRatio;
+const branchOf = (t) => (t === 'own' || t === 'derive' ? 'juicer' : 'goods'); // ai.ts와 같은 규칙 (서로 불러오면 돌아서 따로)
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
+let PAST = [];
+const setHistory = (xs) => { PAST = xs.slice(); };
+exports.setHistory = setHistory;
+const history = () => PAST;
+exports.history = history;
+// 상품군 낱말 — 아이템 이름에서 찾음
+const CATS = [['착즙기', /착즙|원액|주스|juic/i], ['복합기', /복합|VM/i], ['티마스터', /티마스터|티 ?메이커|TM-|차/i], ['블렌더', /블렌더|블랜더|믹서|BL-/i],
+    ['음식물처리기', /음식물|음처|FD-/i], ['주방소형', /에어프라이어|스퀴저|건조기|두유|오븐/i], ['세척기·정수기', /세척|정수|살균|WP-/i], ['가습기', /가습/i], ['전기포트', /포트|케틀/i], ['악세사리', /용기|청소솔|착즙망|스크루/i]];
+const catOf = (name) => { const c = CATS.filter(x => x[1].test(name))[0]; return c ? c[0] : '기타'; };
+exports.catOf = catOf;
+// 끝난 아이템 → 창고 한 줄
+function fromItem(p) {
+    const st = (0, work_1.stagesOf)(p);
+    const s6 = st[5];
+    const end = s6 ? (p.actual || {})[s6.id] : undefined;
+    if (!p.start || !end)
+        return undefined;
+    const plan6 = s6 ? (p.plan || {})[s6.id] : undefined;
+    return { name: p.name, cat: (0, exports.catOf)(p.name), branch: branchOf((0, devtype_1.typeOf)(p)), start: p.start.slice(0, 7), months: Math.round((0, sched_1.diffDays)(p.start, end) / 30.4 * 10) / 10,
+        delayDays: plan6 ? Math.max(0, (0, sched_1.diffDays)(plan6, end)) : undefined, issues: (p.issues || []).map(i => ({ type: i.kind, text: i.text })), src: 'AX-PLM 끝난 아이템' };
+}
+// 비슷한 과거 모델 — 같은 상품군 먼저, 그다음 같은 갈래(원액기/상품), 최근 것 먼저
+function similar(p, n = 3, all = PAST) {
+    const c = (0, exports.catOf)(p.name);
+    const b = branchOf((0, devtype_1.typeOf)(p));
+    const score = (m) => (m.cat === c ? 10 : 0) + (m.branch === b ? 3 : 0) + (m.months ? 1 : 0);
+    return all.filter(m => m.name !== p.name).slice().sort((x, y) => (score(y) - score(x)) || String(y.start || '').localeCompare(String(x.start || ''))).slice(0, n);
+}
+const avgMonths = (xs) => { const v = xs.filter(x => x.months).map(x => x.months); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : undefined; };
+exports.avgMonths = avgMonths;
+// 지연 원인 순위 (이슈 유형별 건수)
+function causes(xs = PAST) {
+    const o = {};
+    xs.forEach(m => m.issues.forEach(i => { o[i.type] = (o[i.type] || 0) + 1; }));
+    return Object.keys(o).map(k => ({ type: k, n: o[k] })).sort((a, b) => b.n - a.n);
+}
+// AI에게 붙이는 과거 경험 몇 줄
+function pastFacts(p) {
+    if (!PAST.length)
+        return '';
+    const sim = similar(p, 3);
+    const cs = causes().slice(0, 3);
+    return ['과거 경험(경험 창고):'].concat(sim.map(m => `- ${m.name}(${m.cat}${m.start ? ', ' + m.start + ' 착수' : ''}): ${m.months ? m.months + '개월' : '기간 모름'}${m.delayDays ? `, ${m.delayDays}일 지연` : ''}${m.issues.length ? ' · ' + m.issues.map(i => `${i.type}: ${i.text}`).join(' / ') : ''}`))
+        .concat(cs.length ? [`- 지연 원인 많은 순: ${cs.map(c => `${c.type} ${c.n}건`).join(', ')}`] : []).join('\n');
+}
+// 과거 평균으로 본 표준 일수 보정 비율 (같은 상품군 평균 개월 / 표준)
+function pastRatio(p) {
+    const a = (0, exports.avgMonths)(similar(p, 3));
+    if (!a)
+        return undefined;
+    const std = sched_1.STD_DAYS[(0, devtype_1.typeOf)(p)].reduce((x, y) => x + y, 0) / 30.4;
+    return Math.round(a / std * 100) / 100;
+}
+// 미리보기용 — 이름 없는 예시 (회사 판은 SharePoint 파일)
+exports.SAMPLE_HISTORY = [
+    { name: '예시 원액기 A', cat: '착즙기', branch: 'juicer', start: '2024-03', months: 13.3, delayDays: 120, issues: [{ type: '인증', text: '전자파 재시험' }, { type: '구조', text: 'DPP 뒤 금형 추가' }] },
+    { name: '예시 원액기 B', cat: '착즙기', branch: 'juicer', start: '2025-02', months: 12.4, delayDays: 210, issues: [{ type: '부품', text: '스크류 성형 불량' }] },
+    { name: '예시 원액기 C', cat: '착즙기', branch: 'juicer', start: '2026-01', months: 6.9, delayDays: 0, issues: [] },
+    { name: '예시 음식물처리기 A', cat: '음식물처리기', branch: 'goods', start: '2022-04', months: 3.0, issues: [{ type: '시장불량', text: '출시 한 달 AS 집중(악취·누수)' }] },
+    { name: '예시 가습기 A', cat: '가습기', branch: 'goods', start: '2021-05', months: 13.0, delayDays: 240, issues: [{ type: '구조', text: '개선 확인 6차 반복' }] },
+    { name: '예시 블렌더 A', cat: '블렌더', branch: 'goods', start: '2023-03', months: 6.1, issues: [{ type: '초도양산', text: '1st MP 외관 재작업' }] },
+    { name: '예시 세척기 A', cat: '세척기·정수기', branch: 'goods', start: '2022-01', months: 14.3, delayDays: 270, issues: [{ type: '인증', text: 'CB EMC 6차 Fail' }] },
+    { name: '예시 티메이커 A', cat: '티마스터', branch: 'goods', start: '2021-04', months: 6.6, delayDays: 42, issues: [{ type: '인증', text: '1st 샘플 KC 불가 → PBA 개선' }] },
+];
 
 };
 __m["src/webparts/huromAxPlm/components/ui.js"]=function(module,exports,require){"use strict";
@@ -3674,7 +3789,7 @@ function StageAi(props) {
 };
 __m["src/webparts/huromAxPlm/model/auto.js"]=function(module,exports,require){"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.staleReviews = void 0;
+exports.chainTasks = exports.CHAIN = exports.staleReviews = void 0;
 exports.stageTasks = stageTasks;
 exports.aiDocTasks = aiDocTasks;
 exports.eventTasks = eventTasks;
@@ -3780,7 +3895,7 @@ function addJobs(p, tasks, who, online) {
         if (jobs.some(j => j.kind === t.kind && (j.input || '') === (t.input || '') && (['queued', 'running'].indexOf((0, ai_1.jobState)(j)) >= 0 || (j.at.slice(0, 10) === td && ['review', 'nodata', 'offline'].indexOf((0, ai_1.jobState)(j)) >= 0))))
             return;
         const info = (0, ai_1.kindInfo)(t.kind);
-        const job = { id: 'ai' + Date.now().toString(36) + (n++) + Math.floor(Math.random() * 1e4).toString(36), kind: t.kind, label: info.label, input: t.input, at: new Date().toISOString(), who: t.why ? 'AI 자동' : who, auto: t.why || undefined, owner: t.owner || p.owner, stage: info.stage ? info.stage - 1 : (0, work_1.curIdx)(p), doc: t.doc,
+        const job = { id: 'ai' + Date.now().toString(36) + (n++) + Math.floor(Math.random() * 1e4).toString(36), kind: t.kind, label: info.label, input: t.input, at: new Date().toISOString(), who: t.why ? 'AI 자동' : who, auto: t.why || undefined, from: t.from, owner: t.owner || p.owner, stage: info.stage ? info.stage - 1 : (0, work_1.curIdx)(p), doc: t.doc,
             state: info.nodata ? 'nodata' : online === false ? 'offline' : 'queued', note: info.nodata };
         jobs.push(job);
     });
@@ -3789,6 +3904,20 @@ function addJobs(p, tasks, who, online) {
 // 확인 대기가 2일 넘게 쌓인 것 — PM에게
 const staleReviews = (p, now = Date.now()) => (p.aiJobs || []).filter(j => (0, ai_1.jobState)(j) === 'review' && now - new Date(j.doneAt || j.at).getTime() > 2 * 86400000);
 exports.staleReviews = staleReviews;
+// 1.0.148 일 넘겨주기 — AI 결과를 사람이 반영하면 이어지는 직무 AI 일 (실제로 이어진 일만 사무실에 서류로 보임)
+exports.CHAIN = {
+    ecr: [{ kind: 's_bomcost', why: '설계 변경 반영 → 원가 다시' }, { kind: 'delay', why: '설계 변경 반영 → 일정 영향' }],
+    j_bom: [{ kind: 's_bomcost', why: 'BOM 초안 반영 → 원가 합계' }, { kind: 's_eol', why: 'BOM 초안 반영 → 전자부품 단종 확인' }],
+    s_dfmea: [{ kind: 's_testlist', why: '설계 FMEA 반영 → 시험 항목' }],
+    certlist: [{ kind: 's_certsch', why: '인증 목록 반영 → 인증 일정' }],
+    j_trial: [{ kind: 's_moldsch', why: '시사출 요약 반영 → 금형 일정' }],
+    g_quote: [{ kind: 's_intro', why: '견적 비교 반영 → 도입단가 품의' }],
+    s_pp: [{ kind: 's_short', why: '생산 계획 반영 → 자재 부족' }, { kind: 's_shipplan', why: '생산 계획 반영 → 출하 계획 대조' }],
+    s_packspec: [{ kind: 's_load', why: '포장 사양 반영 → 적재 계산' }],
+    delay: [{ kind: 's_catchup', why: '지연 예측 반영 → 만회안' }],
+};
+const chainTasks = (j) => (exports.CHAIN[j.kind] || []).map(c => (Object.assign(Object.assign({}, c), { from: j.id })));
+exports.chainTasks = chainTasks;
 
 };
 __m["src/webparts/huromAxPlm/components/Gantt.js"]=function(module,exports,require){"use strict";
@@ -5938,8 +6067,10 @@ const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
 const team_1 = require("src/webparts/huromAxPlm/model/team.js");
 const Today_1 = require("src/webparts/huromAxPlm/components/Today.js");
 const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
+const Office_1 = require("src/webparts/huromAxPlm/components/Office.js"); // 1.0.148
+const Pull_1 = require("src/webparts/huromAxPlm/components/Pull.js");
 const K = { card: '#141416', line: '#2C2C31', text: '#F4F4F5', sub: '#CFCFD4', faint: '#9C9CA3', ok: '#4FD16B', okBg: 'rgba(79,209,107,.14)', soon: '#FBBF24', soonBg: 'rgba(251,191,36,.14)', late: '#F87171', lateBg: 'rgba(248,113,113,.14)', ink: '#04130A' };
-exports.OV_CSS = `
+exports.OV_CSS = Office_1.OFFICE_CSS + `
 .axo{font-size:15px;line-height:1.5;color:${K.text}}
 .axo-card{background:${K.card};border:1px solid ${K.line};border-radius:14px;padding:16px 18px}
 .axo-h{font-size:16px;font-weight:800;margin:0 0 8px;display:flex;align-items:center;gap:8px}
@@ -5974,12 +6105,8 @@ exports.OV_CSS = `
 @media (max-width:480px){.axo-team{grid-template-columns:minmax(0,1fr)}.axo-st b{font-size:16px}}
 @media (prefers-reduced-motion:reduce){.axo *{animation:none !important}}
 `;
-const ST_LABEL = { run: '일하는 중', review: '확인 대기', idle: '대기', off: '해당 없음' };
-const stWord = (t) => (t.state === 'idle' && t.inbox.length ? '들어온 일' : ST_LABEL[t.state]);
 const tone = (n) => (n >= 7 ? K.late : n > 0 ? K.soon : K.ok);
 const cut = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
-const ago = (iso) => { if (!iso)
-    return ''; const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000); return m < 60 ? `${Math.max(1, m)}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : (0, ax_1.fmt)(iso); };
 function Overview(props) {
     const { p, act, nav, who } = props;
     const px = p;
@@ -5987,7 +6114,7 @@ function Overview(props) {
     const ck = (0, work_1.curIdx)(p);
     const s = st[ck];
     const [ai, setAi] = React.useState('wait');
-    const [open, setOpen] = React.useState(false);
+    const [pull, setPull] = React.useState(false);
     React.useEffect(() => { let live = true; (0, ai_1.aiOnline)().then(ok => { if (live)
         setAi(ok ? 'on' : 'off'); }, () => { if (live)
         setAi('off'); }); return () => { live = false; }; }, []);
@@ -6028,15 +6155,13 @@ function Overview(props) {
     const ecrOpen = ecrs.filter(e => e.status === '요청' || e.status === '검토' || e.status === '승인');
     const ecrLast = ecrs.slice(-1)[0];
     const issues = (p.issues || []).filter(i => !i.done);
-    const team = (0, team_1.teamOf)(p);
     const b = (0, ai_2.branchOf)((0, devtype_1.typeOf)(p));
-    const cnt = (k) => team.filter(t => t.state === k).length;
-    const active = team.filter(t => t.state === 'run' || t.state === 'review' || t.inbox.length);
     return (React.createElement("div", { className: "axo", "data-axo": true },
         React.createElement("div", { "data-axo-ai": ai, className: `axo-ai ${ai}` },
             React.createElement("span", { className: "axo-dot", style: { background: 'currentColor' } }),
             ai === 'on' ? 'AI 연결됨' : ai === 'off' ? 'AI 꺼짐' : 'AI 연결 확인 중…',
             ai !== 'wait' && React.createElement(ui_1.Tip, { t: ai === 'on' ? '「AI에게 맡기기」로 맡기는 일이 실제 AI(Claude)로 돌아가요.' : '중계 PC가 꺼져 있거나 연결이 끊겼어요. 지금은 AI에게 일을 맡길 수 없어요.' })),
+        React.createElement(Office_1.Office, { p: p, online: ai, act: act }),
         React.createElement("div", { className: "axo-status", "data-axo-status": true },
             React.createElement("div", { className: "axo-st" },
                 React.createElement("small", null, "\uC9C0\uAE08 \uB2E8\uACC4"),
@@ -6057,8 +6182,10 @@ function Overview(props) {
                 React.createElement("span", { style: { color: gCol, fontWeight: 800 } },
                     gWord,
                     gs && (0, work_1.lastApproval)(p, gs.gate) && (held || gst === 'rejected') ? ` — ${cut(((0, work_1.lastApproval)(p, gs.gate) || { note: '' }).note || '', 18)}` : '')),
-            React.createElement("div", { className: "axo-st" },
-                React.createElement("small", null, "\uCD9C\uC2DC \uBAA9\uD45C"),
+            React.createElement("div", { className: "axo-st", "data-axo-pull-open": true, onClick: () => setPull(!pull), style: { cursor: 'pointer', borderColor: pull ? K.ok : undefined } },
+                React.createElement("small", null,
+                    "\uCD9C\uC2DC \uBAA9\uD45C ",
+                    React.createElement("span", { style: { color: K.ok } }, "\u21E0 \uB2F9\uAE30\uAE30")),
                 React.createElement("b", null, p.target ? (0, ui_1.md)(p.target) : '없음'),
                 React.createElement("span", null, (0, ax_1.dday)(p.target))),
             React.createElement("div", { className: "axo-st", "data-axo-late": lt },
@@ -6067,6 +6194,8 @@ function Overview(props) {
                 React.createElement("span", { style: { color: tone(lt) } },
                     lt >= 7 ? '빨강' : lt > 0 ? '노랑' : '초록',
                     React.createElement(ui_1.Tip, { t: "7\uC77C \uC774\uC0C1 \uB2A6\uC73C\uBA74 \uBE68\uAC15(\uBC14\uB85C \uC870\uCE58), 1~6\uC77C \uB178\uB791(\uB530\uB77C\uC7A1\uAE30), \uC81C\uB54C\uBA74 \uCD08\uB85D" })))),
+        pull && React.createElement(Pull_1.PullSim, { p: p, onClose: () => setPull(false), onApply: (t, pl) => { if (nav.pull)
+                nav.pull(t, pl); setPull(false); } }),
         React.createElement("div", { className: "axo-card", "data-axo-mine": true },
             React.createElement("div", { className: "axo-h" },
                 "\uB0B4\uAC00 \uD560 \uC77C ",
@@ -6140,59 +6269,9 @@ function Overview(props) {
                     i.kind,
                     " \u00B7 ",
                     i.text)))),
-        React.createElement("div", { className: "axo-card", "data-axo-team": open ? 'open' : 'fold' },
-            React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
-                React.createElement("div", { className: "axo-h", style: { margin: 0 } },
-                    "AI \uD300\uC6D0 ",
-                    team_1.TEAM.length,
-                    "\uBA85"),
-                React.createElement("span", { style: { fontSize: 14, color: K.sub } },
-                    "\uC77C\uD558\uB294 \uC911 ",
-                    React.createElement("b", { style: { color: K.ok } }, cnt('run')),
-                    " \u00B7 \uD655\uC778 \uB300\uAE30 ",
-                    React.createElement("b", { style: { color: K.soon } }, cnt('review')),
-                    " \u00B7 \uB300\uAE30 ",
-                    cnt('idle'),
-                    " \u00B7 ",
-                    ai_2.BRANCH_LABEL[b],
-                    "\uAD70\uC774\uB77C \uD574\uB2F9 \uC5C6\uC74C ",
-                    cnt('off')),
-                React.createElement("span", { style: { flex: 1 } }),
-                React.createElement("button", { className: "axo-b q", "data-axo-team-toggle": true, onClick: () => setOpen(!open) }, open ? '접기' : `${team_1.TEAM.length}명 다 보기`)),
-            !open && React.createElement("div", { style: { marginTop: 10 } },
-                !active.length && React.createElement("div", { className: "axo-sub" },
-                    "\uC77C\uD558\uB294 AI \uC5C6\uC74C",
-                    React.createElement(ui_1.Tip, { t: "\u300CAI\uC5D0\uAC8C \uB9E1\uAE30\uAE30\u300D\uB85C \uC77C\uC744 \uC8FC\uBA74 \uC5EC\uAE30\uC5D0 \uB5A0\uC694." })),
-                active.map(t => React.createElement("div", { key: t.m.id, className: "axo-row", "data-axo-active": t.m.id },
-                    React.createElement("span", { className: `axo-dot ${t.state}` }),
-                    React.createElement("b", { style: { width: 130, flex: '0 0 auto' } }, t.m.name),
-                    React.createElement("span", { style: { flex: 1, minWidth: 0, color: K.sub, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, line(t)),
-                    React.createElement("span", { style: { fontSize: 13, color: K.faint } }, stWord(t))))),
-            open && React.createElement("div", { className: "axo-team" }, team.map(t => (React.createElement("div", { key: t.m.id, className: `axo-mate ${t.state}`, "data-axo-mate": t.m.id, "data-axo-mate-state": t.state, title: t.state === 'off' ? `${ai_2.BRANCH_LABEL[b]}군에는 해당 없어요` : t.m.does },
-                React.createElement("div", { className: "n" },
-                    React.createElement("span", { className: `axo-dot ${t.state}` }),
-                    t.m.name,
-                    React.createElement(ui_1.Tip, { t: t.m.does }),
-                    React.createElement("span", { style: { marginLeft: 'auto', fontSize: 12.5, color: t.state === 'run' ? K.ok : t.state === 'review' ? K.soon : K.faint, fontWeight: 700 } }, stWord(t))),
-                React.createElement("div", { className: "w" }, t.state === 'off' ? `${ai_2.BRANCH_LABEL[b]}군에는 해당 없음` : line(t)),
-                t.done > 0 && React.createElement("div", { className: "d" },
-                    "\uBC18\uC601\uB41C \uC77C ",
-                    t.done,
-                    "\uAC74"))))))));
-}
-// 팀원 한 줄 — 실제로 하는 일·한 일·들어온 일만
-function line(t) {
-    if (t.running.length) {
-        const j = t.running[0];
-        return `${j.input ? `「${cut(j.input, 20)}」 ` : ''}${(0, ai_1.kindInfo)(j.kind).label.split(' — ')[0]} 하는 중`;
-    }
-    if (t.review.length)
-        return `다 했어요, 확인해 주세요 — ${(0, Today_1.friendly)(t.review[0]).title}${t.review.length > 1 ? ` 외 ${t.review.length - 1}건` : ''}`;
-    if (t.inbox.length)
-        return `들어온 일: ${t.inbox[0]}${t.inbox.length > 1 ? ` 외 ${t.inbox.length - 1}건` : ''}`;
-    if (t.last)
-        return `마지막: ${(0, Today_1.friendly)(t.last).title} · ${ago(t.last.doneAt || t.last.at)}`;
-    return '아직 맡은 일 없음';
+        React.createElement("div", { className: "axo-two", style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 12 } },
+            React.createElement(Pull_1.Bottleneck, { p: p, onGo: () => nav.work(ck) }),
+            React.createElement(Pull_1.PastCard, { p: p }))));
 }
 
 };
@@ -6208,8 +6287,8 @@ const work_1 = require("src/webparts/huromAxPlm/model/work.js");
 exports.DEPTS = ['기획·PM', '디자인', '설계', '금형·부품', '소싱·구매', '시험·신뢰성', '품질', '인증·법규', '생산', '영업·물류', '출시·사후'];
 exports.TEAM = [
     { id: 'plan', dept: '기획·PM', name: '상품기획 AI', does: '컨셉서·경쟁 비교·리뷰 불만·판매가 시뮬레이션', kinds: ['j_plan', 'g_def', 'j_comp', 'j_voc', 'g_market', 'g_review', 'j_dup', 'j_req', 'g_req', 'j_launch', 'j_next', 'draft', 'docchk', 'ask', 'do', 'similar', 's_price'] },
-    { id: 'sched', dept: '기획·PM', name: '일정관리 AI', does: '추천 일정·지연 위험 TOP3·나라별 휴일 보정', kinds: ['j_back', 'replan', 'delay', 'j_risk', 's_holiday'] },
-    { id: 'subpm', dept: '기획·PM', name: '부PM AI', does: '주간 보고·회의록·부서 간 독촉·관문 회의 자료·이슈 목록', kinds: ['weekly', 'minutes', 'gate', 's_chase', 's_gatepack', 's_issues'] },
+    { id: 'sched', dept: '기획·PM', name: '일정관리 AI', does: '추천 일정·지연 위험 TOP3·나라별 휴일 보정·출시일 당기기', kinds: ['s_pull', 'j_back', 'replan', 'delay', 'j_risk', 's_holiday'] },
+    { id: 'subpm', dept: '기획·PM', name: '부PM AI', does: '주간 보고·회의록·부서 간 독촉·관문 회의 자료·이슈 목록·지연 만회안', kinds: ['s_catchup', 'weekly', 'minutes', 'gate', 's_chase', 's_gatepack', 's_issues'] },
     { id: 'design', dept: '디자인', name: '산업디자인 AI', does: '디자인 브리프·디자인 DR', kinds: ['s_dbrief', 's_ddr'] },
     { id: 'cmf', dept: '디자인', name: 'CMF AI', does: 'CMF 3안·컬러칩 관리', kinds: ['s_cmf', 's_chip'] },
     { id: 'manual', dept: '디자인', name: '설명서 디자이너 AI', does: '설명서 구성·삽화 지시·표시부 문구·경고 심볼·다국어 판', kinds: ['j_manual', 's_mlayout', 's_ux', 's_warn', 's_mlang'] },
@@ -6874,6 +6953,1002 @@ function ItemPick(props) {
                     l,
                     "\uC77C \uC9C0\uC5F0"));
         }))));
+}
+
+};
+__m["src/webparts/huromAxPlm/components/Office.js"]=function(module,exports,require){"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.OFFICE_CSS = exports.POP = exports.FACE = void 0;
+exports.moodOf = moodOf;
+exports.Office = Office;
+const React = __importStar(require("react"));
+const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
+const team_1 = require("src/webparts/huromAxPlm/model/team.js");
+const Today_1 = require("src/webparts/huromAxPlm/components/Today.js");
+const Dash_1 = require("src/webparts/huromAxPlm/components/Dash.js");
+const Shell_1 = require("src/webparts/huromAxPlm/components/Shell.js");
+const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
+exports.FACE = { run: '😤', review: '😏', cool: '😎', err: '😵‍💫', idle: '😪', off: '😶' };
+exports.POP = { run: '😤🔥', review: '😏', cool: '😎', err: '😵‍💫', idle: '😪', off: '💤' };
+const WORD = { run: '일하는 중', review: '확인 대기', cool: '방금 끝냄', err: '막힘', idle: '쉬는 중', off: '해당 없음' };
+function moodOf(t, off, now = Date.now()) {
+    if (off || t.state === 'off')
+        return 'off';
+    if (t.running.length)
+        return 'run';
+    if (t.review.length)
+        return 'review';
+    const last = t.last;
+    const age = last ? now - new Date(last.doneAt || last.at).getTime() : Infinity;
+    if (last && (0, ai_1.jobState)(last) === 'error' && age < 86400000)
+        return 'err';
+    if (t.jobs.some(j => (0, ai_1.jobState)(j) === 'applied' && !!j.appliedAt && now - new Date(j.appliedAt).getTime() < 30 * 60000))
+        return 'cool';
+    return 'idle';
+}
+// 아이소메트릭 — 구역 4열 × 3행, 구역 안 책상 3 × 2
+const TW = 58, TH = 29;
+const iso = (x, y) => [(x - y) * TW / 2, (x + y) * TH / 2];
+const pts = (xs) => xs.map(p => p.join(',')).join(' ');
+const ZW = 3.7, ZH = 2.7;
+const zoneXY = (z) => [(z % 4) * 4.1, Math.floor(z / 4) * 3.1];
+exports.OFFICE_CSS = `
+.axf2{position:relative;border-radius:14px;overflow:hidden;background:radial-gradient(ellipse at 50% 30%,#17201A 0%,#0B0D0C 70%);border:1px solid ${ui_1.C.line};margin-bottom:14px}
+.axf2 svg{display:block;width:100%;height:auto;max-height:430px}
+.axf2-dark .axf2-room{filter:brightness(.55) saturate(.5)}
+.axf2-m{cursor:pointer}
+.axf2-m:hover .axf2-head{stroke:${ui_1.C.accent};stroke-width:2}
+.axf2-run .axf2-body{animation:axfType .28s ease-in-out infinite alternate}
+.axf2-run .axf2-scr{fill:${ui_1.C.accent};filter:drop-shadow(0 0 5px rgba(79,209,107,.9))}
+.axf2-review .axf2-hand{animation:axfWave .5s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:50% 100%}
+.axf2-idle .axf2-body{animation:axfDoze 3s ease-in-out infinite}
+.axf2-idle .axf2-z{animation:axfZ 2.4s ease-in infinite}
+.axf2-off{opacity:.33}
+.axf2-pop{animation:axfPop 3s ease-out forwards}
+.axf2-fly{animation:axfFly 1.6s ease-in-out infinite}
+@keyframes axfType{from{transform:translateY(0)}to{transform:translateY(-1.6px)}}
+@keyframes axfWave{from{transform:rotate(-22deg)}to{transform:rotate(22deg)}}
+@keyframes axfDoze{0%,100%{transform:translateY(0)}50%{transform:translateY(1.4px)}}
+@keyframes axfZ{0%{opacity:0;transform:translate(0,0)}30%{opacity:.9}100%{opacity:0;transform:translate(6px,-14px)}}
+@keyframes axfPop{0%{opacity:0;transform:translateY(6px) scale(.6)}12%{opacity:1;transform:translateY(0) scale(1.15)}20%{transform:scale(1)}85%{opacity:1}100%{opacity:0;transform:translateY(-6px)}}
+@keyframes axfFly{0%{offset-distance:0%;opacity:0}10%{opacity:1}90%{opacity:1}100%{offset-distance:100%;opacity:0}}
+@media (prefers-reduced-motion:reduce){.axf2 *{animation:none !important}}
+`;
+function Office(props) {
+    const set = React.useContext(Shell_1.SetCtx);
+    const aiOff = (set && set.org.aiOff) || {};
+    const team = (0, team_1.teamOf)(props.p);
+    const dark = props.online === 'off';
+    const moods = {};
+    team.forEach(t => { moods[t.m.id] = moodOf(t, !!aiOff[t.m.id]); });
+    // 상태가 바뀔 때만 3초 말풍선
+    const prev = React.useRef(undefined);
+    const born = React.useRef(Date.now()); // 처음 2초는 데이터 불러오며 바뀌는 것이라 안 띄움
+    const [pops, setPops] = React.useState({});
+    const key = team.map(t => t.m.id + ':' + moods[t.m.id]).join('|') + (dark ? '|dark' : '');
+    React.useEffect(() => {
+        const old = prev.current;
+        prev.current = Object.assign({}, moods);
+        if (!old || Date.now() - born.current < 2000)
+            return;
+        const ch = {};
+        Object.keys(moods).forEach(id => { if (old[id] !== moods[id])
+            ch[id] = { e: exports.POP[moods[id]], k: Date.now() }; });
+        if (!Object.keys(ch).length)
+            return;
+        setPops(x => (Object.assign(Object.assign({}, x), ch)));
+        const t = setTimeout(() => setPops(x => { const y = Object.assign({}, x); Object.keys(ch).forEach(id => { if (y[id] && y[id].k === ch[id].k)
+            delete y[id]; }); return y; }), 3000);
+        return () => clearTimeout(t);
+    }, [key]);
+    const [sel, setSel] = React.useState(undefined);
+    const [fold, setFold] = React.useState(() => typeof window !== 'undefined' && window.innerWidth < 600);
+    // 자리
+    const seat = {};
+    team_1.DEPTS.forEach((d, z) => { const [zx, zy] = zoneXY(z); team_1.TEAM.filter(m => m.dept === d).forEach((m, i) => { seat[m.id] = [zx + 0.55 + (i % 3) * 1.15, zy + 0.6 + Math.floor(i / 3) * 1.2]; }); });
+    // 일 넘겨주기 — 이어진 일(job.from)이 대기·진행 중일 때만
+    const jobs = props.p.aiJobs || [];
+    const flies = [];
+    jobs.forEach(j => {
+        if (!j.from || ['queued', 'running'].indexOf((0, ai_1.jobState)(j)) < 0)
+            return;
+        const src = jobs.filter(x => x.id === j.from)[0];
+        if (!src)
+            return;
+        const a = team_1.TEAM[(0, team_1.mateOf)(src)].id, b = team_1.TEAM[(0, team_1.mateOf)(j)].id;
+        if (a !== b)
+            flies.push({ a, b, id: j.id });
+    });
+    const busy = team.filter(t => moods[t.m.id] === 'run').length, wait = team.filter(t => moods[t.m.id] === 'review').length;
+    const mate = sel ? team.filter(t => t.m.id === sel)[0] : undefined;
+    const vb = '-280 -62 760 432';
+    return (React.createElement("div", { "data-axf2": true, "data-axf2-ai": props.online, className: 'axf2' + (dark ? ' axf2-dark' : '') },
+        React.createElement("div", { style: { position: 'absolute', left: 14, top: 10, zIndex: 2, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', right: 14 } },
+            React.createElement("b", { style: { fontSize: 15 } }, "AI \uC0AC\uBB34\uC2E4"),
+            React.createElement("span", { style: { fontSize: 13, color: ui_1.C.sub } },
+                "\uC77C\uD558\uB294 \uC911 ",
+                React.createElement("b", { style: { color: ui_1.C.ok } }, busy),
+                " \u00B7 \uD655\uC778 \uB300\uAE30 ",
+                React.createElement("b", { style: { color: ui_1.C.soon } }, wait),
+                " \u00B7 ",
+                team_1.TEAM.length,
+                "\uBA85"),
+            React.createElement(ui_1.Tip, { t: "\uC2E4\uC81C AI \uC77C \uC0C1\uD0DC\uB9CC \uBCF4\uC5EC\uC694. \uD83D\uDE24\uD83D\uDD25 \uC77C\uD558\uB294 \uC911 \u00B7 \uD83D\uDE0F \uD655\uC778 \uB300\uAE30 \u00B7 \uD83D\uDE0E \uBC29\uAE08 \uB05D\uB0C4 \u00B7 \uD83D\uDE35\u200D\uD83D\uDCAB \uB9C9\uD798 \u00B7 \uD83D\uDE2A \uC26C\uB294 \uC911. \uC774\uBAA8\uD2F0\uCF58\uC740 \uC0C1\uD0DC\uAC00 \uBC14\uB014 \uB54C\uB9CC 3\uCD08 \uB5A0\uC694. \uB0A0\uC544\uAC00\uB294 \uC11C\uB958\uB294 \uC55E AI \uACB0\uACFC\uB97C \uBC18\uC601\uD574 \uC774\uC5B4\uC9C4 \uC77C\uC774\uC5D0\uC694. \uBBF8\uB2C8\uBBF8\uB97C \uB204\uB974\uBA74 \uADF8 AI \uC77C\uC774 \uC606\uC5D0 \uC5F4\uB824\uC694." }),
+            dark && React.createElement("span", { "data-axf2-off": true, style: { fontSize: 13, fontWeight: 800, color: ui_1.C.late } }, "\uD83D\uDCA4 AI \uAEBC\uC9D0"),
+            React.createElement("span", { style: { flex: 1 } }),
+            React.createElement("button", { "data-axf2-fold": true, onClick: () => setFold(!fold), style: Object.assign(Object.assign({}, ui_1.btn), { padding: '3px 10px', fontSize: 12 }) }, fold ? '사무실 보기' : '접기')),
+        fold ? React.createElement("div", { style: { height: 44 } }) : React.createElement("svg", { viewBox: vb, role: "img", "aria-label": "AI \uC0AC\uBB34\uC2E4", style: { marginTop: 26 } },
+            React.createElement("g", { className: "axf2-room" },
+                team_1.DEPTS.map((d, z) => {
+                    const [zx, zy] = zoneXY(z);
+                    const c = [iso(zx, zy), iso(zx + ZW, zy), iso(zx + ZW, zy + ZH), iso(zx, zy + ZH)];
+                    const lb = iso(zx + 0.1, zy + 0.05);
+                    return React.createElement("g", { key: d, "data-axf2-zone": d },
+                        React.createElement("polygon", { points: pts(c), fill: z % 2 ? '#141A16' : '#121614', stroke: "#26302A", strokeWidth: 1 }),
+                        React.createElement("text", { x: lb[0] - 4, y: lb[1] - 4, fill: "#9AA69E", fontSize: 12, fontWeight: 700, textAnchor: "middle" }, d));
+                }),
+                team_1.TEAM.map(m => {
+                    const t = team.filter(x => x.m.id === m.id)[0];
+                    const md = moods[m.id];
+                    const [x, y] = seat[m.id];
+                    const [sx, sy] = iso(x, y);
+                    const n = t.running.length + t.review.length;
+                    return (React.createElement("g", { key: m.id, "data-axf2-mate": m.id, "data-axf2-mood": md, className: `axf2-m axf2-${md}`, transform: `translate(${sx},${sy})`, onClick: () => setSel(m.id) },
+                        React.createElement("title", null, `${m.name} — ${WORD[md]}`),
+                        React.createElement("polygon", { points: "0,-6 20,4 0,14 -20,4", fill: "#2A2F2C" }),
+                        React.createElement("polygon", { points: "-20,4 0,14 0,20 -20,10", fill: "#1E2220" }),
+                        React.createElement("polygon", { points: "0,14 20,4 20,10 0,20", fill: "#252A27" }),
+                        React.createElement("polygon", { className: "axf2-scr", points: "-10,-20 4,-13 4,-3 -10,-10", fill: md === 'off' ? '#1A1C1B' : '#33413A', stroke: "#0C0E0D", strokeWidth: 1 }),
+                        React.createElement("g", { className: "axf2-body" },
+                            React.createElement("rect", { x: 4, y: -6, width: 13, height: 15, rx: 5, fill: md === 'run' ? '#3E7F52' : md === 'review' ? '#8A6A24' : '#3A3F3C' }),
+                            React.createElement("circle", { className: "axf2-head", cx: 10.5, cy: -14, r: 9, fill: "#E9DCC8", stroke: "#0C0E0D", strokeWidth: 1 }),
+                            React.createElement("text", { x: 10.5, y: -10, fontSize: 13, textAnchor: "middle" }, dark ? '😴' : exports.FACE[md]),
+                            md === 'review' && !dark && React.createElement("text", { className: "axf2-hand", x: 22, y: -14, fontSize: 11 }, "\u270B"),
+                            md === 'idle' && !dark && React.createElement("text", { className: "axf2-z", x: 18, y: -22, fontSize: 9, fill: "#9C9CA3" }, "z")),
+                        n > 0 && React.createElement("g", { "data-axf2-n": n },
+                            React.createElement("circle", { cx: -16, cy: -12, r: 7, fill: md === 'run' ? ui_1.C.accent : ui_1.C.soon }),
+                            React.createElement("text", { x: -16, y: -8.5, fontSize: 9.5, fontWeight: 800, textAnchor: "middle", fill: "#0B0D0C" }, n)),
+                        pops[m.id] && React.createElement("text", { key: pops[m.id].k, "data-axf2-pop": true, className: "axf2-pop", x: 10, y: -30, fontSize: 15, textAnchor: "middle" }, pops[m.id].e)));
+                }),
+                flies.map(f => {
+                    const [ax, ay] = iso(seat[f.a][0], seat[f.a][1]);
+                    const [bx, by] = iso(seat[f.b][0], seat[f.b][1]);
+                    const mx = (ax + bx) / 2, my = Math.min(ay, by) - 60;
+                    const path = `M${ax},${ay - 20} Q${mx},${my} ${bx},${by - 20}`;
+                    return React.createElement("g", { key: f.id, "data-axf2-fly": f.a + '>' + f.b },
+                        React.createElement("path", { d: path, fill: "none", stroke: "rgba(79,209,107,.35)", strokeDasharray: "3 4" }),
+                        React.createElement("text", { className: "axf2-fly", fontSize: 13, style: { offsetPath: `path('${path}')` } }, "\uD83D\uDCC4"));
+                }))),
+        mate && React.createElement(MatePanel, { t: mate, mood: moods[mate.m.id], p: props.p, act: props.act, onClose: () => setSel(undefined) })));
+}
+function MatePanel(props) {
+    const { t, p, act } = props;
+    const row = (j, btns) => {
+        const f = (0, Today_1.friendly)(j);
+        return (React.createElement("div", { key: j.id, className: "axw-row", "data-axf2-job": (0, ai_1.jobState)(j), style: { cursor: 'default', flexWrap: 'wrap' } },
+            React.createElement("span", { style: { flex: '1 1 160px', minWidth: 0 } },
+                f.title,
+                j.auto && React.createElement("span", { style: { fontSize: 12, color: ui_1.C.faint } },
+                    " \u00B7 ",
+                    j.auto)),
+            btns && React.createElement(React.Fragment, null,
+                React.createElement("button", { onClick: () => act.apply(p.id, j), style: Object.assign(Object.assign({}, ui_1.btn), { background: ui_1.C.accent, color: ui_1.C.inv, borderColor: ui_1.C.accent }) }, f.go),
+                React.createElement("button", { onClick: () => act.reject(p.id, j, '안 함'), style: ui_1.btn }, "\uC548 \uD568"))));
+    };
+    const done = t.jobs.filter(j => (0, ai_1.jobState)(j) === 'applied').slice(-5).reverse();
+    return (React.createElement("div", { "data-axf2-panel": t.m.id, style: Object.assign(Object.assign({}, ui_1.card), { position: 'fixed', right: 12, top: 70, bottom: 12, width: 360, maxWidth: 'calc(100vw - 24px)', zIndex: 60, overflowY: 'auto', boxShadow: '0 16px 40px rgba(0,0,0,.6)' }) },
+        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, padding: '14px 16px', borderBottom: `1px solid ${ui_1.C.line}` } },
+            React.createElement("span", { style: { fontSize: 22 } }, exports.FACE[props.mood]),
+            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                React.createElement("div", { style: { fontWeight: 800 } },
+                    t.m.name,
+                    React.createElement(ui_1.Tip, { t: t.m.does })),
+                React.createElement("div", { style: { fontSize: 12.5, color: ui_1.C.faint } },
+                    t.m.dept,
+                    " \u00B7 ",
+                    WORD[props.mood])),
+            React.createElement("button", { "data-axf2-close": true, onClick: props.onClose, style: ui_1.btn }, "\uB2EB\uAE30")),
+        React.createElement("div", { style: { padding: '10px 16px' } },
+            React.createElement(Dash_1.AiButton, { pid: p.id, kinds: t.m.kinds, label: "\uC774 AI\uC5D0\uAC8C \uB9E1\uAE30\uAE30" })),
+        React.createElement("div", { style: { padding: '0 0 6px' } },
+            React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: ui_1.C.faint, padding: '6px 16px' } },
+                "\uC9C0\uAE08 \uD558\uB294 \uC77C ",
+                t.running.length),
+            t.running.map(j => row(j, false)),
+            React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: ui_1.C.faint, padding: '10px 16px 6px' } },
+                "\uD655\uC778 \uB300\uAE30 ",
+                t.review.length),
+            t.review.map(j => row(j, true)),
+            React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: ui_1.C.faint, padding: '10px 16px 6px' } }, "\uB05D\uB0B8 \uC77C"),
+            !done.length && React.createElement("div", { style: { fontSize: 13, color: ui_1.C.faint, padding: '0 16px 10px' } }, "\uC544\uC9C1 \uC5C6\uC74C"),
+            done.map(j => row(j, false)))));
+}
+
+};
+__m["src/webparts/huromAxPlm/components/Shell.js"]=function(module,exports,require){"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CHANGES = exports.pushRecent = exports.readRecent = exports.SHELL_CSS = exports.MENUS = exports.isAdmin = exports.SetCtx = exports.meId = exports.ORG_ID = exports.ROLE_LABEL = void 0;
+exports.useSettings = useSettings;
+exports.Side = Side;
+exports.ItemSelect = ItemSelect;
+exports.cmdHits = cmdHits;
+exports.SearchBox = SearchBox;
+exports.GatesView = GatesView;
+exports.TeamView = TeamView;
+exports.SettingsView = SettingsView;
+const React = __importStar(require("react"));
+const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
+const team_1 = require("src/webparts/huromAxPlm/model/team.js");
+const Gate_1 = require("src/webparts/huromAxPlm/components/Gate.js");
+const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
+exports.ROLE_LABEL = { view: '보기', edit: '편집', approve: '승인', admin: '관리자' };
+exports.ORG_ID = 'org';
+const meId = (who) => 'me:' + who.replace(/\s/g, '');
+exports.meId = meId;
+const blank = (id, name) => ({ id, code: id, name, updated: new Date().toISOString() });
+exports.SetCtx = React.createContext(undefined);
+const same = (a, b) => !!a && !!b && a.replace(/\s/g, '') === b.replace(/\s/g, '');
+const isAdmin = (org, who) => { const r = org.roles || {}; const admins = Object.keys(r).filter(k => r[k] === 'admin'); return !admins.length || admins.some(k => same(k, who)); };
+exports.isAdmin = isAdmin;
+function useSettings(store, who, onErr) {
+    const [org, setOrg] = React.useState(() => blank(exports.ORG_ID, '회사 설정'));
+    const [me, setMe] = React.useState(() => blank((0, exports.meId)(who), who + ' 설정'));
+    React.useEffect(() => {
+        if (!store)
+            return;
+        store.list().then(rows => { const o = rows.filter(r => r.id === exports.ORG_ID)[0]; const m = rows.filter(r => r.id === (0, exports.meId)(who))[0]; if (o)
+            setOrg(o); if (m)
+            setMe(m); }, e => onErr('설정을 못 읽었어요 — ' + String((e && e.message) || e)));
+    }, [store, who]);
+    const save = (cur, p, set) => {
+        const next = Object.assign(Object.assign(Object.assign({}, cur), p), { updated: new Date().toISOString() });
+        set(next);
+        if (store)
+            store.save(next).then(r => set(Object.assign(Object.assign({}, next), { spId: r.spId, spVer: r.spVer })), e => onErr('설정을 저장 못 했어요 — ' + String((e && e.message) || e)));
+    };
+    return { org, me, admin: (0, exports.isAdmin)(org, who), saveOrg: p => save(org, p, setOrg), saveMe: p => save(me, p, setMe) };
+}
+const ICON = {
+    home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z', item: 'M4 4h16v16H4zM4 9h16M9 9v11',
+    bom: 'M5 5h4v4H5zM15 5h4v4h-4zM10 15h4v4h-4zM7 9v3h10V9M12 12v3', ecr: 'M4 8h13l-3-3M20 16H7l3 3',
+    gate: 'M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7zM9 12l2 2 4-4', team: 'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20c0-3 3-5 6-5s6 2 6 5M17 11a2.5 2.5 0 1 0 0-5M21 19c0-2.4-1.6-4-4-4.5',
+    notes: 'M5 4h14v11l-5 5H5zM14 20v-5h5', set: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z'
+};
+exports.MENUS = [['home', '홈'], ['item', '아이템'], ['bom', 'BOM'], ['ecr', '설계 변경'], ['gate', '관문 승인'], ['team', 'AI 팀원'], ['notes', '포스트잇'], ['set', '설정']];
+exports.SHELL_CSS = `
+.axs{display:flex;min-height:100vh}
+.axs-side{width:208px;flex:0 0 208px;background:#0A0A0B;border-right:1px solid ${ui_1.C.line};position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:12px 8px;z-index:20;transition:width .18s,flex-basis .18s}
+.axs-side.fold{width:60px;flex-basis:60px}
+.axs-side.fold .axs-t{display:none}
+.axs-logo{display:flex;align-items:center;gap:8px;padding:6px 10px 16px;font-weight:800;font-size:15px;white-space:nowrap}
+.axs-m{display:flex;align-items:center;gap:11px;width:100%;border:none;background:transparent;color:${ui_1.C.sub};padding:9px 11px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;white-space:nowrap;margin-bottom:2px;position:relative}
+.axs-m:hover{background:${ui_1.C.hover};color:${ui_1.C.text}}
+.axs-m.on{background:${ui_1.C.accentBg};color:${ui_1.C.accent}}
+.axs-m svg{flex:0 0 18px}
+.axs-n{margin-left:auto;font-size:11.5px;font-weight:800;color:${ui_1.C.soon}}
+.axs-side.fold .axs-n{position:absolute;top:3px;right:5px;margin:0}
+.axs-body{flex:1;min-width:0}
+.axs-top{height:54px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid ${ui_1.C.line};background:${ui_1.C.card};position:sticky;top:0;z-index:15}
+.axs-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:40;background:${ui_1.C.card};border:1px solid ${ui_1.C.line2};border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.55);padding:8px;width:340px;max-width:calc(100vw - 24px)}
+.axs-opt{display:flex;align-items:center;gap:8px;width:100%;border:none;background:transparent;color:${ui_1.C.text};padding:8px 9px;border-radius:7px;font-size:13.5px;cursor:pointer;text-align:left}
+.axs-opt:hover,.axs-opt.on{background:${ui_1.C.hover}}
+.axs-chip{border:1px solid ${ui_1.C.line2};background:transparent;color:${ui_1.C.sub};border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis}
+.axs-chip:hover{color:${ui_1.C.text};border-color:${ui_1.C.faint}}
+.axs-burger{display:none}
+.axs-set{display:grid;grid-template-columns:180px minmax(0,1fr);gap:16px;align-items:start}
+.axs-tog{width:38px;height:22px;border-radius:11px;border:none;cursor:pointer;position:relative;flex:0 0 auto;transition:background .15s}
+.axs-tog::after{content:'';position:absolute;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.axs-tog.on{background:${ui_1.C.accent}}.axs-tog.on::after{left:19px}
+.axs-tog.off{background:#3A3A40}.axs-tog.off::after{left:3px}
+.axs-line{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid ${ui_1.C.line};flex-wrap:wrap}
+.axs-line:first-child{border-top:none}
+.axs-office{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.axw-light{filter:invert(1) hue-rotate(180deg)}
+.axw-light img{filter:invert(1) hue-rotate(180deg)}
+@media (max-width:820px){
+  .axs-side{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);transition:transform .18s;width:230px !important;flex-basis:230px !important;box-shadow:8px 0 30px rgba(0,0,0,.5)}
+  .axs-side.open{transform:none}
+  .axs-side .axs-t{display:inline !important}
+  .axs-burger{display:inline-flex}
+  .axs-top{padding:0 10px;gap:6px}
+  .axs-recent,.axs-me{display:none !important}
+  .axs-set{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:520px){
+  .axs-isel{flex:1 1 auto !important}
+  .axs-grp{display:none}
+  .axs-srch{flex:0 0 38px !important}
+  .axs-srch input{color:transparent;padding-right:0}
+  .axs-srch input::placeholder{color:transparent}
+  .axs-srch:focus-within{position:absolute !important;left:8px;right:8px;max-width:none !important;z-index:30}
+  .axs-srch:focus-within input{color:inherit}
+  .axs-srch:focus-within input::placeholder{color:#85858C}
+}`;
+const Ico = (props) => React.createElement("svg", { width: "18", height: "18", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round" },
+    React.createElement("path", { d: props.d }));
+function Side(props) {
+    return (React.createElement("aside", { "data-ax-side": true, className: 'axs-side' + (props.fold ? ' fold' : '') + (props.open ? ' open' : '') },
+        React.createElement("div", { className: "axs-logo" },
+            React.createElement("span", { style: { width: 26, height: 26, borderRadius: 8, background: ui_1.C.accent, color: ui_1.C.inv, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900 } }, "AX"),
+            React.createElement("span", { className: "axs-t" }, "AX-PLM")),
+        exports.MENUS.map(m => React.createElement("button", { key: m[0], "data-ax-menu": m[0], title: m[1], className: 'axs-m' + (props.menu === m[0] ? ' on' : ''), onClick: () => props.go(m[0]), style: m[0] === 'set' ? { marginTop: 'auto' } : undefined },
+            React.createElement(Ico, { d: ICON[m[0]] }),
+            React.createElement("span", { className: "axs-t" }, m[1]),
+            props.counts[m[0]] ? React.createElement("span", { className: "axs-n" }, props.counts[m[0]]) : null)),
+        React.createElement("button", { "data-ax-fold": true, className: "axs-m axw-hide-sm", title: props.fold ? '메뉴 펼치기' : '메뉴 접기', onClick: () => props.setFold(!props.fold) },
+            React.createElement(Ico, { d: props.fold ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6' }),
+            React.createElement("span", { className: "axs-t" }, "\uC811\uAE30"))));
+}
+// ───────── 위쪽 바 — 아이템 선택 칸(이름·모델명 검색, 원액기군/상품군) · 최근 본 3개 · 검색 · 알림 종
+const RECENT = 'axplm-recent';
+const readRecent = () => { try {
+    return JSON.parse(window.localStorage.getItem(RECENT) || '[]');
+}
+catch (e) {
+    return [];
+} };
+exports.readRecent = readRecent;
+const pushRecent = (id) => { try {
+    window.localStorage.setItem(RECENT, JSON.stringify([id].concat((0, exports.readRecent)().filter(x => x !== id)).slice(0, 4)));
+}
+catch (e) { /* 안 돼도 됨 */ } };
+exports.pushRecent = pushRecent;
+const codeOf = (p) => p.itemCode || '';
+const groupOf = (p) => ai_1.BRANCH_LABEL[(0, ai_1.branchOf)((0, devtype_1.typeOf)(p))] + '군';
+function ItemSelect(props) {
+    const [open, setOpen] = React.useState(false);
+    const [q, setQ] = React.useState('');
+    const ref = React.useRef(null);
+    React.useEffect(() => { if (!open)
+        return undefined; const f = (e) => { if (ref.current && !ref.current.contains(e.target))
+        setOpen(false); }; document.addEventListener('pointerdown', f); return () => document.removeEventListener('pointerdown', f); }, [open]);
+    const k = q.trim().toLowerCase();
+    const hit = props.items.filter(p => !k || (p.name + ' ' + codeOf(p)).toLowerCase().indexOf(k) >= 0);
+    const groups = ['원액기군', '상품군'].map(g => [g, hit.filter(p => groupOf(p) === g)]).filter(g => g[1].length);
+    const pick = (id) => { props.onPick(id); setOpen(false); setQ(''); };
+    const c = props.cur;
+    return (React.createElement("div", { ref: ref, className: "axs-isel", style: { position: 'relative', minWidth: 0, flex: '0 1 300px' } },
+        React.createElement("button", { "data-ax-isel": true, onClick: () => setOpen(!open), style: Object.assign(Object.assign({}, ui_1.btn), { borderRadius: 9, width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: ui_1.C.hover }) },
+            c ? React.createElement(React.Fragment, null,
+                React.createElement("span", { className: "axs-grp", style: { fontSize: 11, color: ui_1.C.faint, fontWeight: 700 } }, groupOf(c)),
+                React.createElement("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' } }, c.name),
+                (0, work_1.projLate)(c) > 0 && React.createElement(ui_1.Dot, { s: "late", size: 6 })) : React.createElement("span", { style: { flex: 1, textAlign: 'left', color: ui_1.C.faint } }, "\uC544\uC774\uD15C \uACE0\uB974\uAE30"),
+            React.createElement("span", { style: { color: ui_1.C.faint } }, "\u25BE")),
+        open && React.createElement("div", { className: "axs-pop", "data-ax-isel-pop": true },
+            React.createElement("input", { "data-ax-isel-q": true, autoFocus: true, value: q, onChange: e => setQ(e.target.value), placeholder: "\uC774\uB984\u00B7\uBAA8\uB378\uBA85\uC73C\uB85C \uCC3E\uAE30", style: Object.assign(Object.assign({}, ui_1.inp), { marginBottom: 6 }), onKeyDown: e => { if (e.key === 'Enter' && hit[0])
+                    pick(hit[0].id); if (e.key === 'Escape')
+                    setOpen(false); } }),
+            React.createElement("div", { style: { maxHeight: 360, overflowY: 'auto' } },
+                !hit.length && React.createElement("div", { style: { padding: 10, fontSize: 13, color: ui_1.C.faint } }, "\uC5C6\uC5B4\uC694"),
+                groups.map(g => React.createElement("div", { key: g[0] },
+                    React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { padding: '8px 9px 4px' }) },
+                        g[0],
+                        " ",
+                        g[1].length),
+                    g[1].map(p => React.createElement("button", { key: p.id, "data-ax-isel-opt": p.id, className: 'axs-opt' + (c && c.id === p.id ? ' on' : ''), onClick: () => pick(p.id) },
+                        React.createElement("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, p.name),
+                        codeOf(p) && React.createElement("span", { style: { fontSize: 12, color: ui_1.C.faint } }, codeOf(p)),
+                        (0, work_1.projLate)(p) > 0 && React.createElement(ui_1.Dot, { s: "late", size: 6 })))))))));
+}
+// 1.0.148 말로 찾기 — 「G3 체크리스트 보여줘」「BOM 미확정만」「이슈」「일정」 (지금 아이템 기준)
+function cmdHits(q, cur, onCmd, onPart) {
+    if (!cur)
+        return [];
+    const out = [];
+    const st = (0, work_1.stagesOf)(cur);
+    const g = q.match(/g\s*([1-5])/i);
+    if (g) {
+        const k = st.map((s, i) => ({ s, i })).filter(o => (o.s.gate || '').toUpperCase().indexOf('G' + g[1]) === 0)[0];
+        if (k)
+            out.push({ kind: '메뉴', text: `${cur.name} ${k.s.gate} 체크리스트`, sub: '관문', go: () => onCmd(k.i, 'gate') });
+    }
+    if (/bom|부품|미확정/i.test(q))
+        out.push({ kind: '메뉴', text: `${cur.name} BOM${/미확정/.test(q) ? ' (미확정 표시)' : ''}`, sub: 'BOM', go: () => onPart(cur.id, 'bom') });
+    if (/설계\s*변경|ecr|eco/i.test(q))
+        out.push({ kind: '메뉴', text: `${cur.name} 설계 변경`, sub: '설계 변경', go: () => onPart(cur.id, 'ecr') });
+    if (/이슈|리스크|기록/.test(q))
+        out.push({ kind: '메뉴', text: `${cur.name} 이슈·기록`, sub: '기록', go: () => onCmd(0, 'log') });
+    if (/일정|간트|스케줄/.test(q))
+        out.push({ kind: '메뉴', text: `${cur.name} 일정`, sub: '일정', go: () => onCmd(0, 'lanes') });
+    return out;
+}
+function SearchBox(props) {
+    const [q, setQ] = React.useState('');
+    const [open, setOpen] = React.useState(false);
+    const ref = React.useRef(null);
+    React.useEffect(() => { if (!open)
+        return undefined; const f = (e) => { if (ref.current && !ref.current.contains(e.target))
+        setOpen(false); }; document.addEventListener('pointerdown', f); return () => document.removeEventListener('pointerdown', f); }, [open]);
+    const k = q.trim().toLowerCase();
+    const hits = [];
+    if (k) {
+        if (props.onCmd)
+            cmdHits(q, props.cur, props.onCmd, props.onPart).forEach(h => hits.push(h));
+        exports.MENUS.forEach(m => { if (m[1].toLowerCase().indexOf(k) >= 0)
+            hits.push({ kind: '메뉴', text: m[1], sub: '', go: () => props.onMenu(m[0]) }); });
+        props.items.forEach(p => {
+            if ((p.name + ' ' + codeOf(p)).toLowerCase().indexOf(k) >= 0)
+                hits.push({ kind: '아이템', text: p.name, sub: codeOf(p) || groupOf(p), go: () => props.onItem(p.id) });
+            (p.parts || []).forEach(x => { if ((x.no + ' ' + x.name).toLowerCase().indexOf(k) >= 0)
+                hits.push({ kind: '부품', text: `${x.no} ${x.name}`, sub: p.name, go: () => props.onPart(p.id, 'bom') }); });
+            (p.ecrs || []).forEach(e => { if ((e.no + ' ' + e.title).toLowerCase().indexOf(k) >= 0)
+                hits.push({ kind: '설계 변경', text: `${e.no} ${e.title}`, sub: `${p.name} · ${e.status}`, go: () => props.onPart(p.id, 'ecr') }); });
+        });
+    }
+    return (React.createElement("div", { ref: ref, className: "axs-srch", style: { position: 'relative', flex: '1 1 220px', minWidth: 0, maxWidth: 380 } },
+        React.createElement("input", { "data-ax-search": true, value: q, onChange: e => { setQ(e.target.value); setOpen(true); }, onFocus: () => setOpen(true), placeholder: "\uCC3E\uAE30\u00B7\uBA85\uB839 \u2014 \uC608: G3 \uCCB4\uD06C\uB9AC\uC2A4\uD2B8, BOM \uBBF8\uD655\uC815", onKeyDown: e => { if (e.key === 'Enter' && hits[0]) {
+                hits[0].go();
+                setOpen(false);
+                setQ('');
+            } if (e.key === 'Escape')
+                setOpen(false); }, style: Object.assign(Object.assign({}, ui_1.inp), { borderRadius: 9, paddingLeft: 30, background: ui_1.C.hover }) }),
+        React.createElement("span", { style: { position: 'absolute', left: 10, top: 7, color: ui_1.C.faint, pointerEvents: 'none' } },
+            React.createElement(Ico, { d: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4" })),
+        open && k && React.createElement("div", { className: "axs-pop", "data-ax-search-pop": true, style: { width: '100%', minWidth: 280 } },
+            !hits.length && React.createElement("div", { style: { padding: 10, fontSize: 13, color: ui_1.C.faint } }, "\uCC3E\uC740 \uAC83 \uC5C6\uC74C"),
+            hits.slice(0, 10).map((h, i) => React.createElement("button", { key: i, "data-ax-search-hit": h.kind, className: "axs-opt", onClick: () => { h.go(); setOpen(false); setQ(''); } },
+                React.createElement("span", { style: { fontSize: 11, color: ui_1.C.faint, fontWeight: 700, width: 54, flex: '0 0 auto' } }, h.kind),
+                React.createElement("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, h.text),
+                React.createElement("span", { style: { fontSize: 12, color: ui_1.C.faint, whiteSpace: 'nowrap' } }, h.sub))))));
+}
+// ───────── 관문 승인 — 전체 아이템의 관문을 한 화면에 (승인 대기 먼저)
+function GatesView(props) {
+    const rows = [];
+    props.items.forEach(p => (0, work_1.stagesOf)(p).forEach((s, k) => { if (s.gate)
+        rows.push({ p, k, gate: s.gate, st: (0, work_1.gateState)(p, s) }); }));
+    const order = { requested: 0, rejected: 1, none: 2, approved: 3 };
+    rows.sort((a, b) => (order[a.st] - order[b.st]) || a.p.name.localeCompare(b.p.name));
+    const word = { requested: '승인 대기', rejected: '반려됨', none: '요청 전', approved: '승인됨' };
+    const [f, setF] = React.useState('open');
+    const list = rows.filter(r => f === 'all' || r.st !== 'approved');
+    return (React.createElement("div", { "data-ax-gates-all": true },
+        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 } },
+            React.createElement("h1", { style: { fontSize: 20, fontWeight: 700, margin: 0 } }, "\uAD00\uBB38 \uC2B9\uC778"),
+            React.createElement(ui_1.Tip, { t: "\uBAA8\uB4E0 \uC544\uC774\uD15C\uC758 G1~G5 \uAD00\uBB38\uC774\uC5D0\uC694. \uC2B9\uC778 \uB300\uAE30\uAC00 \uB9E8 \uC704, \uB204\uB974\uBA74 \uADF8 \uAD00\uBB38 \uD654\uBA74\uC73C\uB85C \uAC00\uC694." }),
+            React.createElement("span", { style: { flex: 1 } }),
+            ['open', 'all'].map(x => React.createElement("button", { key: x, "data-ax-gates-f": x, onClick: () => setF(x), style: Object.assign(Object.assign({}, ui_1.btn), { background: f === x ? ui_1.C.text : ui_1.C.card, color: f === x ? ui_1.C.inv : ui_1.C.sub }) }, x === 'open' ? '남은 것' : '전체'))),
+        React.createElement("div", { style: ui_1.card },
+            !list.length && React.createElement("div", { style: { padding: 20, color: ui_1.C.faint } }, "\uB0A8\uC740 \uAD00\uBB38 \uC5C6\uC74C"),
+            list.map((r, i) => React.createElement("div", { key: i, className: "axw-row", "data-ax-gates-row": r.st, onClick: () => props.onOpen(r.p.id, r.k) },
+                React.createElement(ui_1.Dot, { s: r.st === 'approved' ? 'done' : r.st === 'requested' ? 'wait' : r.st === 'rejected' ? 'late' : 'open' }),
+                React.createElement("span", { style: { width: 120, flex: '0 0 auto', fontWeight: 700 } }, r.gate.split(' ')[0]),
+                React.createElement("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+                    r.p.name,
+                    " ",
+                    React.createElement("span", { style: { color: ui_1.C.faint } },
+                        "\u00B7 ",
+                        r.gate.split(' ').slice(1).join(' '))),
+                React.createElement("span", { style: { fontSize: 12.5, fontWeight: 700, color: r.st === 'requested' ? ui_1.C.soon : r.st === 'rejected' ? ui_1.C.late : r.st === 'approved' ? ui_1.C.ok : ui_1.C.faint } }, word[r.st]),
+                r.st !== 'approved' && React.createElement(Gate_1.GatePill, { p: r.p, s: (0, work_1.stagesOf)(r.p)[r.k] }),
+                React.createElement("span", { className: "axw-hide-sm", style: { fontSize: 12.5, color: ui_1.C.faint, width: 90, textAlign: 'right' } },
+                    "\uC2B9\uC778\uC790 ",
+                    (props.items.filter(x => x.id === r.p.id)[0] || r.p).approver || '없음'))))));
+}
+// ───────── AI 팀원 — 부문별 32명, 지금 아이템 기준 실제 상태 (연출 없음)
+function TeamView(props) {
+    const set = React.useContext(exports.SetCtx);
+    const p = props.p;
+    if (!p)
+        return React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { padding: 24, color: ui_1.C.faint }) }, "\uC544\uC774\uD15C\uC774 \uC5C6\uC5B4\uC694");
+    const team = (0, team_1.teamOf)(p);
+    const off = (set && set.org.aiOff) || {};
+    const W = { run: '일하는 중', review: '확인 대기', idle: '대기', off: '해당 없음' };
+    const allJobs = props.items.reduce((n, x) => n + (x.aiJobs || []).filter(j => ['running', 'queued', 'review'].indexOf((0, ai_1.jobState)(j)) >= 0).length, 0);
+    return (React.createElement("div", { "data-ax-team": true },
+        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' } },
+            React.createElement("h1", { style: { fontSize: 20, fontWeight: 700, margin: 0 } },
+                "AI \uD300\uC6D0 ",
+                team_1.TEAM.length,
+                "\uBA85"),
+            React.createElement(ui_1.Tip, { t: `${p.name} 기준 상태예요. 실제로 맡은 일·확인 대기만 보여요. 전체 아이템에서 지금 돌거나 확인을 기다리는 AI 일은 ${allJobs}건이에요. 켜기·끄기는 설정 › AI에서.` }),
+            React.createElement("span", { style: { fontSize: 13, color: ui_1.C.sub } }, p.name)),
+        team_1.DEPTS.map(d => {
+            const ms = team.filter(t => t.m.dept === d);
+            if (!ms.length)
+                return null;
+            return (React.createElement("div", { key: d, "data-ax-team-dept": d, style: { marginBottom: 14 } },
+                React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { marginBottom: 6 }) },
+                    d,
+                    " ",
+                    ms.length),
+                React.createElement("div", { className: "axs-office" }, ms.map(t => {
+                    const st = off[t.m.id] ? 'off' : t.state;
+                    return (React.createElement("div", { key: t.m.id, "data-ax-mate": t.m.id, "data-ax-mate-state": st, style: Object.assign(Object.assign({}, ui_1.card), { padding: '11px 12px', opacity: st === 'off' ? 0.4 : 1, borderColor: st === 'run' ? 'rgba(79,209,107,.55)' : st === 'review' ? 'rgba(245,158,11,.55)' : ui_1.C.line }) },
+                        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800 } },
+                            t.m.name,
+                            React.createElement(ui_1.Tip, { t: t.m.does + (t.m.only ? ` · ${ai_1.BRANCH_LABEL[t.m.only]}군만` : '') }),
+                            React.createElement("span", { style: { marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: st === 'run' ? ui_1.C.ok : st === 'review' ? ui_1.C.soon : ui_1.C.faint } }, off[t.m.id] ? '꺼짐' : W[st])),
+                        React.createElement("div", { style: { fontSize: 12.5, color: ui_1.C.sub, marginTop: 4 } },
+                            "\uB9E1\uC740 \uC77C ",
+                            t.m.kinds.length,
+                            "\uAC00\uC9C0 \u00B7 \uBC18\uC601 ",
+                            t.done,
+                            "\uAC74",
+                            t.review.length ? ` · 확인 ${t.review.length}` : '',
+                            t.running.length ? ` · 하는 중 ${t.running.length}` : '')));
+                }))));
+        })));
+}
+exports.CHANGES = [
+    ['1.0.148', '2.5D AI 사무실(이모티콘·일 넘겨주기), 출시일 당기기, 병목 지도, 경험 창고(과거 모델), 홈 오늘 볼 것 3개, AI 도우미 옆창, 검색 명령, 관문 통과 가능/부족, 탭 안 AI'],
+    ['1.0.147', '왼쪽 메뉴·위쪽 아이템 선택 칸·검색, 설명은 ⓘ 툴팁, 설정 화면, AI 팀원 32명(11개 부문)'],
+    ['1.0.144', '개요 다시 짬(상태 4칸·내가 할 일·카드 4개), 관문 G1~G5, BOM 판·붙여넣기'],
+    ['1.0.141', '아이템 하나가 메인, 검정·초록 색'],
+    ['1.0.140', '오늘·아이템 2개 메뉴, 산출물 담당 AI'],
+];
+const Tog = (props) => React.createElement("button", { "data-ax-tog": props.k, "data-on": props.on ? '1' : '0', disabled: props.dis, className: 'axs-tog ' + (props.on ? 'on' : 'off'), onClick: props.onClick, style: { opacity: props.dis ? 0.4 : 1 }, "aria-label": props.k });
+const Line = (props) => React.createElement("div", { className: "axs-line" },
+    React.createElement("span", { style: { flex: '1 1 200px', fontWeight: 600 } },
+        props.t,
+        props.tip && React.createElement(ui_1.Tip, { t: props.tip })),
+    props.children);
+function SettingsView(props) {
+    const set = React.useContext(exports.SetCtx);
+    const [tab, setTab] = React.useState('me');
+    const [ai, setAi] = React.useState('');
+    const [ty, setTy] = React.useState('own');
+    if (!set)
+        return React.createElement("div", null);
+    const { org, me, admin, saveOrg, saveMe } = set;
+    const tabs = [['me', '내 설정', true], ['ai', 'AI', true], ['rule', '업무 기준', admin], ['perm', '권한', admin], ['info', '정보', true]];
+    const chip = (on) => (Object.assign(Object.assign({}, ui_1.btn), { background: on ? ui_1.C.text : ui_1.C.card, color: on ? ui_1.C.inv : ui_1.C.sub, borderColor: on ? ui_1.C.text : ui_1.C.line2 }));
+    const sample = (0, work_1.workSamples)().filter(p => (0, devtype_1.typeOf)(p) === ty)[0];
+    const roles = org.roles || {};
+    const dep = org.depts || [];
+    const hol = (org.holidays || []).join('\n');
+    return (React.createElement("div", { "data-ax-settings": true, "data-ax-stab": tab },
+        React.createElement("h1", { style: { fontSize: 20, fontWeight: 700, margin: '0 0 14px' } }, "\uC124\uC815"),
+        React.createElement("div", { className: "axs-set" },
+            React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { padding: 6 }) },
+                tabs.filter(t => t[2]).map(t => React.createElement("button", { key: t[0], "data-ax-stab-btn": t[0], className: 'axs-m' + (tab === t[0] ? ' on' : ''), onClick: () => setTab(t[0]) }, t[1])),
+                !admin && React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint, padding: '8px 11px' } },
+                    "\uC5C5\uBB34 \uAE30\uC900\u00B7\uAD8C\uD55C\uC740 \uAD00\uB9AC\uC790\uB9CC",
+                    React.createElement(ui_1.Tip, { t: "\uAD00\uB9AC\uC790\uAC00 \uAD8C\uD55C \uD0ED\uC5D0\uC11C \uC815\uD574\uC694." }))),
+            React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { padding: '6px 18px 10px', minWidth: 0 }) },
+                tab === 'me' && React.createElement(React.Fragment, null,
+                    React.createElement(Line, { t: "Teams \uC54C\uB9BC", tip: "\uC2B9\uC778 \uC694\uCCAD\u00B7\uD655\uC778 \uB300\uAE30\uAC00 \uC0DD\uAE30\uBA74 Teams\uB85C \uC54C\uB824\uC694. \uC9C0\uAE08\uC740 \uC2B9\uC778 \uC694\uCCAD \uB9C1\uD06C\uBD80\uD130 \uC5F0\uACB0\uB3FC \uC788\uC5B4\uC694." },
+                        React.createElement(Tog, { k: "teams", on: me.teams !== false, onClick: () => saveMe({ teams: me.teams === false }) })),
+                    React.createElement(Line, { t: "\uBA54\uC77C \uC54C\uB9BC", tip: "\uAC19\uC740 \uC54C\uB9BC\uC744 \uBA54\uC77C\uB85C\uB3C4 \uBC1B\uC544\uC694." },
+                        React.createElement(Tog, { k: "mail", on: !!me.mail, onClick: () => saveMe({ mail: !me.mail }) })),
+                    React.createElement(Line, { t: "\uCCAB \uD654\uBA74", tip: "AX-PLM\uC744 \uC5F4\uC5C8\uC744 \uB54C \uCC98\uC74C \uBCF4\uC774\uB294 \uD654\uBA74" }, ['home', 'item'].map(x => React.createElement("button", { key: x, "data-ax-first": x, onClick: () => saveMe({ first: x }), style: chip((me.first || 'item') === x) }, x === 'home' ? '홈' : '마지막에 본 아이템'))),
+                    React.createElement(Line, { t: "\uAE00\uC528 \uD06C\uAE30" }, ['s', 'm', 'l'].map(x => React.createElement("button", { key: x, "data-ax-size": x, onClick: () => saveMe({ size: x }), style: chip((me.size || 'm') === x) }, x === 's' ? '작게' : x === 'm' ? '보통' : '크게'))),
+                    React.createElement(Line, { t: "\uD654\uBA74 \uBC1D\uAE30" }, ([false, true]).map(x => React.createElement("button", { key: String(x), "data-ax-light": x ? '1' : '0', onClick: () => saveMe({ light: x }), style: chip(!!me.light === x) }, x ? '밝게' : '어둡게')))),
+                tab === 'ai' && React.createElement(React.Fragment, null,
+                    React.createElement(Line, { t: "AI \uC5F0\uACB0", tip: "AI \uC911\uACC4 PC\uC5D0 \uB2FF\uB294\uC9C0 \uBC14\uB85C \uD655\uC778\uD574\uC694." },
+                        React.createElement("span", { "data-ax-ai-test": ai, style: { fontSize: 13, fontWeight: 700, color: ai === 'on' ? ui_1.C.ok : ai === 'off' ? ui_1.C.late : ui_1.C.faint } }, ai === 'on' ? '연결됨' : ai === 'off' ? '꺼짐' : ai === 'wait' ? '확인 중…' : '확인 전'),
+                        React.createElement("button", { "data-ax-ai-test-btn": true, onClick: () => { setAi('wait'); (0, ai_1.aiOnline)().then(ok => setAi(ok ? 'on' : 'off'), () => setAi('off')); }, style: ui_1.btn }, "\uC5F0\uACB0 \uC2DC\uD5D8")),
+                    React.createElement(Line, { t: "\uC790\uB3D9 \uC2E4\uD589", tip: "\uC790\uB3D9: \uB2E8\uACC4\uAC00 \uC5F4\uB9AC\uAC70\uB098 \uB9E4\uC77C \uC544\uCE68\uC5D0 AI\uAC00 \uC54C\uC544\uC11C \uC77C\uC744 \uC2DC\uC791\uD574\uC694. \uC0AC\uB78C \uD655\uC778 \uD6C4\uC5D0\uB9CC: \uC0AC\uB78C\uC774 \u300CAI\uC5D0\uAC8C \uB9E1\uAE30\uAE30\u300D\uB97C \uB20C\uB7EC\uC57C \uC2DC\uC791\uD574\uC694. \uC5B4\uB290 \uCABD\uC774\uB4E0 \uACB0\uACFC \uBC18\uC601\uC740 \uC0AC\uB78C\uC774 \uD574\uC694." }, ['auto', 'confirm'].map(x => React.createElement("button", { key: x, "data-ax-auto": x, disabled: !admin, onClick: () => saveOrg({ auto: x }), style: Object.assign(Object.assign({}, chip((org.auto || 'auto') === x)), { opacity: admin ? 1 : 0.5 }) }, x === 'auto' ? '자동' : '사람 확인 후에만'))),
+                    React.createElement(Line, { t: "\uD558\uB8E8 \uC0AC\uC6A9 \uD55C\uB3C4", tip: "\uD558\uB8E8\uC5D0 AI\uAC00 \uC2DC\uC791\uD558\uB294 \uC77C \uC218. \uB118\uC73C\uBA74 \uB2E4\uC74C \uB0A0\uAE4C\uC9C0 \uC904 \uC11C\uC11C \uAE30\uB2E4\uB824\uC694. 0\uC774\uBA74 \uC81C\uD55C \uC5C6\uC74C." },
+                        React.createElement("input", { "data-ax-limit": true, type: "number", min: 0, disabled: !admin, value: org.limit || 0, onChange: e => saveOrg({ limit: Math.max(0, Number(e.target.value) || 0) }), style: Object.assign(Object.assign({}, ui_1.inp), { width: 90 }) }),
+                        React.createElement("span", { style: { fontSize: 13, color: ui_1.C.faint } }, "\uAC74")),
+                    React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { margin: '14px 0 4px' }) },
+                        "AI \uD300\uC6D0 \uCF1C\uAE30\u00B7\uB044\uAE30",
+                        React.createElement(ui_1.Tip, { t: "\uB048 \uD300\uC6D0\uC758 \uC77C\uC740 \uC2DC\uC791\uD558\uC9C0 \uC54A\uC544\uC694(\uC774\uBBF8 \uB05D\uB09C \uACB0\uACFC\uB294 \uADF8\uB300\uB85C)." })),
+                    team_1.DEPTS.map(d => React.createElement("div", { key: d, style: { marginBottom: 6 } },
+                        React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint, fontWeight: 700, margin: '8px 0 2px' } }, d),
+                        React.createElement("div", { style: { display: 'flex', flexWrap: 'wrap', gap: '6px 18px' } }, team_1.TEAM.filter(m => m.dept === d).map(m => {
+                            const on = !(org.aiOff || {})[m.id];
+                            return (React.createElement("span", { key: m.id, style: { display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13.5, minWidth: 190 } },
+                                React.createElement(Tog, { k: 'mate-' + m.id, dis: !admin, on: on, onClick: () => saveOrg({ aiOff: Object.assign(Object.assign({}, (org.aiOff || {})), { [m.id]: on }) }) }),
+                                m.name));
+                        }))))),
+                tab === 'rule' && admin && React.createElement(React.Fragment, null,
+                    React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { margin: '12px 0 6px' }) }, "\uAC1C\uBC1C \uC720\uD615\u00B7\uB2E8\uACC4 \uD15C\uD50C\uB9BF"),
+                    React.createElement("div", { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 } },
+                        devtype_1.DEV_TYPES.map(t => React.createElement("button", { key: t.id, "data-ax-rule-type": t.id, onClick: () => setTy(t.id), style: chip(ty === t.id) }, t.tag)),
+                        React.createElement(ui_1.Tip, { t: (devtype_1.DEV_TYPES.filter(t => t.id === ty)[0] || devtype_1.DEV_TYPES[0]).desc })),
+                    sample && (0, work_1.stagesOf)(sample).map(s => React.createElement("div", { key: s.id, className: "axs-line", style: { alignItems: 'flex-start' } },
+                        React.createElement("span", { style: { width: 150, flex: '0 0 auto', fontWeight: 700 } },
+                            s.no,
+                            " ",
+                            s.short || s.name),
+                        React.createElement("span", { style: { flex: 1, minWidth: 0, fontSize: 13, color: ui_1.C.sub } }, s.docs.map(x => x.label).join(' · ')),
+                        s.gate && React.createElement("span", { style: { fontSize: 12.5, fontWeight: 700, color: ui_1.C.accent } },
+                            s.gate.split(' ')[0],
+                            s.gateRule && React.createElement(ui_1.Tip, { t: s.gateRule })))),
+                    React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { margin: '16px 0 6px' }) },
+                        "\uAD00\uBB38 \uC2B9\uC778\uC790",
+                        React.createElement(ui_1.Tip, { t: "\uC544\uC774\uD15C \uC2B9\uC778\uC790 \uC678\uC5D0 \uC774 \uC0AC\uB78C\uB3C4 \uADF8 \uAD00\uBB38\uC744 \uC2B9\uC778\uD560 \uC218 \uC788\uC5B4\uC694." })),
+                    ['G1', 'G2', 'G3', 'G4', 'G5'].map(g => React.createElement(Line, { key: g, t: g },
+                        React.createElement("input", { "data-ax-appr": g, value: (org.approvers || {})[g] || '', placeholder: "\uC774\uB984", onChange: e => saveOrg({ approvers: Object.assign(Object.assign({}, (org.approvers || {})), { [g]: e.target.value }) }), style: Object.assign(Object.assign({}, ui_1.inp), { width: 200 }) }))),
+                    React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { margin: '16px 0 6px' }) }, "\uBD80\uC11C\u00B7\uB2F4\uB2F9\uC790"),
+                    dep.map((x, i) => React.createElement("div", { key: i, className: "axs-line" },
+                        React.createElement("input", { "data-ax-dept": i, value: x.dept, placeholder: "\uBD80\uC11C", onChange: e => saveOrg({ depts: dep.map((y, j) => (j === i ? Object.assign(Object.assign({}, y), { dept: e.target.value }) : y)) }), style: Object.assign(Object.assign({}, ui_1.inp), { width: 160 }) }),
+                        React.createElement("input", { value: x.who, placeholder: "\uB2F4\uB2F9\uC790", onChange: e => saveOrg({ depts: dep.map((y, j) => (j === i ? Object.assign(Object.assign({}, y), { who: e.target.value }) : y)) }), style: Object.assign(Object.assign({}, ui_1.inp), { width: 160 }) }),
+                        React.createElement("button", { onClick: () => saveOrg({ depts: dep.filter((y, j) => j !== i) }), style: ui_1.btn }, "\uBE7C\uAE30"))),
+                    React.createElement("button", { "data-ax-dept-add": true, onClick: () => saveOrg({ depts: dep.concat([{ dept: '', who: '' }]) }), style: Object.assign(Object.assign({}, ui_1.btn), { marginTop: 6 }) }, "+ \uBD80\uC11C"),
+                    React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { margin: '16px 0 6px' }) },
+                        "\uB098\uB77C\uBCC4 \uD734\uC77C \uB2EC\uB825",
+                        React.createElement(ui_1.Tip, { t: "\uD55C \uC904\uC5D0 \uD558\uB098: \uB0A0\uC9DC \uB098\uB77C \uC774\uB984 (\uC608: 2027-02-06 \uC911\uAD6D \uCD98\uC808). \uC77C\uC815\uAD00\uB9AC AI\uAC00 \uC77C\uC815 \uBCFC \uB54C \uAC19\uC774 \uBD10\uC694." })),
+                    React.createElement("textarea", { "data-ax-holidays": true, defaultValue: hol, onBlur: e => saveOrg({ holidays: e.target.value.split('\n').map(x => x.trim()).filter(Boolean) }), rows: 6, style: Object.assign(Object.assign({}, ui_1.inp), { fontFamily: 'inherit', resize: 'vertical' }), placeholder: "2027-02-06 \uC911\uAD6D \uCD98\uC808" })),
+                tab === 'perm' && admin && React.createElement(React.Fragment, null,
+                    React.createElement("div", { style: { fontSize: 13, color: ui_1.C.sub, padding: '12px 0 4px', display: 'flex', alignItems: 'center' } },
+                        "\uC5ED\uD560",
+                        React.createElement(ui_1.Tip, { t: "\uBCF4\uAE30: \uC77D\uAE30\uB9CC \u00B7 \uD3B8\uC9D1: \uC0B0\uCD9C\uBB3C\u00B7BOM \uACE0\uCE58\uAE30 \u00B7 \uC2B9\uC778: \uAD00\uBB38\u00B7\uC124\uACC4 \uBCC0\uACBD \uC2B9\uC778 \u00B7 \uAD00\uB9AC\uC790: \uC5C5\uBB34 \uAE30\uC900\u00B7\uAD8C\uD55C\uAE4C\uC9C0. \uAD00\uB9AC\uC790\uAC00 \uD55C \uBA85\uB3C4 \uC5C6\uC73C\uBA74 \uBAA8\uB450 \uAD00\uB9AC\uC790\uB85C \uBD10\uC694." })),
+                    Object.keys(roles).map(n => React.createElement("div", { key: n, className: "axs-line", "data-ax-role-row": n },
+                        React.createElement("span", { style: { flex: '1 1 160px', fontWeight: 600 } }, n),
+                        ['view', 'edit', 'approve', 'admin'].map(r => React.createElement("button", { key: r, "data-ax-role": r, onClick: () => saveOrg({ roles: Object.assign(Object.assign({}, roles), { [n]: r }) }), style: chip(roles[n] === r) }, exports.ROLE_LABEL[r])),
+                        React.createElement("button", { onClick: () => { const x = Object.assign({}, roles); delete x[n]; saveOrg({ roles: x }); }, style: ui_1.btn }, "\uBE7C\uAE30"))),
+                    React.createElement(RoleAdd, { onAdd: n => saveOrg({ roles: Object.assign(Object.assign({}, roles), { [n]: Object.keys(roles).length ? 'edit' : 'admin' }) }) })),
+                tab === 'info' && React.createElement(React.Fragment, null,
+                    React.createElement(Line, { t: "\uD310 \uBC88\uD638" },
+                        React.createElement("b", { "data-ax-ver": true }, props.ver)),
+                    React.createElement(Line, { t: "\uC544\uC774\uD15C" },
+                        props.items.length,
+                        "\uAC1C"),
+                    React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { margin: '12px 0 4px' }) }, "\uBC14\uB010 \uB0B4\uC5ED"),
+                    exports.CHANGES.map(c => React.createElement("div", { key: c[0], className: "axs-line" },
+                        React.createElement("b", { style: { width: 70 } }, c[0]),
+                        React.createElement("span", { style: { flex: 1, fontSize: 13, color: ui_1.C.sub } }, c[1]))))))));
+}
+function RoleAdd(props) {
+    const [n, setN] = React.useState('');
+    return React.createElement("div", { className: "axs-line" },
+        React.createElement("input", { "data-ax-role-new": true, value: n, onChange: e => setN(e.target.value), placeholder: "\uC774\uB984", style: Object.assign(Object.assign({}, ui_1.inp), { width: 180 }), onKeyDown: e => { if (e.key === 'Enter' && n.trim()) {
+                props.onAdd(n.trim());
+                setN('');
+            } } }),
+        React.createElement("button", { "data-ax-role-add": true, onClick: () => { if (n.trim()) {
+                props.onAdd(n.trim());
+                setN('');
+            } }, style: ui_1.primary }, "+ \uC0AC\uB78C"));
+}
+
+};
+__m["src/webparts/huromAxPlm/components/Gate.js"]=function(module,exports,require){"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.gateGap = void 0;
+exports.GatePill = GatePill;
+const React = __importStar(require("react"));
+const item_1 = require("src/webparts/huromAxPlm/model/item.js");
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
+const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
+// 관문 — 산출물 남은 것 + 기준 못 채운 것
+const gateGap = (p, s) => s.docs.filter(d => !(0, work_1.docOk)(p.docs[d.key])).length + (0, item_1.gateChecks)(p, s).filter(c => !c.ok).length;
+exports.gateGap = gateGap;
+function GatePill(props) {
+    const g = (0, exports.gateGap)(props.p, props.s);
+    const st = (0, work_1.gateState)(props.p, props.s);
+    if (st === 'approved')
+        return React.createElement("span", { "data-ax-gate-pill": "done", style: { fontSize: 12, fontWeight: 800, color: ui_1.C.ok } }, "\uC2B9\uC778\uB428");
+    return React.createElement("span", { "data-ax-gate-pill": g ? 'gap' : 'ok', title: g ? '산출물·기준 중 안 채운 것' : '산출물·기준 다 채움', style: { fontSize: 12, fontWeight: 800, borderRadius: 999, padding: '2px 9px', background: g ? 'rgba(248,113,113,.14)' : 'rgba(79,209,107,.14)', color: g ? ui_1.C.late : ui_1.C.ok, whiteSpace: 'nowrap' } }, g ? `부족 ${g}건` : '통과 가능');
+}
+
+};
+__m["src/webparts/huromAxPlm/components/Pull.js"]=function(module,exports,require){"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.earliest = earliest;
+exports.simulate = simulate;
+exports.PullSim = PullSim;
+exports.blocks = blocks;
+exports.Bottleneck = Bottleneck;
+exports.PastCard = PastCard;
+const React = __importStar(require("react"));
+// AX-PLM 1.0.148 출시일 당기기 · 병목 지도 · 비슷한 과거 모델 (심준보 2026-11-21 #ax-plm msg 11192967 '출시일은 무조건 당겨야 하고 과거 기반 학습' · 11193018 '1·2·3 좋네', 곽두팔 msg 11193197)
+//   원칙: 출시일은 당기는 쪽만(늦추는 안 없음). 못 맞추는 단계·금형·업체·인증을 빨갛게 + 당기는 방법 3개와 줄어드는 일수. 과거 경험 창고 숫자로 근거
+const ax_1 = require("src/webparts/huromAxPlm/model/ax.js");
+const item_1 = require("src/webparts/huromAxPlm/model/item.js");
+const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
+const sched_1 = require("src/webparts/huromAxPlm/model/sched.js");
+const work_1 = require("src/webparts/huromAxPlm/model/work.js");
+const history_1 = require("src/webparts/huromAxPlm/model/history.js");
+const Dash_1 = require("src/webparts/huromAxPlm/components/Dash.js");
+const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
+// 남은 단계를 지금부터 표준 일수로 하면 언제 끝나나 (지금 단계는 남은 산출물 비율만큼)
+function earliest(p, now = (0, ax_1.today)()) {
+    const st = (0, work_1.stagesOf)(p);
+    const ck = (0, work_1.curIdx)(p);
+    const ds = sched_1.STD_DAYS[(0, devtype_1.typeOf)(p)] || sched_1.STD_DAYS.own;
+    const o = {};
+    let d = now;
+    st.forEach((s, k) => {
+        if (k > 5)
+            return;
+        if (k < ck) {
+            o[s.id] = (p.actual || {})[s.id] || now;
+            return;
+        }
+        const left = k === ck ? s.docs.filter(x => !(0, work_1.docOk)(p.docs[x.key])).length / Math.max(1, s.docs.length) : 1;
+        d = (0, sched_1.addDays)(d, Math.ceil(ds[k] * left));
+        o[s.id] = d;
+    });
+    return o;
+}
+function simulate(p, pull, now = (0, ax_1.today)()) {
+    const px = p;
+    const t = (0, devtype_1.typeOf)(p);
+    const ti = (0, devtype_1.typeInfo)(t);
+    const target = (0, sched_1.addDays)(p.target || (0, sched_1.addDays)(now, 300), -pull);
+    const plan = (0, sched_1.backPlan)(target, t).plan;
+    const ea = earliest(p, now);
+    const st = (0, work_1.stagesOf)(p);
+    const ck = (0, work_1.curIdx)(p);
+    const miss = [];
+    st.forEach((s, k) => { if (k < ck || k > 5)
+        return; const short = (0, sched_1.diffDays)(plan[s.id], ea[s.id]); if (short > 0)
+        miss.push({ what: `${s.no} ${s.short || s.name}`, need: plan[s.id], short }); });
+    const s4 = st[3];
+    const moldEnd = s4 ? plan[s4.id] : target;
+    (px.molds || []).filter(m => !(0, item_1.moldT1ok)(m)).forEach(m => { const short = (0, sched_1.diffDays)(moldEnd, (0, sched_1.addDays)(now, 45)); if (short > 0)
+        miss.push({ what: `금형 ${m.no} (${m.vendor}) T1`, need: moldEnd, short }); });
+    (px.vendors || []).forEach(v => { const last = v.samples.slice(-1)[0]; if (last && last.result === '합격')
+        return; const s3 = st[2]; const end = s3 ? plan[s3.id] : target; const short = (0, sched_1.diffDays)(end, (0, sched_1.addDays)(now, 30)); if (short > 0)
+        miss.push({ what: `${v.name} 샘플 합격`, need: end, short }); });
+    (px.certs || []).filter(c => c.status !== '취득').forEach(c => { const short = (0, sched_1.diffDays)((0, sched_1.addDays)(target, -14), (0, sched_1.addDays)(now, 60)); if (short > 0)
+        miss.push({ what: `인증 ${c.name}`, need: (0, sched_1.addDays)(target, -14), short }); });
+    miss.sort((a, b) => b.short - a.short);
+    // 당기는 방법 — 과거 경험(지연 1순위 인증 등)으로 근거
+    const ds = sched_1.STD_DAYS[t] || sched_1.STD_DAYS.own;
+    const cs = (0, history_1.causes)();
+    const certRank = cs.map(c => c.type).indexOf('인증');
+    const ways = [];
+    if (ck < 5)
+        ways.push({ id: 'overlap', what: `${st[ck].no}·${st[ck + 1].no} 단계 겹쳐 진행`, days: Math.round(ds[Math.min(ck + 1, 5)] * 0.3), why: '다음 단계 산출물(사양·견적·일정)을 지금 단계 관문 전에 미리 시작' });
+    if (ti.mold && ck <= 3)
+        ways.push({ id: 'mold', what: '금형 동시 발주', days: 21, why: '부품별 순차 발주 대신 T0를 한 번에 — 시사출 차수 겹치기' });
+    if (ck <= 4)
+        ways.push({ id: 'cert', what: '인증 선행(1st 샘플 Pre-test)', days: 42, why: certRank === 0 ? `과거 지연 원인 1순위가 인증(${cs[0].n}건) — 샘플 단계에서 KC·전자파 미리 시험` : 'KC·전자파 Pre-test를 샘플 단계에서' });
+    if (!ti.mold && ck <= 2)
+        ways.push({ id: 'dual', what: '업체 2곳 동시 샘플', days: 14, why: '샘플 불합격 때 다시 고르는 시간 없앰' });
+    ways.sort((a, b) => b.days - a.days);
+    return { target, plan, miss, ways: ways.slice(0, 3) };
+}
+function PullSim(props) {
+    const { p } = props;
+    const [n, setN] = React.useState(30);
+    const r = simulate(p, n);
+    const save = r.ways.reduce((a, w) => a + w.days, 0);
+    const pastAvg = (0, history_1.avgMonths)((0, history_1.similar)(p, 3));
+    return (React.createElement("div", { "data-ax-pull": true, style: Object.assign(Object.assign({}, ui_1.card), { padding: '14px 16px', margin: '0 0 14px', borderColor: 'rgba(79,209,107,.45)' }) },
+        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
+            React.createElement("b", { style: { fontSize: 16 } }, "\uCD9C\uC2DC\uC77C \uB2F9\uAE30\uAE30"),
+            React.createElement(ui_1.Tip, { t: "\uCD9C\uC2DC\uC77C\uC740 \uB2F9\uAE30\uB294 \uCABD\uB9CC \uBD10\uC694. \uB2F9\uAE30\uBA74 \uBABB \uB9DE\uCD94\uB294 \uB2E8\uACC4\u00B7\uAE08\uD615\u00B7\uC5C5\uCCB4\u00B7\uC778\uC99D\uC774 \uBE68\uAC1B\uAC8C \uB728\uACE0, \uB2F9\uAE30\uB294 \uBC29\uBC95\uACFC \uC904\uC5B4\uB4DC\uB294 \uC77C\uC218\uAC00 \uB098\uC640\uC694. \u300C\uC774 \uB0A0\uC9DC\uB85C\u300D\uB97C \uB204\uB974\uBA74 \uCD9C\uC2DC \uBAA9\uD45C\uC640 \uB2E8\uACC4 \uACC4\uD68D\uC774 \uBC14\uB00C\uC5B4\uC694." }),
+            React.createElement("span", { style: { fontSize: 13, color: ui_1.C.sub } },
+                "\uC9C0\uAE08 ",
+                (0, ui_1.md)(p.target),
+                " \u2192 ",
+                React.createElement("b", { "data-ax-pull-target": true, style: { color: ui_1.C.accent } }, (0, ui_1.md)(r.target)),
+                " (",
+                n,
+                "\uC77C \uB2F9\uAE40)"),
+            React.createElement("span", { style: { flex: 1 } }),
+            React.createElement("button", { onClick: props.onClose, style: ui_1.btn }, "\uB2EB\uAE30")),
+        React.createElement("input", { "data-ax-pull-n": true, type: "range", min: 0, max: 180, step: 7, value: n, onChange: e => setN(Number(e.target.value)), style: { width: '100%', margin: '12px 0 4px', accentColor: ui_1.C.accent } }),
+        React.createElement("div", { className: "axw-main", style: { gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', marginTop: 8 } },
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 13, fontWeight: 800, marginBottom: 6, color: r.miss.length ? ui_1.C.late : ui_1.C.ok } }, r.miss.length ? `못 맞추는 것 ${r.miss.length}` : '다 맞출 수 있어요'),
+                r.miss.slice(0, 6).map((m, i) => React.createElement("div", { key: i, "data-ax-pull-miss": true, style: { fontSize: 13.5, padding: '4px 0', display: 'flex', gap: 8 } },
+                    React.createElement("span", { style: { color: ui_1.C.late, fontWeight: 800, width: 54, flex: '0 0 auto' } },
+                        "-",
+                        m.short,
+                        "\uC77C"),
+                    React.createElement("span", { style: { flex: 1, minWidth: 0 } }, m.what),
+                    React.createElement("span", { style: { color: ui_1.C.faint, fontSize: 12.5 } },
+                        (0, ui_1.md)(m.need),
+                        "\uAE4C\uC9C0")))),
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 13, fontWeight: 800, marginBottom: 6 } },
+                    "\uB2F9\uAE30\uB294 \uBC29\uBC95 ",
+                    r.ways.length,
+                    " \u00B7 \uB2E4 \uD558\uBA74 \uC57D ",
+                    React.createElement("span", { style: { color: ui_1.C.accent } },
+                        save,
+                        "\uC77C")),
+                r.ways.map(w => React.createElement("div", { key: w.id, "data-ax-pull-way": w.id, style: { fontSize: 13.5, padding: '4px 0', display: 'flex', gap: 8 } },
+                    React.createElement("span", { style: { color: ui_1.C.accent, fontWeight: 800, width: 54, flex: '0 0 auto' } },
+                        "+",
+                        w.days,
+                        "\uC77C"),
+                    React.createElement("span", { style: { flex: 1, minWidth: 0 } },
+                        w.what,
+                        React.createElement(ui_1.Tip, { t: w.why })))),
+                pastAvg && React.createElement("div", { style: { fontSize: 12.5, color: ui_1.C.faint, marginTop: 6 } },
+                    "\uBE44\uC2B7\uD55C \uACFC\uAC70 \uBAA8\uB378 \uD3C9\uADE0 ",
+                    pastAvg,
+                    "\uAC1C\uC6D4"))),
+        React.createElement("div", { style: { display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' } },
+            React.createElement("button", { "data-ax-pull-apply": true, disabled: !n, onClick: () => props.onApply(r.target, r.plan), style: Object.assign(Object.assign({}, ui_1.primary), { opacity: n ? 1 : 0.4 }) },
+                "\uC774 \uB0A0\uC9DC\uB85C (",
+                (0, ui_1.md)(r.target),
+                ")"),
+            React.createElement(Dash_1.AiButton, { pid: p.id, kinds: ['s_pull'], label: "AI\uC5D0\uAC8C \uB2F9\uAE30\uB294 \uBC29\uBC95 \uB354 \uBB3B\uAE30", preset: `${n}일 당기기 — 출시 ${r.target}` }))));
+}
+function blocks(p, now = (0, ax_1.today)()) {
+    const st = (0, work_1.stagesOf)(p);
+    const ck = (0, work_1.curIdx)(p);
+    const o = {};
+    st.forEach((s, k) => {
+        if (k < ck || k > ck + 1)
+            return;
+        s.docs.forEach(d => {
+            const v = p.docs[d.key] || {};
+            if ((0, work_1.docOk)(v))
+                return;
+            const due = v.due || (p.plan || {})[s.id];
+            const late = due ? Math.max(0, (0, sched_1.diffDays)(due, now)) : 0;
+            const who = v.ai ? 'AI' : v.who || '담당 없음';
+            const b = o[who] = o[who] || { who, items: [], late: 0 };
+            b.items.push(d.label);
+            b.late = Math.max(b.late, late);
+        });
+    });
+    return Object.keys(o).map(k => o[k]).sort((a, b) => (b.late - a.late) || (b.items.length - a.items.length));
+}
+function Bottleneck(props) {
+    const bs = blocks(props.p).slice(0, 5);
+    const top = bs[0] ? bs[0].late : 0;
+    return (React.createElement("div", { className: "axo-card", "data-axo-block": true, style: { cursor: 'pointer' }, onClick: props.onGo },
+        React.createElement("div", { className: "axo-h" },
+            "\uBCD1\uBAA9",
+            React.createElement(ui_1.Tip, { t: "\uC9C0\uAE08 \uB2E8\uACC4\uC640 \uB2E4\uC74C \uB2E8\uACC4\uC5D0\uC11C \uC548 \uB05D\uB09C \uC0B0\uCD9C\uBB3C\uC744 \uB2F4\uB2F9\uBCC4\uB85C \uBB36\uC5C8\uC5B4\uC694. \uCD9C\uC2DC\uC77C\uC744 \uAC00\uC7A5 \uB9CE\uC774 \uB2A6\uCD94\uB294(\uAC00\uC7A5 \uB2A6\uC740) \uB9C9\uD798\uC774 \uB9E8 \uC704\uC608\uC694." })),
+        !bs.length && React.createElement("div", { className: "axo-sub" }, "\uB9C9\uD78C \uACF3 \uC5C6\uC74C"),
+        bs.map(b => React.createElement("div", { key: b.who, className: "axo-li", "data-axo-block-row": b.who, style: { display: 'flex', gap: 8 } },
+            React.createElement("span", { style: { width: 70, flex: '0 0 auto', fontWeight: 800, color: b.late ? ui_1.C.late : ui_1.C.sub } }, b.late ? `${b.late}일` : '제때'),
+            React.createElement("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' } },
+                React.createElement("b", { style: { color: ui_1.C.text } }, b.who),
+                " \u00B7 ",
+                b.items.length,
+                "\uAC1C \u2014 ",
+                b.items.join(', ')))),
+        top > 0 && React.createElement("div", { className: "axo-li", style: { color: ui_1.C.late } },
+            "\uC774\uB300\uB85C\uBA74 \uCD9C\uC2DC \uC57D ",
+            top,
+            "\uC77C \uBC00\uB9BC")));
+}
+function PastCard(props) {
+    const sim = (0, history_1.similar)(props.p, 3);
+    const all = (0, history_1.history)();
+    const warn = sim.reduce((a, m) => a.concat(m.issues.filter(i => /구조|부품|시장불량|인증|전장|초도/.test(i.type)).map(i => `${m.name}: ${i.text}`)), []).slice(0, 3);
+    return (React.createElement("div", { className: "axo-card", "data-axo-past": true },
+        React.createElement("div", { className: "axo-h" },
+            "\uBE44\uC2B7\uD55C \uACFC\uAC70 \uBAA8\uB378",
+            React.createElement(ui_1.Tip, { t: `경험 창고 ${all.length}개 모델에서 같은 상품군·갈래를 골랐어요. AI가 일정·DR·리스크를 쓸 때 이 기록을 같이 봐요. 끝난 아이템은 자동으로 쌓여요.` })),
+        !sim.length && React.createElement("div", { className: "axo-sub" }, "\uACBD\uD5D8 \uCC3D\uACE0\uAC00 \uBE44\uC5B4 \uC788\uC5B4\uC694"),
+        sim.map(m => React.createElement("div", { key: m.name, className: "axo-li", "data-axo-past-row": true },
+            React.createElement("b", { style: { color: ui_1.C.text } }, m.name),
+            " \u00B7 ",
+            m.months ? `${m.months}개월` : '기간 모름',
+            m.delayDays ? React.createElement("span", { style: { color: ui_1.C.late } },
+                " \u00B7 ",
+                m.delayDays,
+                "\uC77C \uC9C0\uC5F0") : '')),
+        warn.map((w, i) => React.createElement("div", { key: i, className: "axo-li", "data-axo-past-warn": true, style: { color: ui_1.C.soon } },
+            "\u26A0 ",
+            w))));
 }
 
 };
@@ -7693,7 +8768,7 @@ function withAi(p0) {
 }
 
 };
-__m["src/webparts/huromAxPlm/components/Shell.js"]=function(module,exports,require){"use strict";
+__m["src/webparts/huromAxPlm/components/Mates.js"]=function(module,exports,require){"use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -7728,405 +8803,113 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CHANGES = exports.pushRecent = exports.readRecent = exports.SHELL_CSS = exports.MENUS = exports.isAdmin = exports.SetCtx = exports.meId = exports.ORG_ID = exports.ROLE_LABEL = void 0;
-exports.useSettings = useSettings;
-exports.Side = Side;
-exports.ItemSelect = ItemSelect;
-exports.SearchBox = SearchBox;
-exports.GatesView = GatesView;
-exports.TeamView = TeamView;
-exports.SettingsView = SettingsView;
+exports.TAB_MATES = exports.gateGap = exports.GatePill = void 0;
+exports.MateStrip = MateStrip;
+exports.Brief = Brief;
+exports.Dock = Dock;
 const React = __importStar(require("react"));
 const ai_1 = require("src/webparts/huromAxPlm/model/ai.js");
 const devtype_1 = require("src/webparts/huromAxPlm/model/devtype.js");
 const work_1 = require("src/webparts/huromAxPlm/model/work.js");
 const team_1 = require("src/webparts/huromAxPlm/model/team.js");
+const Dash_1 = require("src/webparts/huromAxPlm/components/Dash.js");
+const Today_1 = require("src/webparts/huromAxPlm/components/Today.js");
+const Office_1 = require("src/webparts/huromAxPlm/components/Office.js");
+const Shell_1 = require("src/webparts/huromAxPlm/components/Shell.js");
 const ui_1 = require("src/webparts/huromAxPlm/components/ui.js");
-exports.ROLE_LABEL = { view: '보기', edit: '편집', approve: '승인', admin: '관리자' };
-exports.ORG_ID = 'org';
-const meId = (who) => 'me:' + who.replace(/\s/g, '');
-exports.meId = meId;
-const blank = (id, name) => ({ id, code: id, name, updated: new Date().toISOString() });
-exports.SetCtx = React.createContext(undefined);
-const same = (a, b) => !!a && !!b && a.replace(/\s/g, '') === b.replace(/\s/g, '');
-const isAdmin = (org, who) => { const r = org.roles || {}; const admins = Object.keys(r).filter(k => r[k] === 'admin'); return !admins.length || admins.some(k => same(k, who)); };
-exports.isAdmin = isAdmin;
-function useSettings(store, who, onErr) {
-    const [org, setOrg] = React.useState(() => blank(exports.ORG_ID, '회사 설정'));
-    const [me, setMe] = React.useState(() => blank((0, exports.meId)(who), who + ' 설정'));
-    React.useEffect(() => {
-        if (!store)
-            return;
-        store.list().then(rows => { const o = rows.filter(r => r.id === exports.ORG_ID)[0]; const m = rows.filter(r => r.id === (0, exports.meId)(who))[0]; if (o)
-            setOrg(o); if (m)
-            setMe(m); }, e => onErr('설정을 못 읽었어요 — ' + String((e && e.message) || e)));
-    }, [store, who]);
-    const save = (cur, p, set) => {
-        const next = Object.assign(Object.assign(Object.assign({}, cur), p), { updated: new Date().toISOString() });
-        set(next);
-        if (store)
-            store.save(next).then(r => set(Object.assign(Object.assign({}, next), { spId: r.spId, spVer: r.spVer })), e => onErr('설정을 저장 못 했어요 — ' + String((e && e.message) || e)));
-    };
-    return { org, me, admin: (0, exports.isAdmin)(org, who), saveOrg: p => save(org, p, setOrg), saveMe: p => save(me, p, setMe) };
-}
-const ICON = {
-    home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z', item: 'M4 4h16v16H4zM4 9h16M9 9v11',
-    bom: 'M5 5h4v4H5zM15 5h4v4h-4zM10 15h4v4h-4zM7 9v3h10V9M12 12v3', ecr: 'M4 8h13l-3-3M20 16H7l3 3',
-    gate: 'M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7zM9 12l2 2 4-4', team: 'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20c0-3 3-5 6-5s6 2 6 5M17 11a2.5 2.5 0 1 0 0-5M21 19c0-2.4-1.6-4-4-4.5',
-    notes: 'M5 4h14v11l-5 5H5zM14 20v-5h5', set: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z'
+var Gate_1 = require("src/webparts/huromAxPlm/components/Gate.js");
+Object.defineProperty(exports, "GatePill", { enumerable: true, get: function () { return Gate_1.GatePill; } });
+Object.defineProperty(exports, "gateGap", { enumerable: true, get: function () { return Gate_1.gateGap; } });
+// 탭마다 붙는 AI (BOM 탭 = 원가·구매, 설계 변경 = 기구설계·원가 …)
+exports.TAB_MATES = {
+    work: ['subpm', 'sched'], bom: ['cost', 'buy', 'mech'], vendor: ['buy', 'src'], doc: ['papr', 'mech'], mold: ['mold'], ecr: ['mech', 'cost'], cert: ['cert', 'food'],
+    lanes: ['sched', 'subpm'], log: ['subpm', 'field'], gate: ['subpm', 'sched']
 };
-exports.MENUS = [['home', '홈'], ['item', '아이템'], ['bom', 'BOM'], ['ecr', '설계 변경'], ['gate', '관문 승인'], ['team', 'AI 팀원'], ['notes', '포스트잇'], ['set', '설정']];
-exports.SHELL_CSS = `
-.axs{display:flex;min-height:100vh}
-.axs-side{width:208px;flex:0 0 208px;background:#0A0A0B;border-right:1px solid ${ui_1.C.line};position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:12px 8px;z-index:20;transition:width .18s,flex-basis .18s}
-.axs-side.fold{width:60px;flex-basis:60px}
-.axs-side.fold .axs-t{display:none}
-.axs-logo{display:flex;align-items:center;gap:8px;padding:6px 10px 16px;font-weight:800;font-size:15px;white-space:nowrap}
-.axs-m{display:flex;align-items:center;gap:11px;width:100%;border:none;background:transparent;color:${ui_1.C.sub};padding:9px 11px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;white-space:nowrap;margin-bottom:2px;position:relative}
-.axs-m:hover{background:${ui_1.C.hover};color:${ui_1.C.text}}
-.axs-m.on{background:${ui_1.C.accentBg};color:${ui_1.C.accent}}
-.axs-m svg{flex:0 0 18px}
-.axs-n{margin-left:auto;font-size:11.5px;font-weight:800;color:${ui_1.C.soon}}
-.axs-side.fold .axs-n{position:absolute;top:3px;right:5px;margin:0}
-.axs-body{flex:1;min-width:0}
-.axs-top{height:54px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid ${ui_1.C.line};background:${ui_1.C.card};position:sticky;top:0;z-index:15}
-.axs-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:40;background:${ui_1.C.card};border:1px solid ${ui_1.C.line2};border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.55);padding:8px;width:340px;max-width:calc(100vw - 24px)}
-.axs-opt{display:flex;align-items:center;gap:8px;width:100%;border:none;background:transparent;color:${ui_1.C.text};padding:8px 9px;border-radius:7px;font-size:13.5px;cursor:pointer;text-align:left}
-.axs-opt:hover,.axs-opt.on{background:${ui_1.C.hover}}
-.axs-chip{border:1px solid ${ui_1.C.line2};background:transparent;color:${ui_1.C.sub};border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis}
-.axs-chip:hover{color:${ui_1.C.text};border-color:${ui_1.C.faint}}
-.axs-burger{display:none}
-.axs-set{display:grid;grid-template-columns:180px minmax(0,1fr);gap:16px;align-items:start}
-.axs-tog{width:38px;height:22px;border-radius:11px;border:none;cursor:pointer;position:relative;flex:0 0 auto;transition:background .15s}
-.axs-tog::after{content:'';position:absolute;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
-.axs-tog.on{background:${ui_1.C.accent}}.axs-tog.on::after{left:19px}
-.axs-tog.off{background:#3A3A40}.axs-tog.off::after{left:3px}
-.axs-line{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid ${ui_1.C.line};flex-wrap:wrap}
-.axs-line:first-child{border-top:none}
-.axs-office{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
-.axw-light{filter:invert(1) hue-rotate(180deg)}
-.axw-light img{filter:invert(1) hue-rotate(180deg)}
-@media (max-width:820px){
-  .axs-side{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);transition:transform .18s;width:230px !important;flex-basis:230px !important;box-shadow:8px 0 30px rgba(0,0,0,.5)}
-  .axs-side.open{transform:none}
-  .axs-side .axs-t{display:inline !important}
-  .axs-burger{display:inline-flex}
-  .axs-top{padding:0 10px;gap:6px}
-  .axs-recent,.axs-me{display:none !important}
-  .axs-set{grid-template-columns:minmax(0,1fr)}
-}
-@media (max-width:520px){
-  .axs-isel{flex:1 1 auto !important}
-  .axs-grp{display:none}
-  .axs-srch{flex:0 0 38px !important}
-  .axs-srch input{color:transparent;padding-right:0}
-  .axs-srch input::placeholder{color:transparent}
-  .axs-srch:focus-within{position:absolute !important;left:8px;right:8px;max-width:none !important;z-index:30}
-  .axs-srch:focus-within input{color:inherit}
-  .axs-srch:focus-within input::placeholder{color:#85858C}
-}`;
-const Ico = (props) => React.createElement("svg", { width: "18", height: "18", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round" },
-    React.createElement("path", { d: props.d }));
-function Side(props) {
-    return (React.createElement("aside", { "data-ax-side": true, className: 'axs-side' + (props.fold ? ' fold' : '') + (props.open ? ' open' : '') },
-        React.createElement("div", { className: "axs-logo" },
-            React.createElement("span", { style: { width: 26, height: 26, borderRadius: 8, background: ui_1.C.accent, color: ui_1.C.inv, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900 } }, "AX"),
-            React.createElement("span", { className: "axs-t" }, "AX-PLM")),
-        exports.MENUS.map(m => React.createElement("button", { key: m[0], "data-ax-menu": m[0], title: m[1], className: 'axs-m' + (props.menu === m[0] ? ' on' : ''), onClick: () => props.go(m[0]), style: m[0] === 'set' ? { marginTop: 'auto' } : undefined },
-            React.createElement(Ico, { d: ICON[m[0]] }),
-            React.createElement("span", { className: "axs-t" }, m[1]),
-            props.counts[m[0]] ? React.createElement("span", { className: "axs-n" }, props.counts[m[0]]) : null)),
-        React.createElement("button", { "data-ax-fold": true, className: "axs-m axw-hide-sm", title: props.fold ? '메뉴 펼치기' : '메뉴 접기', onClick: () => props.setFold(!props.fold) },
-            React.createElement(Ico, { d: props.fold ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6' }),
-            React.createElement("span", { className: "axs-t" }, "\uC811\uAE30"))));
-}
-// ───────── 위쪽 바 — 아이템 선택 칸(이름·모델명 검색, 원액기군/상품군) · 최근 본 3개 · 검색 · 알림 종
-const RECENT = 'axplm-recent';
-const readRecent = () => { try {
-    return JSON.parse(window.localStorage.getItem(RECENT) || '[]');
-}
-catch (e) {
-    return [];
-} };
-exports.readRecent = readRecent;
-const pushRecent = (id) => { try {
-    window.localStorage.setItem(RECENT, JSON.stringify([id].concat((0, exports.readRecent)().filter(x => x !== id)).slice(0, 4)));
-}
-catch (e) { /* 안 돼도 됨 */ } };
-exports.pushRecent = pushRecent;
-const codeOf = (p) => p.itemCode || '';
-const groupOf = (p) => ai_1.BRANCH_LABEL[(0, ai_1.branchOf)((0, devtype_1.typeOf)(p))] + '군';
-function ItemSelect(props) {
-    const [open, setOpen] = React.useState(false);
-    const [q, setQ] = React.useState('');
-    const ref = React.useRef(null);
-    React.useEffect(() => { if (!open)
-        return undefined; const f = (e) => { if (ref.current && !ref.current.contains(e.target))
-        setOpen(false); }; document.addEventListener('pointerdown', f); return () => document.removeEventListener('pointerdown', f); }, [open]);
-    const k = q.trim().toLowerCase();
-    const hit = props.items.filter(p => !k || (p.name + ' ' + codeOf(p)).toLowerCase().indexOf(k) >= 0);
-    const groups = ['원액기군', '상품군'].map(g => [g, hit.filter(p => groupOf(p) === g)]).filter(g => g[1].length);
-    const pick = (id) => { props.onPick(id); setOpen(false); setQ(''); };
-    const c = props.cur;
-    return (React.createElement("div", { ref: ref, className: "axs-isel", style: { position: 'relative', minWidth: 0, flex: '0 1 300px' } },
-        React.createElement("button", { "data-ax-isel": true, onClick: () => setOpen(!open), style: Object.assign(Object.assign({}, ui_1.btn), { borderRadius: 9, width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: ui_1.C.hover }) },
-            c ? React.createElement(React.Fragment, null,
-                React.createElement("span", { className: "axs-grp", style: { fontSize: 11, color: ui_1.C.faint, fontWeight: 700 } }, groupOf(c)),
-                React.createElement("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' } }, c.name),
-                (0, work_1.projLate)(c) > 0 && React.createElement(ui_1.Dot, { s: "late", size: 6 })) : React.createElement("span", { style: { flex: 1, textAlign: 'left', color: ui_1.C.faint } }, "\uC544\uC774\uD15C \uACE0\uB974\uAE30"),
-            React.createElement("span", { style: { color: ui_1.C.faint } }, "\u25BE")),
-        open && React.createElement("div", { className: "axs-pop", "data-ax-isel-pop": true },
-            React.createElement("input", { "data-ax-isel-q": true, autoFocus: true, value: q, onChange: e => setQ(e.target.value), placeholder: "\uC774\uB984\u00B7\uBAA8\uB378\uBA85\uC73C\uB85C \uCC3E\uAE30", style: Object.assign(Object.assign({}, ui_1.inp), { marginBottom: 6 }), onKeyDown: e => { if (e.key === 'Enter' && hit[0])
-                    pick(hit[0].id); if (e.key === 'Escape')
-                    setOpen(false); } }),
-            React.createElement("div", { style: { maxHeight: 360, overflowY: 'auto' } },
-                !hit.length && React.createElement("div", { style: { padding: 10, fontSize: 13, color: ui_1.C.faint } }, "\uC5C6\uC5B4\uC694"),
-                groups.map(g => React.createElement("div", { key: g[0] },
-                    React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { padding: '8px 9px 4px' }) },
-                        g[0],
-                        " ",
-                        g[1].length),
-                    g[1].map(p => React.createElement("button", { key: p.id, "data-ax-isel-opt": p.id, className: 'axs-opt' + (c && c.id === p.id ? ' on' : ''), onClick: () => pick(p.id) },
-                        React.createElement("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, p.name),
-                        codeOf(p) && React.createElement("span", { style: { fontSize: 12, color: ui_1.C.faint } }, codeOf(p)),
-                        (0, work_1.projLate)(p) > 0 && React.createElement(ui_1.Dot, { s: "late", size: 6 })))))))));
-}
-function SearchBox(props) {
-    const [q, setQ] = React.useState('');
-    const [open, setOpen] = React.useState(false);
-    const ref = React.useRef(null);
-    React.useEffect(() => { if (!open)
-        return undefined; const f = (e) => { if (ref.current && !ref.current.contains(e.target))
-        setOpen(false); }; document.addEventListener('pointerdown', f); return () => document.removeEventListener('pointerdown', f); }, [open]);
-    const k = q.trim().toLowerCase();
-    const hits = [];
-    if (k) {
-        exports.MENUS.forEach(m => { if (m[1].toLowerCase().indexOf(k) >= 0)
-            hits.push({ kind: '메뉴', text: m[1], sub: '', go: () => props.onMenu(m[0]) }); });
-        props.items.forEach(p => {
-            if ((p.name + ' ' + codeOf(p)).toLowerCase().indexOf(k) >= 0)
-                hits.push({ kind: '아이템', text: p.name, sub: codeOf(p) || groupOf(p), go: () => props.onItem(p.id) });
-            (p.parts || []).forEach(x => { if ((x.no + ' ' + x.name).toLowerCase().indexOf(k) >= 0)
-                hits.push({ kind: '부품', text: `${x.no} ${x.name}`, sub: p.name, go: () => props.onPart(p.id, 'bom') }); });
-            (p.ecrs || []).forEach(e => { if ((e.no + ' ' + e.title).toLowerCase().indexOf(k) >= 0)
-                hits.push({ kind: '설계 변경', text: `${e.no} ${e.title}`, sub: `${p.name} · ${e.status}`, go: () => props.onPart(p.id, 'ecr') }); });
-        });
-    }
-    return (React.createElement("div", { ref: ref, className: "axs-srch", style: { position: 'relative', flex: '1 1 220px', minWidth: 0, maxWidth: 380 } },
-        React.createElement("input", { "data-ax-search": true, value: q, onChange: e => { setQ(e.target.value); setOpen(true); }, onFocus: () => setOpen(true), placeholder: "\uCC3E\uAE30 \u2014 \uC544\uC774\uD15C\u00B7\uBD80\uD488\u00B7\uC124\uACC4 \uBCC0\uACBD", onKeyDown: e => { if (e.key === 'Enter' && hits[0]) {
-                hits[0].go();
-                setOpen(false);
-                setQ('');
-            } if (e.key === 'Escape')
-                setOpen(false); }, style: Object.assign(Object.assign({}, ui_1.inp), { borderRadius: 9, paddingLeft: 30, background: ui_1.C.hover }) }),
-        React.createElement("span", { style: { position: 'absolute', left: 10, top: 7, color: ui_1.C.faint, pointerEvents: 'none' } },
-            React.createElement(Ico, { d: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4" })),
-        open && k && React.createElement("div", { className: "axs-pop", "data-ax-search-pop": true, style: { width: '100%', minWidth: 280 } },
-            !hits.length && React.createElement("div", { style: { padding: 10, fontSize: 13, color: ui_1.C.faint } }, "\uCC3E\uC740 \uAC83 \uC5C6\uC74C"),
-            hits.slice(0, 10).map((h, i) => React.createElement("button", { key: i, "data-ax-search-hit": h.kind, className: "axs-opt", onClick: () => { h.go(); setOpen(false); setQ(''); } },
-                React.createElement("span", { style: { fontSize: 11, color: ui_1.C.faint, fontWeight: 700, width: 54, flex: '0 0 auto' } }, h.kind),
-                React.createElement("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, h.text),
-                React.createElement("span", { style: { fontSize: 12, color: ui_1.C.faint, whiteSpace: 'nowrap' } }, h.sub))))));
-}
-// ───────── 관문 승인 — 전체 아이템의 관문을 한 화면에 (승인 대기 먼저)
-function GatesView(props) {
-    const rows = [];
-    props.items.forEach(p => (0, work_1.stagesOf)(p).forEach((s, k) => { if (s.gate)
-        rows.push({ p, k, gate: s.gate, st: (0, work_1.gateState)(p, s) }); }));
-    const order = { requested: 0, rejected: 1, none: 2, approved: 3 };
-    rows.sort((a, b) => (order[a.st] - order[b.st]) || a.p.name.localeCompare(b.p.name));
-    const word = { requested: '승인 대기', rejected: '반려됨', none: '요청 전', approved: '승인됨' };
-    const [f, setF] = React.useState('open');
-    const list = rows.filter(r => f === 'all' || r.st !== 'approved');
-    return (React.createElement("div", { "data-ax-gates-all": true },
-        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 } },
-            React.createElement("h1", { style: { fontSize: 20, fontWeight: 700, margin: 0 } }, "\uAD00\uBB38 \uC2B9\uC778"),
-            React.createElement(ui_1.Tip, { t: "\uBAA8\uB4E0 \uC544\uC774\uD15C\uC758 G1~G5 \uAD00\uBB38\uC774\uC5D0\uC694. \uC2B9\uC778 \uB300\uAE30\uAC00 \uB9E8 \uC704, \uB204\uB974\uBA74 \uADF8 \uAD00\uBB38 \uD654\uBA74\uC73C\uB85C \uAC00\uC694." }),
-            React.createElement("span", { style: { flex: 1 } }),
-            ['open', 'all'].map(x => React.createElement("button", { key: x, "data-ax-gates-f": x, onClick: () => setF(x), style: Object.assign(Object.assign({}, ui_1.btn), { background: f === x ? ui_1.C.text : ui_1.C.card, color: f === x ? ui_1.C.inv : ui_1.C.sub }) }, x === 'open' ? '남은 것' : '전체'))),
-        React.createElement("div", { style: ui_1.card },
-            !list.length && React.createElement("div", { style: { padding: 20, color: ui_1.C.faint } }, "\uB0A8\uC740 \uAD00\uBB38 \uC5C6\uC74C"),
-            list.map((r, i) => React.createElement("div", { key: i, className: "axw-row", "data-ax-gates-row": r.st, onClick: () => props.onOpen(r.p.id, r.k) },
-                React.createElement(ui_1.Dot, { s: r.st === 'approved' ? 'done' : r.st === 'requested' ? 'wait' : r.st === 'rejected' ? 'late' : 'open' }),
-                React.createElement("span", { style: { width: 120, flex: '0 0 auto', fontWeight: 700 } }, r.gate.split(' ')[0]),
-                React.createElement("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
-                    r.p.name,
-                    " ",
-                    React.createElement("span", { style: { color: ui_1.C.faint } },
-                        "\u00B7 ",
-                        r.gate.split(' ').slice(1).join(' '))),
-                React.createElement("span", { style: { fontSize: 12.5, fontWeight: 700, color: r.st === 'requested' ? ui_1.C.soon : r.st === 'rejected' ? ui_1.C.late : r.st === 'approved' ? ui_1.C.ok : ui_1.C.faint } }, word[r.st]),
-                React.createElement("span", { className: "axw-hide-sm", style: { fontSize: 12.5, color: ui_1.C.faint, width: 90, textAlign: 'right' } },
-                    "\uC2B9\uC778\uC790 ",
-                    (props.items.filter(x => x.id === r.p.id)[0] || r.p).approver || '없음'))))));
-}
-// ───────── AI 팀원 — 부문별 32명, 지금 아이템 기준 실제 상태 (연출 없음)
-function TeamView(props) {
-    const set = React.useContext(exports.SetCtx);
-    const p = props.p;
-    if (!p)
-        return React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { padding: 24, color: ui_1.C.faint }) }, "\uC544\uC774\uD15C\uC774 \uC5C6\uC5B4\uC694");
-    const team = (0, team_1.teamOf)(p);
+function MateStrip(props) {
+    const set = React.useContext(Shell_1.SetCtx);
     const off = (set && set.org.aiOff) || {};
-    const W = { run: '일하는 중', review: '확인 대기', idle: '대기', off: '해당 없음' };
-    const allJobs = props.items.reduce((n, x) => n + (x.aiJobs || []).filter(j => ['running', 'queued', 'review'].indexOf((0, ai_1.jobState)(j)) >= 0).length, 0);
-    return (React.createElement("div", { "data-ax-team": true },
-        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' } },
-            React.createElement("h1", { style: { fontSize: 20, fontWeight: 700, margin: 0 } },
-                "AI \uD300\uC6D0 ",
-                team_1.TEAM.length,
-                "\uBA85"),
-            React.createElement(ui_1.Tip, { t: `${p.name} 기준 상태예요. 실제로 맡은 일·확인 대기만 보여요. 전체 아이템에서 지금 돌거나 확인을 기다리는 AI 일은 ${allJobs}건이에요. 켜기·끄기는 설정 › AI에서.` }),
-            React.createElement("span", { style: { fontSize: 13, color: ui_1.C.sub } }, p.name)),
-        team_1.DEPTS.map(d => {
-            const ms = team.filter(t => t.m.dept === d);
-            if (!ms.length)
-                return null;
-            return (React.createElement("div", { key: d, "data-ax-team-dept": d, style: { marginBottom: 14 } },
-                React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { marginBottom: 6 }) },
-                    d,
-                    " ",
-                    ms.length),
-                React.createElement("div", { className: "axs-office" }, ms.map(t => {
-                    const st = off[t.m.id] ? 'off' : t.state;
-                    return (React.createElement("div", { key: t.m.id, "data-ax-mate": t.m.id, "data-ax-mate-state": st, style: Object.assign(Object.assign({}, ui_1.card), { padding: '11px 12px', opacity: st === 'off' ? 0.4 : 1, borderColor: st === 'run' ? 'rgba(79,209,107,.55)' : st === 'review' ? 'rgba(245,158,11,.55)' : ui_1.C.line }) },
-                        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800 } },
-                            t.m.name,
-                            React.createElement(ui_1.Tip, { t: t.m.does + (t.m.only ? ` · ${ai_1.BRANCH_LABEL[t.m.only]}군만` : '') }),
-                            React.createElement("span", { style: { marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: st === 'run' ? ui_1.C.ok : st === 'review' ? ui_1.C.soon : ui_1.C.faint } }, off[t.m.id] ? '꺼짐' : W[st])),
-                        React.createElement("div", { style: { fontSize: 12.5, color: ui_1.C.sub, marginTop: 4 } },
-                            "\uB9E1\uC740 \uC77C ",
-                            t.m.kinds.length,
-                            "\uAC00\uC9C0 \u00B7 \uBC18\uC601 ",
-                            t.done,
-                            "\uAC74",
-                            t.review.length ? ` · 확인 ${t.review.length}` : '',
-                            t.running.length ? ` · 하는 중 ${t.running.length}` : '')));
-                }))));
+    const b = (0, ai_1.branchOf)((0, devtype_1.typeOf)(props.p));
+    const team = (0, team_1.teamOf)(props.p).filter(t => (exports.TAB_MATES[props.tab] || []).indexOf(t.m.id) >= 0 && (!t.m.only || t.m.only === b));
+    if (!team.length)
+        return null;
+    const rv = [];
+    team.forEach(t => t.review.forEach(j => rv.push({ j, name: t.m.name })));
+    return (React.createElement("div", { "data-ax-matestrip": props.tab, style: Object.assign(Object.assign({}, ui_1.card), { padding: '9px 12px', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }) },
+        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
+            React.createElement("span", { style: { fontSize: 12, fontWeight: 800, color: ui_1.C.faint } },
+                "\uC774 \uD0ED AI",
+                React.createElement(ui_1.Tip, { t: "\uC774 \uD0ED \uC77C\uC744 \uB9E1\uB294 \uC9C1\uBB34 AI\uC608\uC694. \u300C\uB9E1\uAE30\uAE30\u300D\uB85C \uC77C\uC744 \uC8FC\uBA74 \uACB0\uACFC\uAC00 \uD655\uC778 \uB300\uAE30\uB85C \uC640\uC694." })),
+            team.map(t => {
+                const md = (0, Office_1.moodOf)(t, !!off[t.m.id]);
+                return (React.createElement("span", { key: t.m.id, "data-ax-matestrip-mate": t.m.id, "data-mood": md, style: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 } },
+                    React.createElement("span", null, Office_1.FACE[md]),
+                    React.createElement("b", null, t.m.name),
+                    t.running.length ? React.createElement("span", { style: { color: ui_1.C.ok, fontSize: 12 } },
+                        "\uD558\uB294 \uC911 ",
+                        t.running.length) : null,
+                    t.review.length ? React.createElement("span", { style: { color: ui_1.C.soon, fontSize: 12 } },
+                        "\uD655\uC778 ",
+                        t.review.length) : null,
+                    !off[t.m.id] && React.createElement(Dash_1.AiButton, { pid: props.p.id, kinds: t.m.kinds, label: "\uB9E1\uAE30\uAE30", small: true })));
+            })),
+        rv.slice(0, 3).map(r => {
+            const f = (0, Today_1.friendly)(r.j);
+            return (React.createElement("div", { key: r.j.id, "data-ax-matestrip-review": true, style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, borderTop: `1px solid ${ui_1.C.line}`, paddingTop: 6, flexWrap: 'wrap' } },
+                React.createElement("span", { style: { color: ui_1.C.soon, fontWeight: 700 } }, r.name),
+                React.createElement("span", { style: { flex: '1 1 160px', minWidth: 0 }, title: r.j.result }, f.title),
+                React.createElement("button", { onClick: () => props.act.apply(props.p.id, r.j), style: Object.assign(Object.assign({}, ui_1.primary), { padding: '3px 10px', fontSize: 12 }) }, f.go),
+                React.createElement("button", { onClick: () => props.act.reject(props.p.id, r.j, '안 함'), style: Object.assign(Object.assign({}, ui_1.btn), { padding: '3px 10px', fontSize: 12 }) }, "\uC548 \uD568")));
         })));
 }
-exports.CHANGES = [
-    ['1.0.147', '왼쪽 메뉴·위쪽 아이템 선택 칸·검색, 설명은 ⓘ 툴팁, 설정 화면, AI 팀원 32명(11개 부문)'],
-    ['1.0.144', '개요 다시 짬(상태 4칸·내가 할 일·카드 4개), 관문 G1~G5, BOM 판·붙여넣기'],
-    ['1.0.141', '아이템 하나가 메인, 검정·초록 색'],
-    ['1.0.140', '오늘·아이템 2개 메뉴, 산출물 담당 AI'],
-];
-const Tog = (props) => React.createElement("button", { "data-ax-tog": props.k, "data-on": props.on ? '1' : '0', disabled: props.dis, className: 'axs-tog ' + (props.on ? 'on' : 'off'), onClick: props.onClick, style: { opacity: props.dis ? 0.4 : 1 }, "aria-label": props.k });
-const Line = (props) => React.createElement("div", { className: "axs-line" },
-    React.createElement("span", { style: { flex: '1 1 200px', fontWeight: 600 } },
-        props.t,
-        props.tip && React.createElement(ui_1.Tip, { t: props.tip })),
-    props.children);
-function SettingsView(props) {
-    const set = React.useContext(exports.SetCtx);
-    const [tab, setTab] = React.useState('me');
-    const [ai, setAi] = React.useState('');
-    const [ty, setTy] = React.useState('own');
-    if (!set)
-        return React.createElement("div", null);
-    const { org, me, admin, saveOrg, saveMe } = set;
-    const tabs = [['me', '내 설정', true], ['ai', 'AI', true], ['rule', '업무 기준', admin], ['perm', '권한', admin], ['info', '정보', true]];
-    const chip = (on) => (Object.assign(Object.assign({}, ui_1.btn), { background: on ? ui_1.C.text : ui_1.C.card, color: on ? ui_1.C.inv : ui_1.C.sub, borderColor: on ? ui_1.C.text : ui_1.C.line2 }));
-    const sample = (0, work_1.workSamples)().filter(p => (0, devtype_1.typeOf)(p) === ty)[0];
-    const roles = org.roles || {};
-    const dep = org.depts || [];
-    const hol = (org.holidays || []).join('\n');
-    return (React.createElement("div", { "data-ax-settings": true, "data-ax-stab": tab },
-        React.createElement("h1", { style: { fontSize: 20, fontWeight: 700, margin: '0 0 14px' } }, "\uC124\uC815"),
-        React.createElement("div", { className: "axs-set" },
-            React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { padding: 6 }) },
-                tabs.filter(t => t[2]).map(t => React.createElement("button", { key: t[0], "data-ax-stab-btn": t[0], className: 'axs-m' + (tab === t[0] ? ' on' : ''), onClick: () => setTab(t[0]) }, t[1])),
-                !admin && React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint, padding: '8px 11px' } },
-                    "\uC5C5\uBB34 \uAE30\uC900\u00B7\uAD8C\uD55C\uC740 \uAD00\uB9AC\uC790\uB9CC",
-                    React.createElement(ui_1.Tip, { t: "\uAD00\uB9AC\uC790\uAC00 \uAD8C\uD55C \uD0ED\uC5D0\uC11C \uC815\uD574\uC694." }))),
-            React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.card), { padding: '6px 18px 10px', minWidth: 0 }) },
-                tab === 'me' && React.createElement(React.Fragment, null,
-                    React.createElement(Line, { t: "Teams \uC54C\uB9BC", tip: "\uC2B9\uC778 \uC694\uCCAD\u00B7\uD655\uC778 \uB300\uAE30\uAC00 \uC0DD\uAE30\uBA74 Teams\uB85C \uC54C\uB824\uC694. \uC9C0\uAE08\uC740 \uC2B9\uC778 \uC694\uCCAD \uB9C1\uD06C\uBD80\uD130 \uC5F0\uACB0\uB3FC \uC788\uC5B4\uC694." },
-                        React.createElement(Tog, { k: "teams", on: me.teams !== false, onClick: () => saveMe({ teams: me.teams === false }) })),
-                    React.createElement(Line, { t: "\uBA54\uC77C \uC54C\uB9BC", tip: "\uAC19\uC740 \uC54C\uB9BC\uC744 \uBA54\uC77C\uB85C\uB3C4 \uBC1B\uC544\uC694." },
-                        React.createElement(Tog, { k: "mail", on: !!me.mail, onClick: () => saveMe({ mail: !me.mail }) })),
-                    React.createElement(Line, { t: "\uCCAB \uD654\uBA74", tip: "AX-PLM\uC744 \uC5F4\uC5C8\uC744 \uB54C \uCC98\uC74C \uBCF4\uC774\uB294 \uD654\uBA74" }, ['home', 'item'].map(x => React.createElement("button", { key: x, "data-ax-first": x, onClick: () => saveMe({ first: x }), style: chip((me.first || 'item') === x) }, x === 'home' ? '홈' : '마지막에 본 아이템'))),
-                    React.createElement(Line, { t: "\uAE00\uC528 \uD06C\uAE30" }, ['s', 'm', 'l'].map(x => React.createElement("button", { key: x, "data-ax-size": x, onClick: () => saveMe({ size: x }), style: chip((me.size || 'm') === x) }, x === 's' ? '작게' : x === 'm' ? '보통' : '크게'))),
-                    React.createElement(Line, { t: "\uD654\uBA74 \uBC1D\uAE30" }, ([false, true]).map(x => React.createElement("button", { key: String(x), "data-ax-light": x ? '1' : '0', onClick: () => saveMe({ light: x }), style: chip(!!me.light === x) }, x ? '밝게' : '어둡게')))),
-                tab === 'ai' && React.createElement(React.Fragment, null,
-                    React.createElement(Line, { t: "AI \uC5F0\uACB0", tip: "AI \uC911\uACC4 PC\uC5D0 \uB2FF\uB294\uC9C0 \uBC14\uB85C \uD655\uC778\uD574\uC694." },
-                        React.createElement("span", { "data-ax-ai-test": ai, style: { fontSize: 13, fontWeight: 700, color: ai === 'on' ? ui_1.C.ok : ai === 'off' ? ui_1.C.late : ui_1.C.faint } }, ai === 'on' ? '연결됨' : ai === 'off' ? '꺼짐' : ai === 'wait' ? '확인 중…' : '확인 전'),
-                        React.createElement("button", { "data-ax-ai-test-btn": true, onClick: () => { setAi('wait'); (0, ai_1.aiOnline)().then(ok => setAi(ok ? 'on' : 'off'), () => setAi('off')); }, style: ui_1.btn }, "\uC5F0\uACB0 \uC2DC\uD5D8")),
-                    React.createElement(Line, { t: "\uC790\uB3D9 \uC2E4\uD589", tip: "\uC790\uB3D9: \uB2E8\uACC4\uAC00 \uC5F4\uB9AC\uAC70\uB098 \uB9E4\uC77C \uC544\uCE68\uC5D0 AI\uAC00 \uC54C\uC544\uC11C \uC77C\uC744 \uC2DC\uC791\uD574\uC694. \uC0AC\uB78C \uD655\uC778 \uD6C4\uC5D0\uB9CC: \uC0AC\uB78C\uC774 \u300CAI\uC5D0\uAC8C \uB9E1\uAE30\uAE30\u300D\uB97C \uB20C\uB7EC\uC57C \uC2DC\uC791\uD574\uC694. \uC5B4\uB290 \uCABD\uC774\uB4E0 \uACB0\uACFC \uBC18\uC601\uC740 \uC0AC\uB78C\uC774 \uD574\uC694." }, ['auto', 'confirm'].map(x => React.createElement("button", { key: x, "data-ax-auto": x, disabled: !admin, onClick: () => saveOrg({ auto: x }), style: Object.assign(Object.assign({}, chip((org.auto || 'auto') === x)), { opacity: admin ? 1 : 0.5 }) }, x === 'auto' ? '자동' : '사람 확인 후에만'))),
-                    React.createElement(Line, { t: "\uD558\uB8E8 \uC0AC\uC6A9 \uD55C\uB3C4", tip: "\uD558\uB8E8\uC5D0 AI\uAC00 \uC2DC\uC791\uD558\uB294 \uC77C \uC218. \uB118\uC73C\uBA74 \uB2E4\uC74C \uB0A0\uAE4C\uC9C0 \uC904 \uC11C\uC11C \uAE30\uB2E4\uB824\uC694. 0\uC774\uBA74 \uC81C\uD55C \uC5C6\uC74C." },
-                        React.createElement("input", { "data-ax-limit": true, type: "number", min: 0, disabled: !admin, value: org.limit || 0, onChange: e => saveOrg({ limit: Math.max(0, Number(e.target.value) || 0) }), style: Object.assign(Object.assign({}, ui_1.inp), { width: 90 }) }),
-                        React.createElement("span", { style: { fontSize: 13, color: ui_1.C.faint } }, "\uAC74")),
-                    React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { margin: '14px 0 4px' }) },
-                        "AI \uD300\uC6D0 \uCF1C\uAE30\u00B7\uB044\uAE30",
-                        React.createElement(ui_1.Tip, { t: "\uB048 \uD300\uC6D0\uC758 \uC77C\uC740 \uC2DC\uC791\uD558\uC9C0 \uC54A\uC544\uC694(\uC774\uBBF8 \uB05D\uB09C \uACB0\uACFC\uB294 \uADF8\uB300\uB85C)." })),
-                    team_1.DEPTS.map(d => React.createElement("div", { key: d, style: { marginBottom: 6 } },
-                        React.createElement("div", { style: { fontSize: 12, color: ui_1.C.faint, fontWeight: 700, margin: '8px 0 2px' } }, d),
-                        React.createElement("div", { style: { display: 'flex', flexWrap: 'wrap', gap: '6px 18px' } }, team_1.TEAM.filter(m => m.dept === d).map(m => {
-                            const on = !(org.aiOff || {})[m.id];
-                            return (React.createElement("span", { key: m.id, style: { display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13.5, minWidth: 190 } },
-                                React.createElement(Tog, { k: 'mate-' + m.id, dis: !admin, on: on, onClick: () => saveOrg({ aiOff: Object.assign(Object.assign({}, (org.aiOff || {})), { [m.id]: on }) }) }),
-                                m.name));
-                        }))))),
-                tab === 'rule' && admin && React.createElement(React.Fragment, null,
-                    React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { margin: '12px 0 6px' }) }, "\uAC1C\uBC1C \uC720\uD615\u00B7\uB2E8\uACC4 \uD15C\uD50C\uB9BF"),
-                    React.createElement("div", { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 } },
-                        devtype_1.DEV_TYPES.map(t => React.createElement("button", { key: t.id, "data-ax-rule-type": t.id, onClick: () => setTy(t.id), style: chip(ty === t.id) }, t.tag)),
-                        React.createElement(ui_1.Tip, { t: (devtype_1.DEV_TYPES.filter(t => t.id === ty)[0] || devtype_1.DEV_TYPES[0]).desc })),
-                    sample && (0, work_1.stagesOf)(sample).map(s => React.createElement("div", { key: s.id, className: "axs-line", style: { alignItems: 'flex-start' } },
-                        React.createElement("span", { style: { width: 150, flex: '0 0 auto', fontWeight: 700 } },
-                            s.no,
-                            " ",
-                            s.short || s.name),
-                        React.createElement("span", { style: { flex: 1, minWidth: 0, fontSize: 13, color: ui_1.C.sub } }, s.docs.map(x => x.label).join(' · ')),
-                        s.gate && React.createElement("span", { style: { fontSize: 12.5, fontWeight: 700, color: ui_1.C.accent } },
-                            s.gate.split(' ')[0],
-                            s.gateRule && React.createElement(ui_1.Tip, { t: s.gateRule })))),
-                    React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { margin: '16px 0 6px' }) },
-                        "\uAD00\uBB38 \uC2B9\uC778\uC790",
-                        React.createElement(ui_1.Tip, { t: "\uC544\uC774\uD15C \uC2B9\uC778\uC790 \uC678\uC5D0 \uC774 \uC0AC\uB78C\uB3C4 \uADF8 \uAD00\uBB38\uC744 \uC2B9\uC778\uD560 \uC218 \uC788\uC5B4\uC694." })),
-                    ['G1', 'G2', 'G3', 'G4', 'G5'].map(g => React.createElement(Line, { key: g, t: g },
-                        React.createElement("input", { "data-ax-appr": g, value: (org.approvers || {})[g] || '', placeholder: "\uC774\uB984", onChange: e => saveOrg({ approvers: Object.assign(Object.assign({}, (org.approvers || {})), { [g]: e.target.value }) }), style: Object.assign(Object.assign({}, ui_1.inp), { width: 200 }) }))),
-                    React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { margin: '16px 0 6px' }) }, "\uBD80\uC11C\u00B7\uB2F4\uB2F9\uC790"),
-                    dep.map((x, i) => React.createElement("div", { key: i, className: "axs-line" },
-                        React.createElement("input", { "data-ax-dept": i, value: x.dept, placeholder: "\uBD80\uC11C", onChange: e => saveOrg({ depts: dep.map((y, j) => (j === i ? Object.assign(Object.assign({}, y), { dept: e.target.value }) : y)) }), style: Object.assign(Object.assign({}, ui_1.inp), { width: 160 }) }),
-                        React.createElement("input", { value: x.who, placeholder: "\uB2F4\uB2F9\uC790", onChange: e => saveOrg({ depts: dep.map((y, j) => (j === i ? Object.assign(Object.assign({}, y), { who: e.target.value }) : y)) }), style: Object.assign(Object.assign({}, ui_1.inp), { width: 160 }) }),
-                        React.createElement("button", { onClick: () => saveOrg({ depts: dep.filter((y, j) => j !== i) }), style: ui_1.btn }, "\uBE7C\uAE30"))),
-                    React.createElement("button", { "data-ax-dept-add": true, onClick: () => saveOrg({ depts: dep.concat([{ dept: '', who: '' }]) }), style: Object.assign(Object.assign({}, ui_1.btn), { marginTop: 6 }) }, "+ \uBD80\uC11C"),
-                    React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { margin: '16px 0 6px' }) },
-                        "\uB098\uB77C\uBCC4 \uD734\uC77C \uB2EC\uB825",
-                        React.createElement(ui_1.Tip, { t: "\uD55C \uC904\uC5D0 \uD558\uB098: \uB0A0\uC9DC \uB098\uB77C \uC774\uB984 (\uC608: 2027-02-06 \uC911\uAD6D \uCD98\uC808). \uC77C\uC815\uAD00\uB9AC AI\uAC00 \uC77C\uC815 \uBCFC \uB54C \uAC19\uC774 \uBD10\uC694." })),
-                    React.createElement("textarea", { "data-ax-holidays": true, defaultValue: hol, onBlur: e => saveOrg({ holidays: e.target.value.split('\n').map(x => x.trim()).filter(Boolean) }), rows: 6, style: Object.assign(Object.assign({}, ui_1.inp), { fontFamily: 'inherit', resize: 'vertical' }), placeholder: "2027-02-06 \uC911\uAD6D \uCD98\uC808" })),
-                tab === 'perm' && admin && React.createElement(React.Fragment, null,
-                    React.createElement("div", { style: { fontSize: 13, color: ui_1.C.sub, padding: '12px 0 4px', display: 'flex', alignItems: 'center' } },
-                        "\uC5ED\uD560",
-                        React.createElement(ui_1.Tip, { t: "\uBCF4\uAE30: \uC77D\uAE30\uB9CC \u00B7 \uD3B8\uC9D1: \uC0B0\uCD9C\uBB3C\u00B7BOM \uACE0\uCE58\uAE30 \u00B7 \uC2B9\uC778: \uAD00\uBB38\u00B7\uC124\uACC4 \uBCC0\uACBD \uC2B9\uC778 \u00B7 \uAD00\uB9AC\uC790: \uC5C5\uBB34 \uAE30\uC900\u00B7\uAD8C\uD55C\uAE4C\uC9C0. \uAD00\uB9AC\uC790\uAC00 \uD55C \uBA85\uB3C4 \uC5C6\uC73C\uBA74 \uBAA8\uB450 \uAD00\uB9AC\uC790\uB85C \uBD10\uC694." })),
-                    Object.keys(roles).map(n => React.createElement("div", { key: n, className: "axs-line", "data-ax-role-row": n },
-                        React.createElement("span", { style: { flex: '1 1 160px', fontWeight: 600 } }, n),
-                        ['view', 'edit', 'approve', 'admin'].map(r => React.createElement("button", { key: r, "data-ax-role": r, onClick: () => saveOrg({ roles: Object.assign(Object.assign({}, roles), { [n]: r }) }), style: chip(roles[n] === r) }, exports.ROLE_LABEL[r])),
-                        React.createElement("button", { onClick: () => { const x = Object.assign({}, roles); delete x[n]; saveOrg({ roles: x }); }, style: ui_1.btn }, "\uBE7C\uAE30"))),
-                    React.createElement(RoleAdd, { onAdd: n => saveOrg({ roles: Object.assign(Object.assign({}, roles), { [n]: Object.keys(roles).length ? 'edit' : 'admin' }) }) })),
-                tab === 'info' && React.createElement(React.Fragment, null,
-                    React.createElement(Line, { t: "\uD310 \uBC88\uD638" },
-                        React.createElement("b", { "data-ax-ver": true }, props.ver)),
-                    React.createElement(Line, { t: "\uC544\uC774\uD15C" },
-                        props.items.length,
-                        "\uAC1C"),
-                    React.createElement("div", { style: Object.assign(Object.assign({}, ui_1.label), { margin: '12px 0 4px' }) }, "\uBC14\uB010 \uB0B4\uC5ED"),
-                    exports.CHANGES.map(c => React.createElement("div", { key: c[0], className: "axs-line" },
-                        React.createElement("b", { style: { width: 70 } }, c[0]),
-                        React.createElement("span", { style: { flex: 1, fontSize: 13, color: ui_1.C.sub } }, c[1]))))))));
+// 홈 맨 위 — 오늘 볼 것 3개 (지연 위험 · 승인 대기 · AI가 끝낸 일), 데이터 그대로
+function Brief(props) {
+    const late = props.items.slice().sort((a, b) => (0, work_1.projLate)(b) - (0, work_1.projLate)(a))[0];
+    const lt = late ? (0, work_1.projLate)(late) : 0;
+    const gates = [];
+    props.items.forEach(p => (0, work_1.stagesOf)(p).forEach(s => { if (s.gate && (0, work_1.gateState)(p, s) === 'requested')
+        gates.push({ p, g: s.gate.split(' ')[0] }); }));
+    const rv = [];
+    props.items.forEach(p => (p.aiJobs || []).forEach(j => { if ((0, ai_1.jobState)(j) === 'review')
+        rv.push({ p, j }); }));
+    const row = (k, n, text, col, go) => (React.createElement("div", { "data-ax-brief3": k, className: "axw-row", onClick: go, style: { cursor: go ? 'pointer' : 'default' } },
+        React.createElement("span", { style: { width: 84, flex: '0 0 auto', fontSize: 12.5, fontWeight: 800, color: col } }, n),
+        React.createElement("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, text)));
+    const ls = late ? (0, work_1.stagesOf)(late)[(0, work_1.curIdx)(late)] : undefined;
+    return (React.createElement("section", { "data-ax-brief3-box": true, style: Object.assign(Object.assign({}, ui_1.card), { marginBottom: 18 }) },
+        React.createElement("div", { style: { padding: '12px 14px 4px', fontWeight: 800, fontSize: 16 } },
+            "\uC624\uB298 \uBCFC \uAC83 3\uAC1C",
+            React.createElement(ui_1.Tip, { t: "\uC9C0\uC5F0 \uC704\uD5D8\u00B7\uC2B9\uC778 \uB300\uAE30\u00B7AI\uAC00 \uB05D\uB0B8 \uC77C\uC744 \uB370\uC774\uD130 \uADF8\uB300\uB85C \uD55C \uC904\uC529 \uC815\uB9AC\uD574\uC694. \uB204\uB974\uBA74 \uADF8 \uD654\uBA74\uC73C\uB85C \uAC00\uC694." })),
+        row('late', '지연 위험', lt > 0 && late && ls ? `${late.name} — ${lt}일 늦음 · ${ls.no} ${ls.short || ls.name}` : '늦은 아이템 없음', lt >= 7 ? ui_1.C.late : lt > 0 ? ui_1.C.soon : ui_1.C.ok, late && lt > 0 ? () => props.onItem(late.id) : undefined),
+        row('gate', '승인 대기', gates.length ? `관문 ${gates.length}건 — ${gates[0].p.name} ${gates[0].g}${gates.length > 1 ? ` 외 ${gates.length - 1}` : ''}` : '승인 기다리는 관문 없음', gates.length ? ui_1.C.soon : ui_1.C.faint, gates.length ? props.onGates : undefined),
+        row('ai', 'AI가 끝낸 일', rv.length ? `${rv.length}건 확인 대기 — ${(0, Today_1.friendly)(rv[0].j).title} (${rv[0].p.name})` : '확인할 것 없음', rv.length ? ui_1.C.accent : ui_1.C.faint, rv.length ? () => props.onItem(rv[0].p.id) : undefined)));
 }
-function RoleAdd(props) {
-    const [n, setN] = React.useState('');
-    return React.createElement("div", { className: "axs-line" },
-        React.createElement("input", { "data-ax-role-new": true, value: n, onChange: e => setN(e.target.value), placeholder: "\uC774\uB984", style: Object.assign(Object.assign({}, ui_1.inp), { width: 180 }), onKeyDown: e => { if (e.key === 'Enter' && n.trim()) {
-                props.onAdd(n.trim());
-                setN('');
-            } } }),
-        React.createElement("button", { "data-ax-role-add": true, onClick: () => { if (n.trim()) {
-                props.onAdd(n.trim());
-                setN('');
-            } }, style: ui_1.primary }, "+ \uC0AC\uB78C"));
+// 오른쪽 옆창 AI 도우미 — 지금 보는 아이템·탭·고른 줄을 붙여서 질문
+const ASK_STATE = { queued: '차례 기다리는 중', running: 'AI가 답 쓰는 중', offline: 'AI 연결 전 — 연결되면 다시', error: '실패' };
+function Dock(props) {
+    const api = React.useContext(Dash_1.AiCtx);
+    const [q, setQ] = React.useState('');
+    const p = props.p;
+    const asks = p ? (p.aiJobs || []).filter(j => j.kind === 'ask').slice(-6).reverse() : [];
+    const send = () => { if (!api || !p || !q.trim())
+        return; api.run(p.id, 'ask', `[지금 보는 곳: ${props.where}]\n${q.trim()}`); setQ(''); };
+    return (React.createElement("aside", { "data-ax-dock": true, style: Object.assign(Object.assign({}, ui_1.card), { position: 'fixed', right: 12, top: 64, bottom: 12, width: 380, maxWidth: 'calc(100vw - 24px)', zIndex: 55, display: 'flex', flexDirection: 'column', boxShadow: '0 16px 40px rgba(0,0,0,.6)' }) },
+        React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', borderBottom: `1px solid ${ui_1.C.line}` } },
+            React.createElement("b", { style: { fontSize: 15 } }, "\u2726 AI \uB3C4\uC6B0\uBBF8"),
+            React.createElement(ui_1.Tip, { t: "\uC9C0\uAE08 \uBCF4\uB294 \uC544\uC774\uD15C\u00B7\uD0ED\u00B7\uACE0\uB978 \uC904\uC744 \uAC19\uC774 \uBCF4\uB0B4\uC694. \uB2F5\uC740 \uD655\uC778 \uB300\uAE30\uB85C \uC640\uC11C \uC5EC\uAE30\uC640 \uD648\uC5D0 \uB5A0\uC694." }),
+            React.createElement("span", { style: { flex: 1 } }),
+            React.createElement("button", { "data-ax-dock-close": true, onClick: props.onClose, style: ui_1.btn }, "\uB2EB\uAE30")),
+        React.createElement("div", { "data-ax-dock-where": true, style: { fontSize: 12.5, color: ui_1.C.faint, padding: '8px 14px' } }, p ? props.where : '아이템을 먼저 고르세요'),
+        React.createElement("div", { style: { padding: '0 14px 10px', display: 'flex', flexDirection: 'column', gap: 6 } },
+            React.createElement("textarea", { "data-ax-dock-q": true, rows: 3, value: q, onChange: e => setQ(e.target.value), placeholder: "\uC608: \uC774 \uBD80\uD488 \uBC14\uAFB8\uBA74 \uC601\uD5A5\uC740? \u00B7 G3 \uC65C \uB9C9\uD614\uC5B4?", style: Object.assign(Object.assign({}, ui_1.inp), { resize: 'vertical' }), onKeyDown: e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey))
+                    send(); } }),
+            React.createElement("button", { "data-ax-dock-send": true, disabled: !p || !q.trim(), onClick: send, style: Object.assign(Object.assign({}, ui_1.primary), { opacity: p && q.trim() ? 1 : 0.4 }) },
+                "\uBB3B\uAE30",
+                api && api.online === false ? ' (AI 연결 전)' : '')),
+        React.createElement("div", { style: { flex: 1, overflowY: 'auto', borderTop: `1px solid ${ui_1.C.line}` } },
+            !asks.length && React.createElement("div", { style: { padding: 14, fontSize: 13, color: ui_1.C.faint } }, "\uC544\uC9C1 \uBB3C\uC5B4\uBCF8 \uAC83 \uC5C6\uC74C"),
+            asks.map(j => React.createElement("div", { key: j.id, "data-ax-dock-ans": (0, ai_1.jobState)(j), style: { padding: '10px 14px', borderBottom: `1px solid ${ui_1.C.line}` } },
+                React.createElement("div", { style: { fontSize: 13, fontWeight: 700 } }, (j.input || '').replace(/^\[지금 보는 곳:[^\]]*\]\n/, '')),
+                React.createElement("div", { style: { fontSize: 13, color: ui_1.C.sub, whiteSpace: 'pre-wrap', marginTop: 4 } }, j.result || ASK_STATE[(0, ai_1.jobState)(j)] || ''))))));
 }
 
 };
@@ -8189,12 +8972,12 @@ function Sticky(props) {
     const [, tick] = React.useState(0);
     const press = React.useRef(undefined);
     const { store } = props;
+    const reload = () => { if (store)
+        store.load().then(setNotes, e => setErr('포스트잇을 못 읽었어요: ' + (e && e.message || e))); };
     React.useEffect(() => { if (props.listNonce) {
         setList(true);
         reload();
     } }, [props.listNonce]);
-    const reload = () => { if (store)
-        store.load().then(setNotes, e => setErr('포스트잇을 못 읽었어요: ' + (e && e.message || e))); };
     React.useEffect(reload, [store]);
     // 화면이 움직여도 포스트잇이 자리를 따라가게 — 1.5초마다 다시 그림
     React.useEffect(() => { const t = setInterval(() => tick(x => x + 1), 1500); return () => clearInterval(t); }, []);
