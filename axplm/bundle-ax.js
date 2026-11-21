@@ -7944,6 +7944,7 @@ function Standup(props) {
     const [open, setOpen] = React.useState(false);
     const { today, prev } = standupDay();
     const rows = standup(props.items);
+    const md = (s) => s.slice(5).replace('-', '/');
     const before9 = new Date(Date.now() + 9 * 3600000).getUTCHours() < 9;
     const stuck = rows.reduce((n, x) => n + x.stuck.length, 0);
     const list = open ? rows : rows.slice(0, 6);
@@ -7952,7 +7953,6 @@ function Standup(props) {
     const sendTime = !before9 && dow !== 0 && dow !== 6;
     const byItem = props.items.map(p => ({ p, xs: standup([p]).reduce((a, r) => a.concat(r.stuck.map(t => `${t.split(' · ')[0]} · ${r.name} · ${t.split(' · ').slice(1).join(' · ')}`)), []) })).filter(x => x.xs.length);
     const msgOf = (xs) => `[AX-PLM 아침 스탠드업 ${md(today)}] 막힌 AI 일 ${xs.length}건\n` + xs.map(x => '- ' + x).join('\n') + `\n${(0, ui_1.pageUrl)()}`;
-    const md = (s) => s.slice(5).replace('-', '/');
     const LB = { did: '어제 한 일', todo: '오늘 할 일', stuck: '막힌 것' };
     const cell = (xs, col, k) => React.createElement("div", { "data-ax-su-cell": k, style: { color: xs.length ? col : ui_1.C.faint, minWidth: 0 } },
         React.createElement("small", { className: "axsu-l" }, LB[k]),
@@ -7984,7 +7984,7 @@ function Standup(props) {
                     "\uAC74 \u2192 ",
                     x.p.approver || 'PM')
                 : React.createElement("button", { key: x.p.id, "data-ax-su-copy": x.p.id, title: "\uC2B9\uC778\uC790 \uBA54\uC77C\uC774 \uC5C6\uC5B4 \uAE00\uB9CC \uBCF5\uC0AC\uD574\uC694 (\uC124\uC815\uC5D0\uC11C \uC2B9\uC778\uC790 \uBA54\uC77C\uC744 \uB123\uC73C\uBA74 \uBC14\uB85C Teams\uB85C \uC5F4\uB824\uC694)", onClick: () => { try {
-                        navigator.clipboard.writeText(msgOf(x.xs));
+                        navigator.clipboard.writeText(msgOf(x.xs)).catch(() => undefined);
                     }
                     catch (e) { /* 복사 안 돼도 됨 */ } }, style: Object.assign(Object.assign({}, ui_1.btn), { fontSize: 12.5, padding: '3px 10px' }) },
                     x.p.name,
