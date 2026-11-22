@@ -4254,7 +4254,7 @@ class ConflictError extends Error {
 }
 exports.ConflictError = ConflictError;
 // 412(남이 먼저 저장)면 최신본을 읽어 apply를 다시 적용 — 여러 번(tries)까지. 행이 지워졌으면 새 행으로
-async function saveMerged(store, p, apply, tries = 4) {
+async function saveMerged(store, p, apply, tries = 6) {
     let cur = p;
     let latest;
     let merged = false;
@@ -4265,8 +4265,11 @@ async function saveMerged(store, p, apply, tries = 4) {
         }
         catch (e) {
             const c = e;
-            if (!c || !c.conflict || !apply || !store.get || !cur.spId || i >= tries)
+            // 1.0.153 충돌이 아니어도(잠깐 끊김·서버 바쁨) 최신본에 다시 적용해 몇 번 더 — 여러 사람이 동시에 누를 때 한 건도 버리지 않게
+            if (!apply || !store.get || !cur.spId || i >= tries)
                 throw e;
+            void c;
+            await new Promise(resolve => setTimeout(resolve, 150 * (i + 1) + Math.floor(Math.random() * 150))); // 1.0.153 동시에 부딪히면 조금 쉬었다가 (둘이 또 부딪히지 않게)
             latest = await store.get(cur.spId);
             if (!latest) {
                 cur = Object.assign(Object.assign({}, cur), { spId: undefined, spVer: undefined });
